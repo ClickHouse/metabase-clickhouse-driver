@@ -10,6 +10,12 @@ Please refer to the extensive documentation available in the MetaBase Wiki: [Wri
 3. Copy `clickhouse.metabase-driver.jar` into your MetaBase `plugins` directory
 4. Start MetaBase, e.g. by invoking `lein run` in your MetaBase directory.
 
+:warning: _This driver is in an early development stage and we would caution against using it in your production environment_ :warning:
+
+# Contributing
+* Report any issues you encounter
+* Just create a pull request, preferably with a test or five
+
 # History
 The request for a ClickHouse MetaBase driver is formulated in [MetaBase issue #3332](https://github.com/metabase/metabase/issues/3332). Some impatient ClickHouse users started development. The MetaBase team is asking driver developers to publish plug-ins and collect some experiences before considering a PR, so here we are.
 
@@ -23,3 +29,4 @@ The initial source base comprises major contributions from these authors (_the g
 * Bogdan Mukvich (@Badya)
 * @tsl-karlp
 * Andrew Grigorev (@ei-grad)
+* Felix Mueller (@enqueue)
