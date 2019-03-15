@@ -3,6 +3,10 @@ MetaBase driver for the ClickHouse database
 
 # Testing
 
+:warning: _This driver is in an early development stage and we would caution against using it in your production environment_ :warning:
+
+h2. Building from Source
+
 Please refer to the extensive documentation available in the MetaBase Wiki: [Writing A Driver](https://github.com/metabase/metabase/wiki/Writing-A-Driver)
 
 1. Clone [metabase repository](https://github.com/metabase/metabase)
@@ -10,7 +14,29 @@ Please refer to the extensive documentation available in the MetaBase Wiki: [Wri
 3. Copy `clickhouse.metabase-driver.jar` into your MetaBase `plugins` directory
 4. Start MetaBase, e.g. by invoking `lein run` in your MetaBase directory.
 
-:warning: _This driver is in an early development stage and we would caution against using it in your production environment_ :warning:
+h2. Do the Docker Dance
+
+In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
+
+```
+FROM metabase/metabase-head:latest
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/v0.1/clickhouse.metabase-driver.jar /app/plugins/
+```
+
+Assemble
+
+```
+docker build -f Dockerfile-clickhouse -t foo/metabase-with-clickhouse
+```
+
+Run
+
+```
+docker run --rm -d=false -p 3000:3000 --name metabase foo/metabase-with-clickhouse
+```
+
+Please refer to [the fine MetaBase operations manual](https://www.metabase.com/docs/latest/operations-guide/running-metabase-on-docker.html) to find out how to operate a dockerized MetaBase with a regular database.
+
 
 # Contributing
 * Report any issues you encounter
