@@ -5,7 +5,7 @@ MetaBase driver for the ClickHouse database
 
 :warning: _This driver is in an early development stage and we would caution against using it in your production environment_ :warning:
 
-h2. Building from Source
+## Building from Source
 
 Please refer to the extensive documentation available in the MetaBase Wiki: [Writing A Driver](https://github.com/metabase/metabase/wiki/Writing-A-Driver)
 
@@ -14,7 +14,7 @@ Please refer to the extensive documentation available in the MetaBase Wiki: [Wri
 3. Copy `clickhouse.metabase-driver.jar` into your MetaBase `plugins` directory
 4. Start MetaBase, e.g. by invoking `lein run` in your MetaBase directory.
 
-h2. Do the Docker Dance
+## Do the Docker Dance
 
 In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
