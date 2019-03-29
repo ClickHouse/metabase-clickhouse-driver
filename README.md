@@ -2,6 +2,8 @@
 
 [MetaBase](https://metabase.com) driver for the [ClickHouse](https://clickhouse.yandex) database
 
+![OnTime table in MetaBase](docs/images/metabase_clickhouse_ontime_teaser.png)
+
 # Testing
 
 :warning: _This driver is in an early development stage and we would caution against using it in your production environment_ :warning:
