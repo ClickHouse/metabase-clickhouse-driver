@@ -1,9 +1,20 @@
 # metabase-clickhouse-driver
-MetaBase driver for the ClickHouse database
+
+[MetaBase](https://metabase.com) driver for the [ClickHouse](https://clickhouse.yandex) database
 
 # Testing
 
 :warning: _This driver is in an early development stage and we would caution against using it in your production environment_ :warning:
+
+## Download MetaBase Jar and Run
+
+1. Download a fairly recent MetaBase binary release (jar file) from the [MetaBase distribution page](https://metabase.com/start/jar.html).
+2. Download the ClickHouse driver jar from this repository's "Releases" page
+3. Create a directory and copy the `metabase.jar` to it.
+4. In that directory create a sub-directory called `plugins`.
+5. Copy the ClickHouse driver jar to the `plugins` directory.
+6. Make sure you are the in the directory where your `metabase.jar` lives.
+7. Run `MB_PLUGINS_DIR=./plugins; java -jar metabase.jar`.
 
 ## Building from Source
 
@@ -50,6 +61,7 @@ This driver is based on the following PRs:
 * [metabase#8722](https://github.com/metabase/metabase/pull/8722)
 * [metabase#9469](https://github.com/metabase/metabase/pull/9469)
 
+# Contributors, Authors
 The initial source base comprises major contributions from these authors (_the git log has suffered from frequent brutal rebases, please add yourself here, if I missed you!_):
 
 * Bogdan Mukvich (@Badya)
