@@ -17,28 +17,33 @@ jobs:
       - run:
           name: Set up paths
           command: ln -sf metabase-clickhouse-driver metabase/modules/drivers/clickhouse
+      - persist_to_workspace:
+          root: /home/circleci/
+          paths:
+            - metabase-clickhouse-driver
+            - metabase
+          
   be-tests:
     <<: *defaults
     steps:
-      - run:
-          name: Enter MetaBase project
-          command: cd metabase
+      - attach_workspace:
+          at: /home/circleci/
       - run:
           name: Run backend unit tests with Java 8
+          working_directory: metabase
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
   be-linter-eastwood:
     <<: *defaults
     steps:
-      - run:
-         name: Enter MetaBase project
-         command: cd metabase
+      - attach_workspace:
+          at: /home/circleci/
       - run:
           name: Run Eastwood linter
+          working_directory: metabase
           command: lein with-profile +ci eastwood
           no_output_timeout: 5m
-
 
 workflows:
   version: 2
