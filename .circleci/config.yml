@@ -28,7 +28,7 @@ jobs:
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
-be-linter-eastwood:
+  be-linter-eastwood:
     <<: *defaults
     steps:
       - run:
@@ -38,3 +38,12 @@ be-linter-eastwood:
           name: Run Eastwood linter
           command: lein with-profile +ci eastwood
           no_output_timeout: 5m
+
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - checkout
+      - be-tests
+      - be-linter-eastwood
