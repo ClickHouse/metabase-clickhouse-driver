@@ -31,19 +31,20 @@ jobs:
       - run:
           name: Run backend unit tests with Java 8
           working_directory: project/metabase
-          command: lein with-profile +ci test
+          command: pwd && ls -l
+#          command: lein with-profile +ci test
           no_output_timeout: 5m
 
-  be-linter-eastwood:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - run:
-          name: Run Eastwood linter
-          working_directory: project/metabase
-          command: lein with-profile +ci eastwood
-          no_output_timeout: 5m
+  # be-linter-eastwood:
+  #   <<: *defaults
+  #   steps:
+  #     - attach_workspace:
+  #         at: /home/circleci/
+  #     - run:
+  #         name: Run Eastwood linter
+  #         working_directory: project/metabase
+  #         command: lein with-profile +ci eastwood
+  #         no_output_timeout: 5m
 
 workflows:
   version: 2
