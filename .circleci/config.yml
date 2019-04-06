@@ -5,7 +5,7 @@ jobs:
       - image: circleci/clojure:lein-2.8.1-node-browsers
     steps:
       - checkout:
-        path: metabase-clickhouse-driver
+          path: metabase-clickhouse-driver
       - run: git clone --depth=1 -b $MB_BRANCH $MB_REPO metabase
       - run: pwd && ls -l
       
