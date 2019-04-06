@@ -20,8 +20,8 @@ jobs:
       - persist_to_workspace:
           root: /home/circleci/
           paths:
-            - metabase-clickhouse-driver
-            - metabase
+            - project/metabase-clickhouse-driver
+            - project/metabase
           
   be-tests:
     <<: *defaults
@@ -30,7 +30,7 @@ jobs:
           at: /home/circleci/
       - run:
           name: Run backend unit tests with Java 8
-          working_directory: metabase
+          working_directory: project/metabase
           command: lein with-profile +ci test
           no_output_timeout: 5m
 
@@ -41,7 +41,7 @@ jobs:
           at: /home/circleci/
       - run:
           name: Run Eastwood linter
-          working_directory: metabase
+          working_directory: project/metabase
           command: lein with-profile +ci eastwood
           no_output_timeout: 5m
 
