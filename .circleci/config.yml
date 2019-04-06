@@ -4,8 +4,7 @@ jobs:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
     steps:
-      - checkout
-      - run: echo "hello world"
-      - run: git clone --depth=1 git@github.com:enqueue/metabase.git
+      - checkout metabase-clickhouse-driver
+      - run: git clone --depth=1 -b $MB_BRANCH $MB_REPO metabase
       - run: pwd && ls -l
       
