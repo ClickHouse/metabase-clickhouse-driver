@@ -1,11 +1,34 @@
-version: 2
+version: 2.1
+
 jobs:
-  build:
+  checkout:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
     steps:
       - checkout:
           path: metabase-clickhouse-driver
-      - run: git clone --depth=1 -b $MB_BRANCH $MB_REPO metabase
-      - run: pwd && ls -l
-      
+      - run:
+          name: Check-out MetaBase Integration Branch
+          command: git clone --depth=1 -b $MB_BRANCH $MB_REPO metabase
+      - run:
+          name: Set up paths
+          command: ln -sf metabase-clickhouse-driver metabase/modules/drivers/clickhouse
+  be-tests:
+    steps:
+      - run:
+          name: Enter MetaBase project
+          command: cd metabase
+      - run:
+          name: Run backend unit tests with Java 8
+          command: lein with-profile +ci test
+          no_output_timeout: 5m
+
+be-linter-eastwood:
+    steps:
+      - run:
+         name: Enter MetaBase project
+         command: cd metabase
+      - run:
+          name: Run Eastwood linter
+          command: lein with-profile +ci eastwood
+          no_output_timeout: 5m
