@@ -1,3 +1,7 @@
+defaults: &defaults
+  docker:
+    - image: circleci/clojure:lein-2.8.1-node-browsers
+
 version: 2.1
 
 jobs:
@@ -14,6 +18,7 @@ jobs:
           name: Set up paths
           command: ln -sf metabase-clickhouse-driver metabase/modules/drivers/clickhouse
   be-tests:
+    <<: *defaults
     steps:
       - run:
           name: Enter MetaBase project
@@ -24,6 +29,7 @@ jobs:
           no_output_timeout: 5m
 
 be-linter-eastwood:
+    <<: *defaults
     steps:
       - run:
          name: Enter MetaBase project
