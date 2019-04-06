@@ -54,6 +54,6 @@ workflows:
       - be-tests:
           requires:
             - checkout
-      - be-linter-eastwood:
-          requires:
-            - checkout
+      # - be-linter-eastwood:
+      #     requires:
+      #       - checkout
