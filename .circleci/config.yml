@@ -45,5 +45,9 @@ workflows:
   build:
     jobs:
       - checkout
-      - be-tests
-      - be-linter-eastwood
+      - be-tests:
+          requires:
+            - checkout
+      - be-linter-eastwood:
+          requires:
+            - checkout
