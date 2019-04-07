@@ -16,7 +16,7 @@ jobs:
           command: git clone --depth=1 -b $MB_BRANCH $MB_REPO metabase
       - run:
           name: Set up paths
-          command: ln -sfv ./metabase-clickhouse-driver metabase/modules/drivers/clickhouse
+          command: ln -sfv ../../../metabase-clickhouse-driver metabase/modules/drivers/clickhouse
       - persist_to_workspace:
           root: /home/circleci/
           paths:
