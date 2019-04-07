@@ -1,8 +1,10 @@
 # metabase-clickhouse-driver
 
-[MetaBase](https://metabase.com) driver for the [ClickHouse](https://clickhouse.yandex) database
+[MetaBase](https://metabase.com) ([github](https://github.com/metabase/metabase)) driver for the [ClickHouse](https://clickhouse.yandex) database ([github](https://github.com/yandex/ClickHouse))
 
 ![OnTime table in MetaBase](docs/images/metabase_clickhouse_ontime_teaser.png)
+
+[![CircleCI](https://circleci.com/gh/enqueue/metabase-clickhouse-driver.svg?style=svg)](https://circleci.com/gh/enqueue/metabase-clickhouse-driver)
 
 # Testing
 
