@@ -4,7 +4,6 @@
   :aliases
   {"bikeshed"                  ["with-profile" "+bikeshed" "bikeshed" "--max-line-length" "205"]
    "check-namespace-decls"     ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
-   "check-reflection-warnings" ["with-profile" "+reflection-warnings" "check"]
    "docstring-checker"         ["with-profile" "+docstring-checker" "docstring-checker"]
    "eastwood"                  ["with-profile" "+eastwood" "eastwood"]
    "test"                      ["with-profile" "+expectations" "expectations"]}
@@ -50,9 +49,6 @@
                           #_:unused-locals]
      ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
      :exclude-linters    [:deprecations]}}
-
-   :reflection-warnings
-   {:global-vars {*warn-on-reflection* true}}
 
    :docstring-checker
    {:plugins
