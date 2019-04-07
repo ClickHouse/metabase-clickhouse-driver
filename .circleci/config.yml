@@ -5,7 +5,8 @@ defaults: &defaults
 version: 2.1
 
 jobs:
-  checkout:
+
+  checkout-and-cache:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
     steps:
@@ -21,8 +22,12 @@ jobs:
           # we'll need to touch our project.clj when MetaBase dependencies change
           key: metabase-clickhouse-driver-{{ checksum "metabase-clickhouse-driver/project.clj" }}
       - run:
-          name: Resolving Dependencies
+          name: Resolving Dependencies (MetaBase)
           working_directory: metabase
+          command: lein deps
+      - run:
+          name: Resolving Dependencies (ClickHouse driver)
+          working_directory: metabase-clickhouse-driver
           command: lein deps
       - save_cache:
           paths:
@@ -106,24 +111,40 @@ jobs:
             DRIVERS: h2,clickhouse
         command: lein with-profile +ci test
         no_output_timeout: 5m
-          
+
+  assemble-driver
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run:
+          name: Assemble ClickHouse driver
+          working_directory: metabase
+          command: bin/build-driver.sh clickhouse
+          no_output_timeout: 5m
+      - store_artifacts:
+          path: metabase/modules/drivers/clickhouse/target/uberjar/clickhouse.metabase-driver.jar
+
 workflows:
   version: 2
   build:
     jobs:
       - checkout
-      - be-linter-eastwood:
-          requires:
-            - checkout
-      -  be-linter-docstring-checker:
-           requires:
-            - checkout
-      -  be-linter-bikeshed:
-          requires:
-            - checkout
-      - be-linter-reflection-warnings:
-          requires:
-            - checkout
-      - be-tests-clickhouse:
+      # - be-linter-eastwood:
+      #     requires:
+      #       - checkout
+      # -  be-linter-docstring-checker:
+      #      requires:
+      #       - checkout
+      # -  be-linter-bikeshed:
+      #     requires:
+      #       - checkout
+      # - be-linter-reflection-warnings:
+      #     requires:
+      #       - checkout
+      # - be-tests-clickhouse:
+      #     requires:
+      #       - checkout
+      - assemble-driver:
           requires:
             - checkout
