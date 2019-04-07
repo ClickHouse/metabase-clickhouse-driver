@@ -48,6 +48,8 @@ jobs:
       - run:
           name: Run Eastwood linter
           working_directory: metabase
+          environment:
+            DRIVERS: h2,clickhouse
           command: lein with-profile +ci eastwood
           no_output_timeout: 5m
 
@@ -81,6 +83,8 @@ jobs:
       - run:
           name: Run Bikeshed linter
           working_directory: metabase
+          environment:
+            DRIVERS: h2,clickhouse
           command: lein with-profile +ci bikeshed
           no_output_timeout: 5m
 
@@ -92,6 +96,8 @@ jobs:
       - run:
           name: Run reflection warnings checker
           working_directory: metabase
+          environment:
+            DRIVERS: h2,clickhouse
           command: ./bin/reflection-linter
           no_output_timeout: 5m
 
