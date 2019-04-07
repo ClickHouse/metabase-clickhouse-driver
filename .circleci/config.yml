@@ -17,11 +17,23 @@ jobs:
       - run:
           name: Set up paths
           command: ln -sfv ../../../metabase-clickhouse-driver metabase/modules/drivers/clickhouse
+      - restore_cache:
+          # we'll need to touch our project.clj when MetaBase dependencies change
+          key: metabase-clickhouse-driver-{{ checksum "metabase-clickhouse-driver/project.clj" }}
+      - run:
+          name: Resolving Dependencies
+          working_directory: metabase
+          command: lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: metabase-clickhouse-driver-{{ checksum "metabase-clickhouse-driver/project.clj" }}
       - persist_to_workspace:
           root: /home/circleci/
           paths:
             - project/metabase-clickhouse-driver
             - project/metabase
+            - ~/.m2
           
   be-linter-eastwood:
     <<: *defaults
