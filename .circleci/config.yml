@@ -40,66 +40,66 @@ jobs:
             - project/metabase
             - .m2
           
-  be-linter-eastwood:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - run:
-          name: Run Eastwood linter
-          working_directory: metabase
-          environment:
-            DRIVERS: h2,clickhouse
-          command: lein with-profile +ci eastwood
-          no_output_timeout: 5m
+  # linter-eastwood:
+  #   <<: *defaults
+  #   steps:
+  #     - attach_workspace:
+  #         at: /home/circleci/
+  #     - run:
+  #         name: Run Eastwood linter
+  #         working_directory: metabase-clickhouse-driver
+  #         environment:
+  #           DRIVERS: h2,clickhouse
+  #         command: lein with-profile +ci eastwood
+  #         no_output_timeout: 5m
 
-  be-linter-docstring-checker:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - run:
-          name: Run dockstring-checker
-          working_directory: metabase
-          command: lein with-profile +ci docstring-checker
-          no_output_timeout: 5m
+  # linter-docstring-checker:
+  #   <<: *defaults
+  #   steps:
+  #     - attach_workspace:
+  #         at: /home/circleci/
+  #     - run:
+  #         name: Run dockstring-checker
+  #         working_directory: metabase-clickhouse-driver
+  #         command: lein with-profile +ci docstring-checker
+  #         no_output_timeout: 5m
 
-  be-linter-namespace-decls:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - run:
-          name: Run namespace decl checker
-          working_directory: metabase
-          command: lein with-profile +ci check-namespace-decls
-          no_output_timeout: 5m
+  # linter-namespace-decls:
+  #   <<: *defaults
+  #   steps:
+  #     - attach_workspace:
+  #         at: /home/circleci/
+  #     - run:
+  #         name: Run namespace decl checker
+  #         working_directory: metabase-clickhouse-driver
+  #         command: lein with-profile +ci check-namespace-decls
+  #         no_output_timeout: 5m
 
-  be-linter-bikeshed:
+  linter-bikeshed:
     <<: *defaults
     steps:
       - attach_workspace:
           at: /home/circleci/
       - run:
           name: Run Bikeshed linter
-          working_directory: metabase
+          working_directory: metabase-clickhouse-driver
           environment:
             DRIVERS: h2,clickhouse
-          command: lein with-profile +ci bikeshed
+          command: lein bikeshed
           no_output_timeout: 5m
 
-  be-linter-reflection-warnings:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - run:
-          name: Run reflection warnings checker
-          working_directory: metabase
-          environment:
-            DRIVERS: h2,clickhouse
-          command: ./bin/reflection-linter
-          no_output_timeout: 5m
+  # linter-reflection-warnings:
+  #   <<: *defaults
+  #   steps:
+  #     - attach_workspace:
+  #         at: /home/circleci/
+  #     - run:
+  #         name: Run reflection warnings checker
+  #         working_directory: metabase-clickhouse-driver
+  #         environment:
+  #           DRIVERS: h2,clickhouse
+  #         command: ./bin/reflection-linter
+  #         no_output_timeout: 5m
 
   be-tests-clickhouse:
     docker:
@@ -136,21 +136,21 @@ workflows:
   build:
     jobs:
       - checkout
-      - be-linter-eastwood:
+      # - be-linter-eastwood:
+      #     requires:
+      #       - checkout
+      # -  be-linter-docstring-checker:
+      #      requires:
+      #       - checkout
+      -  linter-bikeshed:
           requires:
             - checkout
-      -  be-linter-docstring-checker:
-           requires:
-            - checkout
-      -  be-linter-bikeshed:
-          requires:
-            - checkout
-      - be-linter-reflection-warnings:
-          requires:
-            - checkout
-      - be-tests-clickhouse:
-          requires:
-            - checkout
-      - assemble-driver:
-          requires:
-            - checkout
+      # - be-linter-reflection-warnings:
+      #     requires:
+      #       - checkout
+      # - be-tests-clickhouse:
+      #     requires:
+      #       - checkout
+      # - assemble-driver:
+      #     requires:
+      #       - checkout

@@ -7,6 +7,7 @@
                  org.slf4j/slf4j-api]]]
 
   :profiles
+
   {:provided
    {:dependencies [[metabase-core "1.0.0-SNAPSHOT"]]}
 
@@ -15,4 +16,8 @@
     :aot           :all
     :javac-options ["-target" "1.8", "-source" "1.8"]
     :target-path   "target/%s"
-    :uberjar-name  "clickhouse.metabase-driver.jar"}})
+    :uberjar-name  "clickhouse.metabase-driver.jar"}
+
+  :bikeshed
+    {:plugins [[lein-bikeshed "0.4.1"]]}})
+
