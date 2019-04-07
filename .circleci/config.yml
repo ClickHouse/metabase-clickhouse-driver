@@ -6,7 +6,7 @@ version: 2.1
 
 jobs:
 
-  checkout-and-cache:
+  checkout:
     docker:
       - image: circleci/clojure:lein-2.8.1-node-browsers
     steps:
