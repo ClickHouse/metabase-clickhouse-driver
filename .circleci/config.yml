@@ -30,7 +30,7 @@ jobs:
           at: /home/circleci/
       - run:
           name: Run backend unit tests with Java 8
-          working_directory: project/metabase
+          working_directory: metabase
           command: pwd && ls -l
 #          command: lein with-profile +ci test
           no_output_timeout: 5m
