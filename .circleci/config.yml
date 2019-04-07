@@ -33,7 +33,7 @@ jobs:
           paths:
             - project/metabase-clickhouse-driver
             - project/metabase
-            - ~/.m2
+            - .m2
           
   be-linter-eastwood:
     <<: *defaults
