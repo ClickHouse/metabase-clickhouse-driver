@@ -1,6 +1,6 @@
 (ns metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.util :as u]
             [metabase.query-processor-test :refer :all]

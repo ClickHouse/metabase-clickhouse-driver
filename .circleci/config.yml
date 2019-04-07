@@ -1,0 +1,140 @@
+defaults: &defaults
+  docker:
+    - image: circleci/clojure:lein-2.8.1-node-browsers
+
+version: 2.1
+
+jobs:
+
+  checkout:
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+    steps:
+      - checkout:
+          path: metabase-clickhouse-driver
+      - run:
+          name: Check-out MetaBase Integration Branch
+          command: git clone --depth=1 -b $MB_BRANCH $MB_REPO metabase
+      - run:
+          name: Set up paths
+          command: ln -sfv ../../../metabase-clickhouse-driver metabase/modules/drivers/clickhouse
+      - restore_cache:
+          # we'll need to touch our project.clj when MetaBase dependencies change
+          key: metabase-clickhouse-driver-{{ checksum "metabase-clickhouse-driver/project.clj" }}
+      - run:
+          name: Building and Installing MetaBase
+          working_directory: metabase
+          command: lein install-for-building-drivers
+      - run:
+          name: Resolving Dependencies (ClickHouse driver)
+          working_directory: metabase-clickhouse-driver
+          command: lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: metabase-clickhouse-driver-{{ checksum "metabase-clickhouse-driver/project.clj" }}
+      - persist_to_workspace:
+          root: /home/circleci/
+          paths:
+            - project/metabase-clickhouse-driver
+            - project/metabase
+            - .m2
+          
+  linter-eastwood:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run:
+          name: Run Eastwood linter
+          working_directory: metabase-clickhouse-driver
+          environment:
+            DRIVERS: h2,clickhouse
+          command: lein with-profile +ci eastwood
+          no_output_timeout: 5m
+
+  linter-docstring-checker:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run:
+          name: Run dockstring-checker
+          working_directory: metabase-clickhouse-driver
+          command: lein with-profile +ci docstring-checker
+          no_output_timeout: 5m
+
+  # linter-namespace-decls:
+  #   <<: *defaults
+  #   steps:
+  #     - attach_workspace:
+  #         at: /home/circleci/
+  #     - run:
+  #         name: Run namespace decl checker
+  #         working_directory: metabase-clickhouse-driver
+  #         command: lein with-profile +ci check-namespace-decls
+  #         no_output_timeout: 5m
+
+  linter-bikeshed:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run:
+          name: Run Bikeshed linter
+          working_directory: metabase-clickhouse-driver
+          environment:
+            DRIVERS: h2,clickhouse
+          command: lein bikeshed
+          no_output_timeout: 5m
+
+  tests-clickhouse:
+    docker:
+    - image: circleci/clojure:lein-2.8.1-node-browsers
+    - image: yandex/clickhouse-server:latest
+      environment:
+        TZ: "/usr/share/zoneinfo/UTC"
+    steps:
+    - attach_workspace:
+        at: /home/circleci/
+    - run:
+        name: Run backend unit tests (ClickHouse)
+        working_directory: metabase
+        environment:
+            DRIVERS: h2,clickhouse
+        command: lein with-profile +ci test
+        no_output_timeout: 5m
+
+  assemble-driver:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+      - run:
+          name: Assemble ClickHouse driver
+          working_directory: metabase
+          command: bin/build-driver.sh clickhouse
+          no_output_timeout: 5m
+      - store_artifacts:
+          path: metabase/modules/drivers/clickhouse/target/uberjar/clickhouse.metabase-driver.jar
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - checkout
+      - linter-eastwood:
+          requires:
+            - checkout
+      - linter-docstring-checker:
+           requires:
+            - checkout
+      - linter-bikeshed:
+          requires:
+            - checkout
+      - tests-clickhouse:
+          requires:
+            - checkout
+      - assemble-driver:
+          requires:
+            - checkout

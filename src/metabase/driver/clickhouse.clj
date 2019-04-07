@@ -4,7 +4,6 @@
             [clojure.string :as string]
             [honeysql.core :as hsql]
             [metabase
-             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver
