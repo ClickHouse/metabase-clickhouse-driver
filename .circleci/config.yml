@@ -130,21 +130,21 @@ workflows:
   build:
     jobs:
       - checkout
-      # - be-linter-eastwood:
-      #     requires:
-      #       - checkout
-      # -  be-linter-docstring-checker:
-      #      requires:
-      #       - checkout
-      # -  be-linter-bikeshed:
-      #     requires:
-      #       - checkout
-      # - be-linter-reflection-warnings:
-      #     requires:
-      #       - checkout
-      # - be-tests-clickhouse:
-      #     requires:
-      #       - checkout
+      - be-linter-eastwood:
+          requires:
+            - checkout
+      -  be-linter-docstring-checker:
+           requires:
+            - checkout
+      -  be-linter-bikeshed:
+          requires:
+            - checkout
+      - be-linter-reflection-warnings:
+          requires:
+            - checkout
+      - be-tests-clickhouse:
+          requires:
+            - checkout
       - assemble-driver:
           requires:
             - checkout
