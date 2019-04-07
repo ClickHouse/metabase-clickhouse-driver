@@ -22,9 +22,9 @@ jobs:
           # we'll need to touch our project.clj when MetaBase dependencies change
           key: metabase-clickhouse-driver-{{ checksum "metabase-clickhouse-driver/project.clj" }}
       - run:
-          name: Resolving Dependencies (MetaBase)
+          name: Building and Installing MetaBase
           working_directory: metabase
-          command: lein deps
+          command: lein install-for-building-
       - run:
           name: Resolving Dependencies (ClickHouse driver)
           working_directory: metabase-clickhouse-driver
