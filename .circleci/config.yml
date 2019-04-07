@@ -112,7 +112,7 @@ jobs:
         command: lein with-profile +ci test
         no_output_timeout: 5m
 
-  assemble-driver
+  assemble-driver:
     <<: *defaults
     steps:
       - attach_workspace:
