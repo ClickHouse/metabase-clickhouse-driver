@@ -24,7 +24,7 @@ jobs:
       - run:
           name: Building and Installing MetaBase
           working_directory: metabase
-          command: lein install-for-building-
+          command: lein install-for-building-drivers
       - run:
           name: Resolving Dependencies (ClickHouse driver)
           working_directory: metabase-clickhouse-driver
