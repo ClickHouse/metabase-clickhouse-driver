@@ -20,8 +20,8 @@
              [date :as du]
              [honeysql-extensions :as hx]]
             [schema.core :as sc])
-  (:import [java.sql DatabaseMetaData Time]
-           java.util.Date))
+  (:import [java.sql DatabaseMetaData ResultSet Time Types]
+           [java.util Calendar Date]))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
 
@@ -200,7 +200,7 @@
 ;; See above. We are removing the artificial alias suffix
 (defmethod driver/execute-query :clickhouse [driver query]
   (update-in
-   (sql-jdbc.execute/execute-query :sql-jdbc query)
+   (sql-jdbc.execute/execute-query driver query)
    [:columns]
    (fn [columns]
      (mapv (fn [column]
@@ -208,6 +208,12 @@
                (subs column 0 (string/last-index-of column "_mb_alias"))
                column))
            columns))))
+
+(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [driver calendar resultset meta i]
+  (when-let [timestamp (.getTimestamp resultset i)]
+    (if (string/starts-with? (.toString timestamp) "1970-01-01")
+      (Time. (.getTime timestamp))
+      ((get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIMESTAMP]) driver calendar resultset meta i))))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
