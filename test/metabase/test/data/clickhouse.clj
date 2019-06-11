@@ -1,6 +1,7 @@
 (ns metabase.test.data.clickhouse
   "Code for creating / destroying a ClickHouse database from a `DatabaseDefinition`."
-  (:require [metabase.test.data
+  (:require [metabase.driver.sql.util :as sql.u]
+            [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
              [sql-jdbc :as sql-jdbc.tx]]
@@ -46,10 +47,10 @@
 
 (defmethod sql.tx/create-table-sql :clickhouse
   [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions]}]
-  (let [quot          (partial sql.tx/quote-name driver)
+  (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))
         pk-field-name (quot (sql.tx/pk-field-name driver))]
     (format "CREATE TABLE %s (%s %s, %s) ENGINE = %s"
-            (sql.tx/qualify+quote-name driver database-name table-name)
+            (sql.tx/qualify-and-quote driver database-name table-name)
             pk-field-name
             (sql.tx/pk-sql-type driver)
             (->> field-definitions
