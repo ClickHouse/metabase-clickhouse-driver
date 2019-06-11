@@ -1,4 +1,4 @@
-(defproject metabase/clickhouse-driver "1.0.0-SNAPSHOT-0.1.52"
+(defproject metabase/clickhouse-driver "1.0.0-SNAPSHOT-0.1.54"
   :min-lein-version "2.5.0"
 
   :aliases
@@ -9,7 +9,7 @@
    "test"                      ["with-profile" "+expectations" "expectations"]}
   
   :dependencies
-  [[ru.yandex.clickhouse/clickhouse-jdbc "0.1.52"
+  [[ru.yandex.clickhouse/clickhouse-jdbc "0.1.54"
     :exclusions [com.fasterxml.jackson.core/jackson-core
                  org.slf4j/slf4j-api]]]
 
