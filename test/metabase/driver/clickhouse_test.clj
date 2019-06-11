@@ -16,9 +16,9 @@
 
 (datasets/expect-with-driver :clickhouse
   21.0
-  (-> (data/with-temp-db
+  (-> (data/with-db-for-dataset
     [_
-     (tx/create-database-definition "ClickHouse with Decimal Field"
+     (tx/dataset-definition "ClickHouse with Decimal Field"
        ["test-data"
         [{:field-name "my_money", :base-type {:native "Decimal(12,3)"}}]
         [[1.0] [23.0] [42.0] [42.0]]])]
