@@ -28,7 +28,7 @@
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [
-    [#"Array"       :type/*]
+    [#"Array"       :type/Array]
     [#"DateTime"    :type/DateTime]
     [#"Date"        :type/Date]
     [#"Decimal"     :type/Decimal]
