@@ -187,6 +187,19 @@
                (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
     ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
 
+;; I do not know why the tests expect nil counts for empty results
+;; but that's how it is :-)
+;; metabase.query-processor-test.count-where-test
+;; metabase.query-processor-test.share-test
+(defmethod sql.qp/->honeysql [:clickhouse :count-where]
+  [driver [_ pred]]
+  (hsql/call :case
+             (hsql/call :> (hsql/call :count) 0)
+             (hsql/call :sum (hsql/call :case
+                                        (sql.qp/->honeysql driver pred) 1.0
+                                        :else                           0.0))
+             :else nil))
+
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
 
