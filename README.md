@@ -41,7 +41,7 @@ ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/v0.1
 Assemble
 
 ```
-docker build -f Dockerfile-clickhouse -t foo/metabase-with-clickhouse
+docker build -f Dockerfile-clickhouse -t foo/metabase-with-clickhouse .
 ```
 
 Run
