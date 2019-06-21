@@ -30,6 +30,28 @@
                           :limit       1}))
       first-row last float))
 
+(datasets/expect-with-driver :clickhouse
+  "['foo','bar']"
+  (-> (data/with-db-for-dataset
+    [_
+     (tx/dataset-definition "ClickHouse with String Array"
+       ["test-data-array"
+        [{:field-name "my_array", :base-type {:native "Array(String)"}}]
+        [[(into-array (list "foo" "bar"))]]])]
+    (data/run-mbql-query test-data-array {:limit 1}))
+      first-row last))
+
+(datasets/expect-with-driver :clickhouse
+  "[23,42]"
+  (-> (data/with-db-for-dataset
+    [_
+     (tx/dataset-definition "ClickHouse with UInt64 Array"
+       ["test-data-array"
+        [{:field-name "my_array", :base-type {:native "Array(UInt64)"}}]
+        [[(into-array (list 23 42))]]])]
+    (data/run-mbql-query test-data-array {:limit 1}))
+      first-row last))
+
 (expect
   {:classname                      "ru.yandex.clickhouse.ClickHouseDriver"
    :subprotocol                    "clickhouse"
