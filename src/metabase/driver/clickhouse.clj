@@ -20,7 +20,8 @@
              [date :as du]
              [honeysql-extensions :as hx]]
             [schema.core :as sc])
-  (:import [java.sql DatabaseMetaData ResultSet Time Types]
+  (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
+           [java.sql DatabaseMetaData ResultSet Time Types]
            [java.util Calendar Date]))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
@@ -227,6 +228,10 @@
     (if (string/starts-with? (.toString timestamp) "1970-01-01")
       (Time. (.getTime timestamp))
       ((get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIMESTAMP]) driver calendar resultset meta i))))
+
+(defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY] [driver calendar resultset meta i]
+  (when-let [arr (.getArray resultset i)]
+    (ClickHouseArrayUtil/arrayToString (.getArray arr))))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
