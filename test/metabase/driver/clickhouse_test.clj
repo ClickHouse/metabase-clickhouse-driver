@@ -16,13 +16,11 @@
 
 (datasets/expect-with-driver :clickhouse
   21.0
-  (-> (data/with-db-for-dataset
-    [_
-     (tx/dataset-definition "ClickHouse with Decimal Field"
-       ["test-data"
-        [{:field-name "my_money", :base-type {:native "Decimal(12,3)"}}]
-        [[1.0] [23.0] [42.0] [42.0]]])]
-    (data/run-mbql-query test-data
+  (-> (data/dataset (tx/dataset-definition "metabase_tests_decimal"
+                      ["test-data-decimal"
+                       [{:field-name "my_money", :base-type {:native "Decimal(12,3)"}}]
+                       [[1.0] [23.0] [42.0] [42.0]]])
+    (data/run-mbql-query test-data-decimal
                          {:expressions {:divided [:/ $my_money 2]}
                           :filter      [:> [:expression :divided] 1.0]
                           :breakout    [[:expression :divided]]
@@ -32,24 +30,42 @@
 
 (datasets/expect-with-driver :clickhouse
   "['foo','bar']"
-  (-> (data/with-db-for-dataset
-    [_
-     (tx/dataset-definition "ClickHouse with String Array"
-       ["test-data-array"
-        [{:field-name "my_array", :base-type {:native "Array(String)"}}]
-        [[(into-array (list "foo" "bar"))]]])]
-    (data/run-mbql-query test-data-array {:limit 1}))
+  (-> (data/dataset (tx/dataset-definition "metabase_tests_array_string"
+                      ["test-data-array-string"
+                       [{:field-name "my_array", :base-type {:native "Array(String)"}}]
+                       [[(into-array (list "foo" "bar"))]]])
+    (data/run-mbql-query test-data-array-string {:limit 1}))
       first-row last))
 
 (datasets/expect-with-driver :clickhouse
   "[23,42]"
-  (-> (data/with-db-for-dataset
-    [_
-     (tx/dataset-definition "ClickHouse with UInt64 Array"
-       ["test-data-array"
-        [{:field-name "my_array", :base-type {:native "Array(UInt64)"}}]
-        [[(into-array (list 23 42))]]])]
-    (data/run-mbql-query test-data-array {:limit 1}))
+  (-> (data/dataset (tx/dataset-definition "metabase_tests_array_uint64"
+                      ["test-data-array-uint64"
+                       [{:field-name "my_array", :base-type {:native "Array(UInt64)"}}]
+                       [[(into-array (list 23 42))]]])
+    (data/run-mbql-query test-data-array-uint64 {:limit 1}))
+      first-row last))
+
+(datasets/expect-with-driver :clickhouse
+  2
+  (-> (data/dataset (tx/dataset-definition "metabase_tests_nullable_strings"
+                      ["test-data-nullable-strings"
+                       [{:field-name "mystring", :base-type :type/Text}]
+                       [["foo"], ["bar"], ["   "], [""], [nil]]])
+                    (data/run-mbql-query test-data-nullable-strings
+                                         {:filter [:is-null $mystring]
+                                          :aggregation [:count]}))
+      first-row last))
+
+(datasets/expect-with-driver :clickhouse
+  3
+  (-> (data/dataset (tx/dataset-definition "metabase_tests_nullable_strings"
+                      ["test-data-nullable-strings"
+                       [{:field-name "mystring", :base-type :type/Text}]
+                       [["foo"], ["bar"], ["   "], [""], [nil]]])
+                    (data/run-mbql-query test-data-nullable-strings
+                                         {:filter [:not-null $mystring]
+                                          :aggregation [:count]}))
       first-row last))
 
 (expect

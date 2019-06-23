@@ -19,9 +19,8 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "DateTime")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]   [_ _] "DateTime")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]      [_ _] "Float64")
-;; Nullable is kind of experimental, only required for one test
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Nullable(Int32)")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "String")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "Nullable(String)")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime")
