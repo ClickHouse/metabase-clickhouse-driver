@@ -1,4 +1,5 @@
 (defproject metabase/clickhouse-driver "1.0.0-SNAPSHOT-0.1.54"
+  :description      "Metabase ClickHouse Driver"
   :min-lein-version "2.5.0"
 
   :aliases

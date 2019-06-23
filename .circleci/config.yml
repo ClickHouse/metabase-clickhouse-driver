@@ -1,6 +1,6 @@
 defaults: &defaults
   docker:
-    - image: circleci/clojure:lein-2.8.1-node-browsers
+    - image: circleci/clojure:lein-2.9.1-node-browsers
 
 version: 2.1
 
@@ -8,7 +8,7 @@ jobs:
 
   checkout:
     docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/clojure:lein-2.9.1-node-browsers
     steps:
       - checkout:
           path: metabase-clickhouse-driver
@@ -90,7 +90,7 @@ jobs:
 
   tests-clickhouse:
     docker:
-    - image: circleci/clojure:lein-2.8.1-node-browsers
+    - image: circleci/clojure:lein-2.9.1-node-browsers
     - image: yandex/clickhouse-server:latest
       environment:
         TZ: "/usr/share/zoneinfo/UTC"
