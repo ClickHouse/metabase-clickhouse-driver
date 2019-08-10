@@ -307,3 +307,8 @@
 ;; TODO: Nested queries are actually supported, but I do not know how
 ;; to make the driver use correct aliases per sub-query
 (defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
+
+(defmethod driver/date-add :clickhouse
+  [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+
