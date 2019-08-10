@@ -311,4 +311,3 @@
 (defmethod driver/date-add :clickhouse
   [_ dt amount unit]
   (hx/+ (hx/->timestamp dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
-
