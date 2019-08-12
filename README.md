@@ -37,7 +37,7 @@ In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
 ```
 FROM metabase/metabase-head:latest
-ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.2/clickhouse.metabase-driver.jar /app/plugins/
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.4/clickhouse.metabase-driver.jar /app/plugins/
 ```
 
 Assemble
