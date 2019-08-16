@@ -1,7 +1,7 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as string]
+            [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -16,10 +16,11 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]]
-            [schema.core :as sc])
+            [schema.core :as s])
   (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
            [java.sql DatabaseMetaData ResultSet Time Types]
            [java.util Calendar Date]))
@@ -52,7 +53,7 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse [_ database-type]
   (database-type->base-type
-   (string/replace (name database-type) #"(?:Nullable|LowCardinality)\((\S+)\)" "$1")))
+   (str/replace (name database-type) #"(?:Nullable|LowCardinality)\((\S+)\)" "$1")))
 
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
   #{"system"})
@@ -168,7 +169,7 @@
 
 ;; Parameter values for date ranges are set via TimeStamp. This confuses the ClickHouse
 ;; server, so we override the default formatter
-(sc/defmethod sql/->prepared-substitution [:clickhouse java.util.Date] :- sql/PreparedStatementSubstitution
+(s/defmethod sql/->prepared-substitution [:clickhouse java.util.Date] :- sql/PreparedStatementSubstitution
   [_ date]
   (sql/make-stmt-subs "?" [(du/format-date "yyyy-MM-dd" date)]))
 
@@ -226,6 +227,25 @@
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
+;; The following lines make sure we call lowerUTF8 instead of lower
+(defn- ch-like-clause
+  [driver field value options]
+  (if (get options :case-sensitive true)
+    [:like field                    (sql.qp/->honeysql driver value)]
+    [:like (hsql/call :lowerUTF8 field) (sql.qp/->honeysql driver (update value 1 str/lower-case))]))
+
+(s/defn ^:private update-string-value :- mbql.s/value
+  [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]
+  (update value 1 f))
+
+(defmethod sql.qp/->honeysql [:sql :starts-with] [driver [_ field value options]]
+  (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str % \%)) options))
+
+(defmethod sql.qp/->honeysql [:sql :contains] [driver [_ field value options]]
+  (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% % \%)) options))
+
+(defmethod sql.qp/->honeysql [:sql :ends-with] [driver [_ field value options]]
+  (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
 ;; ClickHouse aliases are globally usable. Once an alias is introduced, we
 ;; can not refer to the same field by qualified name again, unless we mean
@@ -241,14 +261,14 @@
    [:columns]
    (fn [columns]
      (mapv (fn [column]
-             (if (string/ends-with? column "_mb_alias")
-               (subs column 0 (string/last-index-of column "_mb_alias"))
+             (if (str/ends-with? column "_mb_alias")
+               (subs column 0 (str/last-index-of column "_mb_alias"))
                column))
            columns))))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [driver calendar resultset meta i]
   (when-let [timestamp (.getTimestamp resultset i)]
-    (if (string/starts-with? (.toString timestamp) "1970-01-01")
+    (if (str/starts-with? (.toString timestamp) "1970-01-01")
       (Time. (.getTime timestamp))
       ((get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIMESTAMP]) driver calendar resultset meta i))))
 
@@ -271,7 +291,7 @@
          (let [remarks (:remarks table)]
            {:name        (:table_name  table)
             :schema      (:table_schem table)
-            :description (when-not (string/blank? remarks)
+            :description (when-not (str/blank? remarks)
                            remarks)}))))
 
 (defn- ->spec [db-or-id-or-spec]
@@ -299,6 +319,8 @@
 
 (defmethod driver/current-db-time :clickhouse [& args]
   (apply driver.common/current-db-time args))
+
+
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
