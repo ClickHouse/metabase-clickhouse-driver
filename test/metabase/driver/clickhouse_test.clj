@@ -3,7 +3,7 @@
   (:require [expectations :refer [expect]]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.util :as u]
-            [metabase.query-processor-test :refer :all]
+            [metabase.query-processor-test :as qp.test]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -26,7 +26,7 @@
                           :breakout    [[:expression :divided]]
                           :order-by    [[:desc [:expression :divided]]]
                           :limit       1}))
-      first-row last float))
+      qp.test/first-row last float))
 
 (datasets/expect-with-driver :clickhouse
   "['foo','bar']"
@@ -35,7 +35,7 @@
                        [{:field-name "my_array", :base-type {:native "Array(String)"}}]
                        [[(into-array (list "foo" "bar"))]]])
     (data/run-mbql-query test-data-array-string {:limit 1}))
-      first-row last))
+      qp.test/first-row last))
 
 (datasets/expect-with-driver :clickhouse
   "[23,42]"
@@ -44,7 +44,7 @@
                        [{:field-name "my_array", :base-type {:native "Array(UInt64)"}}]
                        [[(into-array (list 23 42))]]])
     (data/run-mbql-query test-data-array-uint64 {:limit 1}))
-      first-row last))
+      qp.test/first-row last))
 
 (datasets/expect-with-driver :clickhouse
   2
@@ -55,7 +55,7 @@
                     (data/run-mbql-query test-data-nullable-strings
                                          {:filter [:is-null $mystring]
                                           :aggregation [:count]}))
-      first-row last))
+      qp.test/first-row last))
 
 (datasets/expect-with-driver :clickhouse
   3
@@ -66,7 +66,34 @@
                     (data/run-mbql-query test-data-nullable-strings
                                          {:filter [:not-null $mystring]
                                           :aggregation [:count]}))
-      first-row last))
+      qp.test/first-row last))
+
+(datasets/expect-with-driver :clickhouse
+  [[1 "Я_1"]
+   [3 "Я_2"]
+   [4 "Я"]]
+  (qp.test/formatted-rows [int str] :format-nil-values
+    (data/dataset (tx/dataset-definition
+      "metabase_tests_lowercase"
+      ["test-data-lowercase"
+       [{:field-name "mystring", :base-type :type/Text}]
+       [["Я_1"], ["R"] ["Я_2"], ["Я"], ["я"], [nil]]])
+   (data/run-mbql-query test-data-lowercase
+     {:filter [:contains $mystring "Я"]}))))
+
+(datasets/expect-with-driver :clickhouse
+  [[1 "Я_1"]
+   [3 "Я_2"]
+   [4 "Я"]
+   [5 "я"]]
+  (qp.test/formatted-rows [int str] :format-nil-values
+    (data/dataset (tx/dataset-definition
+      "metabase_tests_lowercase"
+      ["test-data-lowercase"
+       [{:field-name "mystring", :base-type :type/Text}]
+       [["Я_1"], ["R"] ["Я_2"], ["Я"], ["я"], [nil]]])
+   (data/run-mbql-query test-data-lowercase
+     {:filter [:contains $mystring "Я" {:case-sensitive false}]}))))
 
 (expect
   {:classname                      "ru.yandex.clickhouse.ClickHouseDriver"

@@ -61,7 +61,7 @@ jobs:
       - run:
           name: Run dockstring-checker
           working_directory: metabase-clickhouse-driver
-          command: lein with-profile +ci docstring-checker
+          command: pwd && lein with-profile +ci docstring-checker
           no_output_timeout: 5m
 
   # linter-namespace-decls:

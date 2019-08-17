@@ -19,6 +19,9 @@
   {:provided
    {:dependencies [[metabase-core "1.0.0-SNAPSHOT"]]}
 
+   :ci
+   {:jvm-opts ["-Xmx2500m"]}
+   
    :uberjar
    {:auto-clean    true
     :aot           :all
@@ -56,6 +59,5 @@
     [[docstring-checker "1.0.3"]]
     
     :docstring-checker
-    {:include [#"^metabase"]
-     :exclude [#"test"
-               #"^metabase\.http-client$"]}}})
+    {:include [#"^metabase\.driver\.clickhouse"]
+     :exclude [#"test"]}}})
