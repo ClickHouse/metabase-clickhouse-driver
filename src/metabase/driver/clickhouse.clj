@@ -238,13 +238,13 @@
   [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]
   (update value 1 f))
 
-(defmethod sql.qp/->honeysql [:sql :starts-with] [driver [_ field value options]]
+(defmethod sql.qp/->honeysql [:clickhouse :starts-with] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str % \%)) options))
 
-(defmethod sql.qp/->honeysql [:sql :contains] [driver [_ field value options]]
+(defmethod sql.qp/->honeysql [:clickhouse :contains] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% % \%)) options))
 
-(defmethod sql.qp/->honeysql [:sql :ends-with] [driver [_ field value options]]
+(defmethod sql.qp/->honeysql [:clickhouse :ends-with] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
 ;; ClickHouse aliases are globally usable. Once an alias is introduced, we
