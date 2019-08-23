@@ -17,7 +17,6 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.models.field :as field :refer [Field]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.util
              [date :as du]
@@ -306,7 +305,7 @@
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
 ;; For tests only: Get FK info via some metadata table
-(defmethod driver/describe-table-fks :clickhouse 
+(defmethod driver/describe-table-fks :clickhouse
   [driver db-or-id-or-spec table & [^String db-name-or-nil]]
   (if config/is-test?
     (let [db-name (if (nil? db-name-or-nil)
@@ -324,7 +323,7 @@
                           :dest-table       {:name   (:fk_dest_table fk)
                                              :schema (if (str/blank? db-name) "default" db-name)}
                           :dest-column-name (:fk_dest_column fk)}))]
-          myset))
+            myset))
         (catch Exception e
           (driver/describe-table-fks :sql-jdbc db-or-id-or-spec table))))
     nil))
