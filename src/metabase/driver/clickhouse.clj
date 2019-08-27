@@ -122,9 +122,6 @@
 (defn- to-minute [expr]
   (hsql/call :toMinute (hsql/call :toDateTime expr)))
 
-(defn- to-year [expr]
-  (hsql/call :toYear (hsql/call :toDateTime expr)))
-
 (defn- to-day [expr]
   (hsql/call :toDate expr))
 
@@ -153,7 +150,7 @@
 (defmethod sql.qp/date [:clickhouse :month]           [_ _ expr] (to-start-of-month expr))
 (defmethod sql.qp/date [:clickhouse :month-of-year]   [_ _ expr] (to-month-of-year expr))
 (defmethod sql.qp/date [:clickhouse :quarter-of-year] [_ _ expr] (to-quarter-of-year expr))
-(defmethod sql.qp/date [:clickhouse :year]            [_ _ expr] (to-year expr))
+(defmethod sql.qp/date [:clickhouse :year]            [_ _ expr] (to-start-of-year expr))
 
 (defmethod sql.qp/date [:clickhouse :day]             [_ _ expr] (to-day expr))
 (defmethod sql.qp/date [:clickhouse :week]            [_ _ expr] (to-start-of-week expr))
