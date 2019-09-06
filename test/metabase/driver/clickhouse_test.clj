@@ -62,9 +62,22 @@
   (-> (data/dataset (tx/dataset-definition "metabase_tests_nullable_strings"
                       ["test-data-nullable-strings"
                        [{:field-name "mystring", :base-type :type/Text}]
+
                        [["foo"], ["bar"], ["   "], [""], [nil]]])
                     (data/run-mbql-query test-data-nullable-strings
                                          {:filter [:not-null $mystring]
+                                          :aggregation [:count]}))
+      qp.test/first-row last))
+
+(datasets/expect-with-driver :clickhouse
+  1
+  (-> (data/dataset (tx/dataset-definition "metabase_tests_nullable_strings"
+                      ["test-data-nullable-strings"
+                       [{:field-name "mystring", :base-type :type/Text}]
+
+                       [["foo"], ["bar"], ["   "], [""], [nil]]])
+                    (data/run-mbql-query test-data-nullable-strings
+                                         {:filter [:= $mystring "foo"]
                                           :aggregation [:count]}))
       qp.test/first-row last))
 
