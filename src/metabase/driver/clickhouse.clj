@@ -189,9 +189,11 @@
 ;; the filter criterion reads "is empty"
 ;; also see desugar.clj
 (defmethod sql.qp/->honeysql [:clickhouse :=] [driver [_ field value]]
-  (let [base-type (:base_type (last value)) value-value (:value value)]
-    (if (and (isa? base-type :type/Text)
-             (nil? value-value))
+  (let [[qual valuevalue fieldinfo] value]
+    (if (and
+         (isa? qual :value)
+         (isa? (:base_type fieldinfo) :type/Text)
+         (nil? valuevalue))
       [:or
        [:= (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver value)]
        [:= (hsql/call :empty (sql.qp/->honeysql driver field)) 1]]
@@ -200,14 +202,15 @@
 ;; the filter criterion reads "not empty"
 ;; also see desugar.clj
 (defmethod sql.qp/->honeysql [:clickhouse :!=] [driver [_ field value]]
-  (let [base-type (:base_type (last value)) value-value (:value value)]
-    (if (and (isa? base-type :type/Text)
-             (nil? value-value))
+  (let [[qual valuevalue fieldinfo] value]
+    (if (and
+         (isa? qual :value)
+         (isa? (:base_type fieldinfo) :type/Text)
+         (nil? valuevalue))
       [:and
        [:!= (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver value)]
        [:= (hsql/call :notEmpty (sql.qp/->honeysql driver field)) 1]]
       ((get-method sql.qp/->honeysql [:sql :!=]) driver [_ field value]))))
-
 
 ;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)
@@ -316,8 +319,6 @@
 
 (defmethod driver/current-db-time :clickhouse [& args]
   (apply driver.common/current-db-time args))
-
-
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
