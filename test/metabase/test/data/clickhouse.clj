@@ -25,6 +25,8 @@
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime")
 
+(defmethod tx/sorts-nil-first? :clickhouse [_] false)
+
 (defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
     (merge
    {:host     (tx/db-test-env-var-or-throw :clickhouse :host "localhost")
