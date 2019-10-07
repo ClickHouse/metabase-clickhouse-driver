@@ -4,6 +4,7 @@
             [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase
+             [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.driver
@@ -180,6 +181,12 @@
   [driver [_ field]]
   (hsql/call :stddevSamp (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:clickhouse :count]
+  [driver [_ field]]
+  (if field
+    (hsql/call :count (sql.qp/->honeysql driver field))
+    :%count))
+
 (defmethod sql.qp/->honeysql [:clickhouse :/]
   [driver args]
   (let [args (for [arg args]
@@ -247,25 +254,6 @@
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
-;; ClickHouse aliases are globally usable. Once an alias is introduced, we
-;; can not refer to the same field by qualified name again, unless we mean
-;; it. See https://clickhouse.yandex/docs/en/query_language/syntax/#peculiarities-of-use
-;; We add a suffix to make the reference in the query unique.
-(defmethod sql.qp/field->alias :clickhouse [_ field]
-  (str (:name field) "_mb_alias"))
-
-;; See above. We are removing the artificial alias suffix
-(defmethod driver/execute-query :clickhouse [driver query]
-  (update-in
-   (sql-jdbc.execute/execute-query driver query)
-   [:columns]
-   (fn [columns]
-     (mapv (fn [column]
-             (if (str/ends-with? column "_mb_alias")
-               (subs column 0 (str/last-index-of column "_mb_alias"))
-               column))
-           columns))))
-
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [driver calendar resultset meta i]
   (when-let [timestamp (.getTimestamp resultset i)]
     (if (str/starts-with? (.toString timestamp) "1970-01-01")
@@ -322,11 +310,29 @@
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
-(defmethod driver/supports? [:clickhouse :foreign-keys] [_ _] false)
-
-;; TODO: Nested queries are actually supported, but I do not know how
-;; to make the driver use correct aliases per sub-query
-(defmethod driver/supports? [:clickhouse :nested-queries] [_ _] false)
+;; For tests only: Get FK info via some metadata table
+(defmethod driver/describe-table-fks :clickhouse
+  [driver db-or-id-or-spec table & [^String db-name-or-nil]]
+  (if config/is-test?
+    (let [db-name (if (nil? db-name-or-nil)
+                    (:name  db-or-id-or-spec)
+                    db-name-or-nil)]
+      (try
+        (let [fks (jdbc/query
+                   (->spec db-or-id-or-spec)
+                   [(str/join ["SELECT * FROM `"
+                               (if (str/blank? db-name) "default" db-name)
+                               "-mbmeta`"])])]
+          (let [myset (set
+                       (for [fk fks]
+                         {:fk-column-name   (:fk_source_column fk)
+                          :dest-table       {:name   (:fk_dest_table fk)
+                                             :schema (if (str/blank? db-name) "default" db-name)}
+                          :dest-column-name (:fk_dest_column fk)}))]
+            myset))
+        (catch Exception e
+          (driver/describe-table-fks :sql-jdbc db-or-id-or-spec table))))
+    nil))
 
 (defmethod driver/date-add :clickhouse
   [_ dt amount unit]

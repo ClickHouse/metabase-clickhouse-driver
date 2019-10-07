@@ -25,6 +25,8 @@
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime")
 
+(defmethod tx/sorts-nil-first? :clickhouse [_] false)
+
 (defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
     (merge
    {:host     (tx/db-test-env-var-or-throw :clickhouse :host "localhost")
@@ -67,6 +69,35 @@
 (defmethod load-data/load-data! :clickhouse [& args]
   (apply load-data/load-data-add-ids! args))
 
-(defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
+(defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
-(defmethod sql.tx/pk-sql-type :clickhouse [_] "UInt32")
+;; For FK testing: We use some metadata table
+(defmethod sql.tx/add-fk-sql :clickhouse
+  [driver {:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name}]
+  (let [quot #(sql.u/quote-name driver %1 (tx/format-name driver %2))
+        dest-table-name (name dest-table-name)]
+    (format "CREATE TABLE IF NOT EXISTS %s (
+               fk_name String,
+               fk_db String,
+               fk_source_table String,
+               fk_source_column String,
+               fk_dest_table String,
+               fk_dest_column String
+             ) ENGINE=Memory;
+             -- now insert the FK data
+             INSERT INTO %s (
+               fk_name,
+               fk_db,
+               fk_source_table,
+               fk_source_column,
+               fk_dest_table,
+               fk_dest_column
+             ) VALUES ('%s', '%s', '%s', '%s', '%s', '%s');"
+            (sql.tx/qualify-and-quote driver (str database-name "-mbmeta"))
+            (sql.tx/qualify-and-quote driver (str database-name "-mbmeta"))
+            (apply str (take 30 (format "fk_%s_%s_%s" table-name field-name dest-table-name)))
+            database-name
+            table-name
+            field-name
+            dest-table-name
+            (sql.tx/pk-field-name driver))))
