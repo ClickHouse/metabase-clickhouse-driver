@@ -181,6 +181,12 @@
   [driver [_ field]]
   (hsql/call :stddevSamp (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:clickhouse :count]
+  [driver [_ field]]
+  (if field
+    (hsql/call :count (sql.qp/->honeysql driver field))
+    :%count))
+
 (defmethod sql.qp/->honeysql [:clickhouse :/]
   [driver args]
   (let [args (for [arg args]
