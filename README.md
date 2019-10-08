@@ -1,6 +1,6 @@
 # metabase-clickhouse-driver
 
-[Metabase](https://metabase.com) ([github](https://github.com/metabase/metabase)) driver for the [ClickHouse](https://clickhouse.yandex) database ([github](https://github.com/yandex/ClickHouse))
+[ClickHouse](https://clickhouse.yandex) ([github](https://github.com/ClickHouse/ClickHouse)) database driver for the [Metabase](https://metabase.com) ([github](https://github.com/metabase/metabase)) business intelligence front-end
 
 ![OnTime table in Metabase](docs/images/metabase_clickhouse_ontime_teaser.png)
 
@@ -37,7 +37,7 @@ In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
 ```
 FROM metabase/metabase-head:latest
-ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.4/clickhouse.metabase-driver.jar /app/plugins/
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.6/clickhouse.metabase-driver.jar /app/plugins/
 ```
 
 Assemble
