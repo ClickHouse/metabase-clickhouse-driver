@@ -35,15 +35,17 @@
     [#"DateTime"    :type/DateTime]
     [#"Date"        :type/Date]
     [#"Decimal"     :type/Decimal]
-    [#"Enum8"       :type/*]
-    [#"Enum16"      :type/*]
-    [#"FixedString" :type/Text]
+    [#"Enum8"       :type/Enum]
+    [#"Enum16"      :type/Enum]
+    [#"FixedString" :type/TextLike]
     [#"Float32"     :type/Float]
     [#"Float64"     :type/Float]
     [#"Int8"        :type/Integer]
     [#"Int16"       :type/Integer]
     [#"Int32"       :type/Integer]
     [#"Int64"       :type/BigInteger]
+    [#"IPv4"        :type/IPAddress]
+    [#"IPv6"        :type/IPAddress]
     [#"String"      :type/Text]
     [#"Tuple"       :type/*]
     [#"UInt8"       :type/Integer]
@@ -298,6 +300,14 @@
     {:tables (post-filtered-active-tables
               ;; TODO: this only covers the db case, not id or spec
               driver metadata (get-in db-or-id-or-spec [:details :db]))}))
+
+(defmethod driver/describe-table :clickhouse [driver database table]
+  (let [t (sql-jdbc.sync/describe-table driver database table)]
+    (merge
+     t
+     {:fields
+      (set (for [f (:fields t)]
+             (update-in f [:database-type] clojure.string/replace  #"^(Enum.+)\(.+\)" "$1")))})))
 
 (defmethod driver.common/current-db-time-date-formatters :clickhouse [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm.ss"))
