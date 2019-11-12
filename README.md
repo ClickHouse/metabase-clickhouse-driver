@@ -33,11 +33,24 @@ If you want to develop simply create a symbolic link from the Metabase `modules/
 
 ## Do the Docker Dance
 
+### Mount plugins directory
+
+This is the recommended way, according to the [fine manual](https://www.metabase.com/docs/latest/operations-guide/running-metabase-on-docker.html#adding-external-dependencies-or-plugins):
+
+```
+  docker run -d -p 3000:3000 \
+  --mount type=bind,source=/path/to/plugins,destination=/plugins \
+  --name metabase metabase/metabase
+```
+
+### Roll your own
+
 In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
 ```
-FROM metabase/metabase-head:latest
-ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.6/clickhouse.metabase-driver.jar /app/plugins/
+FROM metabase/metabase:latest
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.6/clickhouse.metabase-driver.jar /plugins/
+RUN chmod 744 /plugins/clickhouse.metabase-driver.jar
 ```
 
 Assemble
