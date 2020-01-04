@@ -10,7 +10,7 @@
 
 # Warning :construction:
 
-The current driver version is incompatible with Metabase 0.34 -- see [#43]. I am trying to make it work again. Please create a PR if you have a fix ready.
+The current driver version is incompatible with Metabase 0.34 (see issue [#43](../../issues/43)). I am trying to make it work again. Please create a PR if you have a fix ready.
 
 # Installation
 
@@ -78,4 +78,4 @@ Please refer to [the fine Metabase operations manual](https://www.metabase.com/d
 * See the very useful documentation by the Metabase team: [Writing A Driver](https://github.com/metabase/metabase/wiki/Writing-A-Driver)
 
 # License
-The contents of this repository are made available under the GNU Affero General Public License v3.0 (AGPL), see [LICENSE](https://github.com/enqueueu/metabase-clickhouse-driver/blob/master/LICENSE). Unless explicitly stated differently in the respective file, all files are `Copyright 2018-2019 the metabase-clickhouse-driver contributors`.
+The contents of this repository are made available under the GNU Affero General Public License v3.0 (AGPL), see [LICENSE](https://github.com/enqueueu/metabase-clickhouse-driver/blob/master/LICENSE). Unless explicitly stated differently in the respective file, all files are `Copyright 2018-2020 the metabase-clickhouse-driver contributors`.
