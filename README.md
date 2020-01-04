@@ -8,6 +8,10 @@
 [![Latest Release](https://img.shields.io/github/release/enqueue/metabase-clickhouse-driver.svg?label=latest%20release)](https://github.com/enqueue/metabase-clickhouse-driver/releases)
 [![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/enqueue/metabase-clickhouse-driver/master/LICENSE.txt)
 
+# Warning :construction:
+
+The current driver version is incompatible with Metabase 0.34 -- see [#43]. I am trying to make it work again. Please create a PR if you have a fix ready.
+
 # Installation
 
 ## Download Metabase Jar and Run
