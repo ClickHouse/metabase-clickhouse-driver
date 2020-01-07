@@ -7,9 +7,8 @@
              [config :as config]
              [driver :as driver]
              [util :as u]]
-            [metabase.driver
-             [common :as driver.common]
-             [sql :as sql]]
+            [metabase.driver.common :as driver.common]
+            [metabase.driver.sql.parameters.substitution :as sql.substitution]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
@@ -19,7 +18,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
             [metabase.util
-             [date :as du]
+             [date-2 :as du]
              [honeysql-extensions :as hx]]
             [schema.core :as s])
   (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
@@ -163,15 +162,15 @@
   (hsql/call :toDateTime expr))
 
 (defmethod unprepare/unprepare-value [:clickhouse Date] [_ value]
-  (format "parseDateTimeBestEffort('%s')" (du/date->iso-8601 value)))
+  (format "parseDateTimeBestEffort('%s')" (du/format value)))
 
 (prefer-method unprepare/unprepare-value [:clickhouse Date] [:sql Time])
 
 ;; Parameter values for date ranges are set via TimeStamp. This confuses the ClickHouse
 ;; server, so we override the default formatter
-(s/defmethod sql/->prepared-substitution [:clickhouse java.util.Date] :- sql/PreparedStatementSubstitution
+(s/defmethod sql.substitution/->prepared-substitution [:clickhouse java.util.Date] :- sql.substitution/PreparedStatementSubstitution
   [_ date]
-  (sql/make-stmt-subs "?" [(du/format-date "yyyy-MM-dd" date)]))
+  (sql.substitution/make-stmt-subs "?" [(du/format date)]))
 
 ;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
 ;; convert these booleans to numbers.
