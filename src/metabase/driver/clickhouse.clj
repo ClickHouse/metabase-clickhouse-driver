@@ -196,8 +196,22 @@
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [driver t]
   (if (= (t/truncate-to t :days) t)
-    (hsql/call :parseDateTimeBestEffort t)
+    (hsql/call :parseDateTimeBestEffort (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t))
     (sql.qp/->honeysql :sql t)))
+
+(defmethod sql.qp/->honeysql [:clickhouse LocalTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/local-date-time
+                             (t/local-date 1970 1 1)
+                             t)))
+
+(defmethod sql.qp/->honeysql [:clickhouse OffsetTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/offset-date-time
+                             (t/local-date-time
+                              (t/local-date 1970 1 1)
+                              (.toLocalTime t))
+                             (.getOffset t))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
@@ -276,11 +290,15 @@
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
-;; (defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [driver calendar resultset meta i]
-;;   (when-let [timestamp (.getTimestamp resultset i)]
-;;     (if (str/starts-with? (.toString timestamp) "1970-01-01")
-;;       (Time. (.getTime timestamp))
-;;       ((get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIMESTAMP]) driver calendar resultset meta i))))
+(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [_ _ rs _ i]
+  (let [r (.getObject rs i OffsetDateTime)]
+    (cond
+      (nil? r) nil
+      (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toOffsetTime r)
+      :else r)))
+
+(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIME] [_ _ rs _ i]
+  (.getObject rs i OffsetTime))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY] [driver calendar resultset meta i]
   (when-let [arr (.getArray resultset i)]

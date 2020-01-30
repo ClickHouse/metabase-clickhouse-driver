@@ -22,7 +22,7 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Nullable(Int32)")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "Nullable(String)")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "String")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime")
 
 (defmethod tx/sorts-nil-first? :clickhouse [_] false)
 
