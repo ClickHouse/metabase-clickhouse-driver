@@ -68,7 +68,7 @@
 (defmethod load-data/load-data! :clickhouse [& args]
   (apply load-data/load-data-add-ids! args))
 
-(defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
+(defmethod sql.tx/pk-sql-type :clickhouse [_] "Nullable(Int32)")
 
 ;; For FK testing: We use some metadata table
 (defmethod sql.tx/add-fk-sql :clickhouse

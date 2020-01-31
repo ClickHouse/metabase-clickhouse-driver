@@ -69,7 +69,7 @@
        :password                       password
        :user                           user
        :ssl                            (boolean ssl)
-       :use_server_time_zone_for_dates true}
+      :use_server_time_zone_for_dates true}
       (sql-jdbc.common/handle-additional-options details, :seperator-style :url)))
 
 (defn- modulo [a b]
@@ -160,27 +160,27 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:clickhouse :seconds] [_ _ expr]
   (hsql/call :toDateTime expr))
 
-(defmethod unprepare/unprepare-value [:sql LocalDate]
+(defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
   (format "toDate('%s')" (t/format "yyyy-MM-dd" t)))
 
-(defmethod unprepare/unprepare-value [:sql LocalTime]
+(defmethod unprepare/unprepare-value [:clickhouse LocalTime]
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSS" t)))
 
-(defmethod unprepare/unprepare-value [:sql OffsetTime]
+(defmethod unprepare/unprepare-value [:clickhouse OffsetTime]
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
-(defmethod unprepare/unprepare-value [:sql LocalDateTime]
+(defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
   [_ t]
   (format "parseDateTimeBestEffort('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
-(defmethod unprepare/unprepare-value [:sql OffsetDateTime]
+(defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
   [_ t]
   (format "parseDateTimeBestEffort('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
-(defmethod unprepare/unprepare-value [:sql ZonedDateTime]
+(defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "parseDateTimeBestEffort('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
@@ -191,8 +191,8 @@
   (if bool 1 0))
 
 ;; Metabase supplies parameters for Date fields as ZonedDateTime
-;; ClickHouse complains about too long parameter values
-;; what should we do?
+;; ClickHouse complains about too long parameter values. This is unfortunate
+;; because it eats some performance, but I do not know a better solution
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [driver t]
   (if (= (t/truncate-to t :days) t)
@@ -350,6 +350,8 @@
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
+(defmethod driver/supports? [:clickhouse :standard-deviation-aggregations] [_ _] true)
+
 (defmethod driver/db-default-timezone :clickhouse
   [_ db]
   (let [spec                             (sql-jdbc.conn/db->pooled-connection-spec db)
@@ -384,3 +386,6 @@
 (defmethod driver/date-add :clickhouse
   [_ dt amount unit]
   (hx/+ (hx/->timestamp dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+
+
+
