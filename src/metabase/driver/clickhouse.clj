@@ -8,6 +8,7 @@
              [config :as config]
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.sql :as sql]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
@@ -16,7 +17,9 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.util.honeysql-extensions :as hx]
+            [metabase.util
+             [date-2 :as u.date]
+             [honeysql-extensions :as hx]]
             [schema.core :as s])
   (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
            [java.sql DatabaseMetaData PreparedStatement ResultSet Time Types]
@@ -69,7 +72,7 @@
        :password                       password
        :user                           user
        :ssl                            (boolean ssl)
-      :use_server_time_zone_for_dates true}
+       :use_server_time_zone_for_dates true}
       (sql-jdbc.common/handle-additional-options details, :seperator-style :url)))
 
 (defn- modulo [a b]
@@ -182,22 +185,24 @@
 
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
-  (format "parseDateTimeBestEffort('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 ;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
-;; convert these booleans to numbers.
+;; convert these booleans to UInt8
 (defmethod sql.qp/->honeysql [:clickhouse Boolean]
   [_ bool]
   (if bool 1 0))
+
+(defmethod sql/->prepared-substitution [:clickhouse Boolean]
+  [driver bool]
+  (sql/->prepared-substitution driver (if bool 1 0)))
 
 ;; Metabase supplies parameters for Date fields as ZonedDateTime
 ;; ClickHouse complains about too long parameter values. This is unfortunate
 ;; because it eats some performance, but I do not know a better solution
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [driver t]
-  (if (= (t/truncate-to t :days) t)
-    (hsql/call :parseDateTimeBestEffort (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t))
-    (sql.qp/->honeysql :sql t)))
+  (hsql/call :parseDateTimeBestEffort t))
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalTime]
   [driver t]
@@ -223,11 +228,9 @@
     (hsql/call :count (sql.qp/->honeysql driver field))
     :%count))
 
-(defmethod sql.qp/->honeysql [:clickhouse :/]
-  [driver args]
-  (let [args (for [arg args]
-               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
-    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+(defmethod sql.qp/->float :clickhouse
+  [_ value]
+  (hsql/call :toFloat64 value))
 
 ;; the filter criterion reads "is empty"
 ;; also see desugar.clj
@@ -299,6 +302,9 @@
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIME] [_ _ rs _ i]
   (.getObject rs i OffsetTime))
+
+;; (defmethod sql-jdbc.execute/read-column [:clickhouse Types/DATE] [_ _ rs _ i]
+;;    (.getObject rs i OffsetDateTime))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY] [driver calendar resultset meta i]
   (when-let [arr (.getArray resultset i)]
