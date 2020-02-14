@@ -10,7 +10,7 @@
 
 # Warning :construction:
 
-The current driver version is incompatible with Metabase 0.34 (see issue [#43](../../issues/43)). I am trying to make it work again. Please create a PR if you have a fix ready.
+The current driver version is incompatible with Metabase 0.34 (see issue [#43](../../issues/43)). I am trying to make it work again.
 
 # Installation
 
