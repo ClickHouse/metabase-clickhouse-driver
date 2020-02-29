@@ -228,9 +228,18 @@
     (hsql/call :count (sql.qp/->honeysql driver field))
     :%count))
 
-(defmethod sql.qp/->float :clickhouse
-  [_ value]
-  (hsql/call :toFloat64 value))
+
+(defmethod sql.qp/->honeysql [:clickhouse :/]
+  [driver args]
+  (let [args (for [arg args]
+               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
+    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+
+;; in the future, replace the division implementation and simply
+;; uncomment the following lines
+;; (defmethod sql.qp/->float :clickhouse
+;;   [_ value]
+;;   (hsql/call :toFloat64 value))
 
 ;; the filter criterion reads "is empty"
 ;; also see desugar.clj
