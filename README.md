@@ -2,7 +2,7 @@
 
 [ClickHouse](https://clickhouse.yandex) ([github](https://github.com/ClickHouse/ClickHouse)) database driver for the [Metabase](https://metabase.com) ([github](https://github.com/metabase/metabase)) business intelligence front-end
 
-![OnTime table in Metabase](docs/images/metabase_clickhouse_ontime_teaser.png)
+![OnTime table in Metabase](docs/images/mbch_logo.png)
 
 [![CircleCI](https://circleci.com/gh/enqueue/metabase-clickhouse-driver.svg?style=svg)](https://circleci.com/gh/enqueue/metabase-clickhouse-driver)
 [![Latest Release](https://img.shields.io/github/release/enqueue/metabase-clickhouse-driver.svg?label=latest%20release)](https://github.com/enqueue/metabase-clickhouse-driver/releases)
@@ -10,7 +10,9 @@
 
 # Warning :construction:
 
-The current driver version is incompatible with Metabase 0.34 (see issue [#43](../../issues/43)). I am trying to make it work again.
+If you are running a Metabase 0.33.x release, please use version 0.6 of the driver.
+
+If you are running a Metabase 0.34.x release, please try version 0.7.0 of the driver, it should work OK. Unfortunately, this version requires a JDBC driver that includes a couple of patches which have not been accepted upstream, yet. I hope that we will soon be able to release another version which can then use an official JDBC driver again. If you have any questions about building this driver, please do not hesitate to contact me.
 
 # Installation
 
@@ -53,7 +55,7 @@ In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
 ```
 FROM metabase/metabase:latest
-ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.6/clickhouse.metabase-driver.jar /plugins/
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.7.0/clickhouse.metabase-driver.jar /plugins/
 RUN chmod 744 /plugins/clickhouse.metabase-driver.jar
 ```
 
