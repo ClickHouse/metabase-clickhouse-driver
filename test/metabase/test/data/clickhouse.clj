@@ -16,13 +16,12 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "UInt8")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Char]       [_ _] "String")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "DateTime")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "Date")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]   [_ _] "DateTime")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]      [_ _] "Float64")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Nullable(Int32)")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "Nullable(String)")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
-
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime")
 
 (defmethod tx/sorts-nil-first? :clickhouse [_] false)
@@ -69,7 +68,7 @@
 (defmethod load-data/load-data! :clickhouse [& args]
   (apply load-data/load-data-add-ids! args))
 
-(defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
+(defmethod sql.tx/pk-sql-type :clickhouse [_] "Nullable(Int32)")
 
 ;; For FK testing: We use some metadata table
 (defmethod sql.tx/add-fk-sql :clickhouse

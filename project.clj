@@ -10,7 +10,7 @@
    "test"                      ["with-profile" "+expectations" "expectations"]}
   
   :dependencies
-  [[ru.yandex.clickhouse/clickhouse-jdbc "0.1.54"
+  [[ru.yandex.clickhouse/clickhouse-jdbc "0.2.4-enqueue"
     :exclusions [com.fasterxml.jackson.core/jackson-core
                  org.slf4j/slf4j-api]]]
 

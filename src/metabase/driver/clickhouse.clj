@@ -3,13 +3,12 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [config :as config]
              [driver :as driver]
              [util :as u]]
-            [metabase.driver
-             [common :as driver.common]
-             [sql :as sql]]
+            [metabase.driver.sql :as sql]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
@@ -19,12 +18,14 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [schema.core :as s])
   (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
-           [java.sql DatabaseMetaData ResultSet Time Types]
-           [java.util Calendar Date]))
+           [java.sql DatabaseMetaData PreparedStatement ResultSet Time Types]
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           [java.time.temporal Temporal]
+           [java.util TimeZone]))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
 
@@ -110,7 +111,7 @@
                     3)))
 
 (defn- to-start-of-week [expr]
-  ;; ClickHouse weeks start on Monday
+  ;; ClickHouse weeks usually start on Monday
   (hx/- (hsql/call :toMonday (hx/+ (hsql/call :toDate expr) 1)) 1))
 
 (defn- to-start-of-minute [expr]
@@ -129,7 +130,7 @@
   (hsql/call :toDate expr))
 
 (defn- to-day-of-week [expr]
-  ;; ClickHouse weeks start on Monday
+  ;; ClickHouse weeks usually start on Monday
   (hx/+ (modulo (hsql/call :toDayOfWeek (hsql/call :toDateTime expr)) 7) 1))
 
 (defn- to-day-of-month [expr]
@@ -162,22 +163,60 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:clickhouse :seconds] [_ _ expr]
   (hsql/call :toDateTime expr))
 
-(defmethod unprepare/unprepare-value [:clickhouse Date] [_ value]
-  (format "parseDateTimeBestEffort('%s')" (du/date->iso-8601 value)))
+(defmethod unprepare/unprepare-value [:clickhouse LocalDate]
+  [_ t]
+  (format "toDate('%s')" (t/format "yyyy-MM-dd" t)))
 
-(prefer-method unprepare/unprepare-value [:clickhouse Date] [:sql Time])
+(defmethod unprepare/unprepare-value [:clickhouse LocalTime]
+  [_ t]
+  (format "'%s'" (t/format "HH:mm:ss.SSS" t)))
 
-;; Parameter values for date ranges are set via TimeStamp. This confuses the ClickHouse
-;; server, so we override the default formatter
-(s/defmethod sql/->prepared-substitution [:clickhouse java.util.Date] :- sql/PreparedStatementSubstitution
-  [_ date]
-  (sql/make-stmt-subs "?" [(du/format-date "yyyy-MM-dd" date)]))
+(defmethod unprepare/unprepare-value [:clickhouse OffsetTime]
+  [_ t]
+  (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
+  [_ t]
+  (format "parseDateTimeBestEffort('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+
+(defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
+  [_ t]
+  (format "parseDateTimeBestEffort('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
+  [_ t]
+  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 ;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
-;; convert these booleans to numbers.
+;; convert these booleans to UInt8
 (defmethod sql.qp/->honeysql [:clickhouse Boolean]
   [_ bool]
   (if bool 1 0))
+
+(defmethod sql/->prepared-substitution [:clickhouse Boolean]
+  [driver bool]
+  (sql/->prepared-substitution driver (if bool 1 0)))
+
+;; Metabase supplies parameters for Date fields as ZonedDateTime
+;; ClickHouse complains about too long parameter values. This is unfortunate
+;; because it eats some performance, but I do not know a better solution
+(defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
+  [driver t]
+  (hsql/call :parseDateTimeBestEffort t))
+
+(defmethod sql.qp/->honeysql [:clickhouse LocalTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/local-date-time
+                             (t/local-date 1970 1 1)
+                             t)))
+
+(defmethod sql.qp/->honeysql [:clickhouse OffsetTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/offset-date-time
+                             (t/local-date-time
+                              (t/local-date 1970 1 1)
+                              (.toLocalTime t))
+                             (.getOffset t))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
@@ -189,11 +228,18 @@
     (hsql/call :count (sql.qp/->honeysql driver field))
     :%count))
 
+
 (defmethod sql.qp/->honeysql [:clickhouse :/]
   [driver args]
   (let [args (for [arg args]
                (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
     ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+
+;; in the future, replace the division implementation and simply
+;; uncomment the following lines
+;; (defmethod sql.qp/->float :clickhouse
+;;   [_ value]
+;;   (hsql/call :toFloat64 value))
 
 ;; the filter criterion reads "is empty"
 ;; also see desugar.clj
@@ -256,15 +302,23 @@
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
-(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [driver calendar resultset meta i]
-  (when-let [timestamp (.getTimestamp resultset i)]
-    (if (str/starts-with? (.toString timestamp) "1970-01-01")
-      (Time. (.getTime timestamp))
-      ((get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIMESTAMP]) driver calendar resultset meta i))))
+(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [_ _ rs _ i]
+  (let [r (.getObject rs i OffsetDateTime)]
+    (cond
+      (nil? r) nil
+      (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toOffsetTime r)
+      :else r)))
+
+(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIME] [_ _ rs _ i]
+  (.getObject rs i OffsetTime))
+
+;; (defmethod sql-jdbc.execute/read-column [:clickhouse Types/DATE] [_ _ rs _ i]
+;;    (.getObject rs i OffsetDateTime))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY] [driver calendar resultset meta i]
   (when-let [arr (.getArray resultset i)]
-    (ClickHouseArrayUtil/arrayToString (.getArray arr))))
+    (let [tz (if (nil? calendar) (TimeZone/getDefault) (.getTimeZone calendar))]
+      (ClickHouseArrayUtil/arrayToString (.getArray arr) tz tz))))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
@@ -309,16 +363,16 @@
       (set (for [f (:fields t)]
              (update-in f [:database-type] clojure.string/replace  #"^(Enum.+)\(.+\)" "$1")))})))
 
-(defmethod driver.common/current-db-time-date-formatters :clickhouse [_]
-  (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm.ss"))
-
-(defmethod driver.common/current-db-time-native-query :clickhouse [_]
-  "SELECT formatDateTime(NOW(), '%F %R.%S')")
-
-(defmethod driver/current-db-time :clickhouse [& args]
-  (apply driver.common/current-db-time args))
-
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
+
+(defmethod driver/supports? [:clickhouse :standard-deviation-aggregations] [_ _] true)
+
+(defmethod driver/db-default-timezone :clickhouse
+  [_ db]
+  (let [spec                             (sql-jdbc.conn/db->pooled-connection-spec db)
+        sql                              (str "SELECT timezone() AS tz")
+        [{:keys [tz]}] (jdbc/query spec sql)]
+    tz))
 
 ;; For tests only: Get FK info via some metadata table
 (defmethod driver/describe-table-fks :clickhouse
@@ -347,3 +401,6 @@
 (defmethod driver/date-add :clickhouse
   [_ dt amount unit]
   (hx/+ (hx/->timestamp dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+
+
+
