@@ -2,17 +2,11 @@
 
 [ClickHouse](https://clickhouse.yandex) ([github](https://github.com/ClickHouse/ClickHouse)) database driver for the [Metabase](https://metabase.com) ([github](https://github.com/metabase/metabase)) business intelligence front-end
 
-![OnTime table in Metabase](docs/images/mbch_logo.png)
+![Metabase Logo in ClickHouse colours](docs/images/mbch_logo.png)
 
 [![CircleCI](https://circleci.com/gh/enqueue/metabase-clickhouse-driver.svg?style=svg)](https://circleci.com/gh/enqueue/metabase-clickhouse-driver)
 [![Latest Release](https://img.shields.io/github/release/enqueue/metabase-clickhouse-driver.svg?label=latest%20release)](https://github.com/enqueue/metabase-clickhouse-driver/releases)
 [![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/enqueue/metabase-clickhouse-driver/master/LICENSE.txt)
-
-# Warning :construction:
-
-If you are running a Metabase 0.33.x release, please use version 0.6 of the driver.
-
-If you are running a Metabase 0.34.x release, please try version 0.7.0 of the driver, it should work OK. Unfortunately, this version requires a JDBC driver that includes a couple of patches which have not been accepted upstream, yet. I hope that we will soon be able to release another version which can then use an official JDBC driver again. If you have any questions about building this driver, please do not hesitate to contact me.
 
 # Installation
 
@@ -25,6 +19,14 @@ If you are running a Metabase 0.34.x release, please try version 0.7.0 of the dr
 5. Copy the ClickHouse driver jar to the `plugins` directory.
 6. Make sure you are the in the directory where your `metabase.jar` lives.
 7. Run `MB_PLUGINS_DIR=./plugins; java -jar metabase.jar`.
+
+## Choosing the Right Version
+
+Metabase Release | Driver Version
+---------------- | --------------
+0.33.x           | 0.6
+0.34.x           | 0.7.0
+0.35.x           | 0.7.1
 
 ## Building from Source
 
@@ -55,7 +57,7 @@ In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
 ```
 FROM metabase/metabase:latest
-ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.7.0/clickhouse.metabase-driver.jar /plugins/
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.7.1/clickhouse.metabase-driver.jar /plugins/
 RUN chmod 744 /plugins/clickhouse.metabase-driver.jar
 ```
 
@@ -73,6 +75,17 @@ docker run --rm -d=false -p 3000:3000 --name metabase foo/metabase-with-clickhou
 
 Please refer to [the fine Metabase operations manual](https://www.metabase.com/docs/latest/operations-guide/running-metabase-on-docker.html) to find out how to operate a dockerized Metabase with a regular database.
 
+# Operations
+
+The driver should work fine for many use cases. Please consider the following items when running a Metabase instance with this driver:
+
+* Create a dedicated user for Metabase, whose profile has `readonly` set to 2.
+* Consider running the Metabase instance in the same time zone as your ClickHouse database; the more time zones involved the more issues.
+* Compare the results of the queries with the results returned by `clickhouse-client`.
+* Metabase is a good tool for organizing questions, dashboards etc. and to give non-technical users a good way to explore the data and share their results. The driver cannot support all the cool special features of ClickHouse, e.g. array functions. You are free to use native queries, of course.
+
+# Current State of the Driver
+Unfortunately, newer versions require a JDBC driver that includes a couple of patches which have not been accepted upstream, yet (see [PR 418](https://github.com/ClickHouse/clickhouse-jdbc/pull/418)). I hope that we will soon be able to release another version which can then use an official JDBC driver again. If you have any questions about building this driver, please do not hesitate to contact me.
 
 # Contributing
 * Report any issues you encounter during operations
