@@ -2,7 +2,9 @@
   "Driver for ClickHouse databases"
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [java-time :as t]
             [metabase
              [config :as config]
@@ -222,24 +224,56 @@
   [driver [_ field]]
   (hsql/call :stddevSamp (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:clickhouse :var]
+  [driver [_ field]]
+  (hsql/call :varSamp (sql.qp/->honeysql driver field)))
+
 (defmethod sql.qp/->honeysql [:clickhouse :count]
   [driver [_ field]]
   (if field
     (hsql/call :count (sql.qp/->honeysql driver field))
     :%count))
 
+;; better performance than count(distinct ...) which gets
+;; translated into uniqExact
+(defmethod sql.qp/->honeysql [:clickhouse :distinct]
+  [driver [_ field]]
+  (hsql/call :uniq (sql.qp/->honeysql driver field)))
 
-(defmethod sql.qp/->honeysql [:clickhouse :/]
-  [driver args]
-  (let [args (for [arg args]
-               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
-    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+(defmethod hformat/fn-handler "quantile"
+  [_ field p]
+  (str "quantile("
+       (hformat/to-sql p)
+       ")("
+       (hformat/to-sql field)
+       ")"))
 
-;; in the future, replace the division implementation and simply
-;; uncomment the following lines
-;; (defmethod sql.qp/->float :clickhouse
-;;   [_ value]
-;;   (hsql/call :toFloat64 value))
+(defmethod sql.qp/->honeysql [:clickhouse :percentile]
+  [driver [_ field p]]
+  (hsql/call :quantile (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)))
+
+(defmethod sql.qp/->honeysql [:clickhouse :log]
+  [driver [_ field]]
+  (hsql/call :log10 (sql.qp/->honeysql driver field)))
+
+
+(defmethod hformat/fn-handler "extract_ch"
+  [_ s p]
+  (str "extract(" (hformat/to-sql s) "," (hformat/to-sql p) ")"))
+
+(defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :extract_ch (sql.qp/->honeysql driver arg) pattern))
+
+;; (defmethod sql.qp/->honeysql [:clickhouse :/]
+;;   [driver args]
+;;   (let [args (for [arg args]
+;;                (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
+;;     ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+
+(defmethod sql.qp/->float :clickhouse
+  [_ value]
+  (hsql/call :toFloat64 value))
 
 ;; the filter criterion reads "is empty"
 ;; also see desugar.clj
@@ -281,6 +315,10 @@
              :else nil))
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
+
+(defmethod sql.qp/add-interval-honeysql-form :clickhouse
+  [_ dt amount unit]
+  (hx/+ (hx/->timestamp dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
 ;; The following lines make sure we call lowerUTF8 instead of lower
 (defn- ch-like-clause
@@ -397,10 +435,4 @@
         (catch Exception e
           (driver/describe-table-fks :sql-jdbc db-or-id-or-spec table))))
     nil))
-
-(defmethod driver/date-add :clickhouse
-  [_ dt amount unit]
-  (hx/+ (hx/->timestamp dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
-
-
 
