@@ -24,8 +24,8 @@
   21.0
   (-> (data/dataset (tx/dataset-definition "metabase_tests_decimal"
                       ["test-data-decimal"
-                       [{:field-name "my_money", :base-type {:native "Decimal(12,3)"}}]
-                       [[1.0] [23.0] [42.0] [42.0]]])
+                       [{:field-name "my_money", :base-type {:native "Decimal(12,4)"}}]
+                       [[1.0] [23.1337] [42.0] [42.0]]])
     (data/run-mbql-query test-data-decimal
                          {:expressions {:divided [:/ $my_money 2]}
                           :filter      [:> [:expression :divided] 1.0]
@@ -33,6 +33,19 @@
                           :order-by    [[:desc [:expression :divided]]]
                           :limit       1}))
       qp.test/first-row last float))
+
+(datasets/expect-with-driver :clickhouse
+  1.8155331831916208
+  (-> (data/dataset (tx/dataset-definition "metabase_tests_decimal"
+                      ["test-data-decimal"
+                       [{:field-name "my_money", :base-type {:native "Decimal(12,4)"}}]
+                       [[1.0] [23.1337] [42.0] [42.0]]])
+    (data/run-mbql-query test-data-decimal
+                         {:expressions {:divided [:/ 42 $my_money]}
+                          :filter      [:= $id 2]
+                          :limit       1}))
+      qp.test/first-row last double))
+
 
 (datasets/expect-with-driver :clickhouse
   "['foo','bar']"
@@ -113,6 +126,7 @@
        [["Я_1"], ["R"] ["Я_2"], ["Я"], ["я"], [nil]]])
    (data/run-mbql-query test-data-lowercase
      {:filter [:contains $mystring "Я" {:case-sensitive false}]}))))
+
 
 (defn drop-if-exists-and-create-db!
   "Drop a ClickHouse database named `db-name` if it already exists; then create a new empty one with that name."
