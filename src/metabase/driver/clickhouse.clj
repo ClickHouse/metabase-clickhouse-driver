@@ -265,11 +265,11 @@
   [driver [_ arg pattern]]
   (hsql/call :extract_ch (sql.qp/->honeysql driver arg) pattern))
 
-;; (defmethod sql.qp/->honeysql [:clickhouse :/]
-;;   [driver args]
-;;   (let [args (for [arg args]
-;;                (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
-;;     ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+(defmethod sql.qp/->honeysql [:clickhouse :/]
+  [driver args]
+  (let [args (for [arg args]
+               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
+    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
 
 (defmethod sql.qp/->float :clickhouse
   [_ value]
