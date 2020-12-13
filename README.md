@@ -22,11 +22,12 @@
 
 ## Choosing the Right Version
 
-Metabase Release | Driver Version
----------------- | --------------
-0.33.x           | 0.6
-0.34.x           | 0.7.0
-0.35.x           | 0.7.1
+| Metabase Release | Driver Version |
+| ---------------- | -------------- |
+| 0.33.x           | 0.6   |
+| 0.34.x           | 0.7.0 |
+| 0.35.x           | 0.7.1 |
+| 0.37.3           | 0.7.3 |
 
 ## Building from Source
 
@@ -57,7 +58,7 @@ In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
 ```
 FROM metabase/metabase:latest
-ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.7.1/clickhouse.metabase-driver.jar /plugins/
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.7.3/clickhouse.metabase-driver.jar /plugins/
 RUN chmod 744 /plugins/clickhouse.metabase-driver.jar
 ```
 
