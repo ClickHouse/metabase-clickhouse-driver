@@ -96,7 +96,7 @@
    1))
 
 (defn- to-week-of-year [expr]
-  (hsql/call :toUInt8 (hsql/call :formatDateTime (hx/+ (hsql/call :toDate expr) 1) "%V")))
+  (hsql/call :toWeek (hsql/call :toDate expr)))
 
 (defn- to-month-of-year [expr]
   (hx/+
@@ -162,7 +162,7 @@
 (defmethod sql.qp/date [:clickhouse :week]            [_ _ expr] (to-start-of-week expr))
 (defmethod sql.qp/date [:clickhouse :quarter]         [_ _ expr] (to-start-of-quarter expr))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:clickhouse :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :seconds] [_ _ expr]
   (hsql/call :toDateTime expr))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
@@ -222,11 +222,11 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
-  (hsql/call :stddevSamp (sql.qp/->honeysql driver field)))
+  (hsql/call :stddevPop (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :var]
   [driver [_ field]]
-  (hsql/call :varSamp (sql.qp/->honeysql driver field)))
+  (hsql/call :varPop (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :count]
   [driver [_ field]]
@@ -255,7 +255,6 @@
 (defmethod sql.qp/->honeysql [:clickhouse :log]
   [driver [_ field]]
   (hsql/call :log10 (sql.qp/->honeysql driver field)))
-
 
 (defmethod hformat/fn-handler "extract_ch"
   [_ s p]
@@ -340,6 +339,12 @@
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
+;; 0.38
+;; We don't have Time data types, so we cheat a little bit
+;; (defmethod sql.qp/cast-temporal-string [:clickhouse :type/ISO8601TimeString]
+;;   [_driver _special_type expr]
+;;  (hx/->datetime (hx/concat (hx/literal "1970-01-01 ") expr)))
+
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [_ _ rs _ i]
   (let [r (.getObject rs i OffsetDateTime)]
     (cond
@@ -349,9 +354,6 @@
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIME] [_ _ rs _ i]
   (.getObject rs i OffsetTime))
-
-;; (defmethod sql-jdbc.execute/read-column [:clickhouse Types/DATE] [_ _ rs _ i]
-;;    (.getObject rs i OffsetDateTime))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY] [driver calendar resultset meta i]
   (when-let [arr (.getArray resultset i)]
@@ -411,6 +413,11 @@
         sql                              (str "SELECT timezone() AS tz")
         [{:keys [tz]}] (jdbc/query spec sql)]
     tz))
+
+(defmethod driver/db-start-of-week :clickhouse
+  [_]
+  :monday
+)
 
 ;; For tests only: Get FK info via some metadata table
 (defmethod driver/describe-table-fks :clickhouse

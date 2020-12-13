@@ -164,12 +164,14 @@
 ;; check that describe-table properly describes the database & base types of the enum fields
 (datasets/expect-with-driver :clickhouse
                     {:name   "enums_test"
-                     :fields #{{:name          "enum1"
-                                :database-type "Enum8"
-                                :base-type     :type/Enum}
-                               {:name          "enum2"
-                                :database-type "Enum16"
-                                :base-type     :type/Enum}}}
+                     :fields #{{:name              "enum1"
+                                :database-type     "Enum8"
+                                :base-type         :type/Enum
+                                :database-position 0}
+                               {:name              "enum2"
+                                :database-type     "Enum16"
+                                :base-type         :type/Enum
+                                :database-position 1}}}
                     (do-with-enums-db
                      (fn [db]
                        (driver/describe-table :clickhouse db {:name "enums_test"}))))
