@@ -36,6 +36,7 @@
    [
     [#"Array"       :type/Array]
     [#"DateTime"    :type/DateTime]
+    [#"DateTime64"  :type/DateTime]
     [#"Date"        :type/Date]
     [#"Decimal"     :type/Decimal]
     [#"Enum8"       :type/Enum]
@@ -339,7 +340,7 @@
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with] [driver [_ field value options]]
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
-;; We don't have Time data types, so we cheat a little bit
+;; We do not have Time data types, so we cheat a little bit
 (defmethod sql.qp/cast-temporal-string [:clickhouse :type/ISO8601TimeString]
   [_driver _special_type expr]
   (hsql/call :parseDateTimeBestEffort (hsql/call :concat "1970-01-01T" expr)))
