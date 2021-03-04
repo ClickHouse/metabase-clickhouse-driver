@@ -28,6 +28,7 @@
 | 0.34.x           | 0.7.0 |
 | 0.35.x           | 0.7.1 |
 | 0.37.3           | 0.7.3 |
+| 0.38.1           | 0.7.4 |
 
 ## Building from Source
 
@@ -94,4 +95,4 @@ Unfortunately, newer versions require a JDBC driver that includes a couple of pa
 * See the very useful documentation by the Metabase team: [Writing A Driver](https://github.com/metabase/metabase/wiki/Writing-A-Driver)
 
 # License
-The contents of this repository are made available under the GNU Affero General Public License v3.0 (AGPL), see [LICENSE](https://github.com/enqueueu/metabase-clickhouse-driver/blob/master/LICENSE). Unless explicitly stated differently in the respective file, all files are `Copyright 2018-2020 the metabase-clickhouse-driver contributors`.
+The contents of this repository are made available under the GNU Affero General Public License v3.0 (AGPL), see [LICENSE](https://github.com/enqueueu/metabase-clickhouse-driver/blob/master/LICENSE). Unless explicitly stated differently in the respective file, all files are `Copyright 2018-2021 the metabase-clickhouse-driver contributors`.
