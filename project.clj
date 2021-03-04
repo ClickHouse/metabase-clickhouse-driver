@@ -8,9 +8,9 @@
    "docstring-checker"         ["with-profile" "+docstring-checker" "docstring-checker"]
    "eastwood"                  ["with-profile" "+eastwood" "eastwood"]
    "test"                      ["with-profile" "+expectations" "expectations"]}
-  
+
   :dependencies
-  [[ru.yandex.clickhouse/clickhouse-jdbc "0.2.4-enqueue"
+  [[ru.yandex.clickhouse/clickhouse-jdbc "0.3.0-enqueue"
     :exclusions [com.fasterxml.jackson.core/jackson-core
                  org.slf4j/slf4j-api]]]
 
@@ -21,7 +21,7 @@
 
    :ci
    {:jvm-opts ["-Xmx2500m"]}
-   
+
    :uberjar
    {:auto-clean    true
     :aot           :all
@@ -31,11 +31,11 @@
 
    :bikeshed
    {:plugins [[lein-bikeshed "0.4.1"]]}
-   
+
    :eastwood
    {:plugins
     [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
-    
+
     :eastwood
     {:exclude-namespaces [:test-paths]
      :config-files       ["../metabase/test_resources/eastwood-config.clj"]
@@ -57,7 +57,7 @@
    :docstring-checker
    {:plugins
     [[docstring-checker "1.0.3"]]
-    
+
     :docstring-checker
     {:include [#"^metabase\.driver\.clickhouse"]
      :exclude [#"test"]}}})
