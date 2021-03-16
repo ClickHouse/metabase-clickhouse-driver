@@ -207,6 +207,18 @@
   [driver t]
   (hsql/call :parseDateTimeBestEffort t))
 
+(defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
+  [driver t]
+  (hsql/call :parseDateTimeBestEffort t))
+
+(defmethod sql.qp/->honeysql [:clickhouse OffsetDateTime]
+  [driver t]
+  (hsql/call :parseDateTimeBestEffort t))
+
+(defmethod sql.qp/->honeysql [:clickhouse LocalDate]
+  [driver t]
+  (hsql/call :parseDateTimeBestEffort t))
+
 (defmethod sql.qp/->honeysql [:clickhouse LocalTime]
   [driver t]
   (sql.qp/->honeysql driver (t/local-date-time
