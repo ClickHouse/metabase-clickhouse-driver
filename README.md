@@ -28,7 +28,7 @@
 | 0.34.x           | 0.7.0 |
 | 0.35.x           | 0.7.1 |
 | 0.37.3           | 0.7.3 |
-| 0.38.1           | 0.7.4 |
+| 0.38.1           | 0.7.5 |
 
 ## Building from Source
 
@@ -59,7 +59,7 @@ In an empty directory, create your Dockerfile, e.g. `Dockerfile-clickhouse`
 
 ```
 FROM metabase/metabase:latest
-ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.7.3/clickhouse.metabase-driver.jar /plugins/
+ADD https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.7.5/clickhouse.metabase-driver.jar /plugins/
 RUN chmod 744 /plugins/clickhouse.metabase-driver.jar
 ```
 
@@ -86,8 +86,9 @@ The driver should work fine for many use cases. Please consider the following it
 * Compare the results of the queries with the results returned by `clickhouse-client`.
 * Metabase is a good tool for organizing questions, dashboards etc. and to give non-technical users a good way to explore the data and share their results. The driver cannot support all the cool special features of ClickHouse, e.g. array functions. You are free to use native queries, of course.
 
-# Current State of the Driver
-Unfortunately, newer versions require a JDBC driver that includes a couple of patches which have not been accepted upstream, yet (see [PR 418](https://github.com/ClickHouse/clickhouse-jdbc/pull/418)). I hope that we will soon be able to release another version which can then use an official JDBC driver again. If you have any questions about building this driver, please do not hesitate to contact me.
+# Development
+
+Newer versions of this driver require ClickHouse JDBC driver version 0.30 which has not been released, yet. Until this version is released, please check out the [develop](https://github.com/ClickHouse/clickhouse-jdbc/tree/develop) branch of the ClickHouse JDBC driver and install into your local Maven repository. If you have any questions about building this driver, please do not hesitate to contact me.
 
 # Contributing
 * Report any issues you encounter during operations
