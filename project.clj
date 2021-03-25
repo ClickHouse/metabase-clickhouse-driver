@@ -10,7 +10,7 @@
    "test"                      ["with-profile" "+expectations" "expectations"]}
 
   :dependencies
-  [[ru.yandex.clickhouse/clickhouse-jdbc "0.3.0-enqueue"
+  [[ru.yandex.clickhouse/clickhouse-jdbc "0.3.0"
     :exclusions [com.fasterxml.jackson.core/jackson-core
                  org.slf4j/slf4j-api]]]
 
@@ -30,11 +30,11 @@
     :uberjar-name  "clickhouse.metabase-driver.jar"}
 
    :bikeshed
-   {:plugins [[lein-bikeshed "0.4.1"]]}
+   {:plugins [[lein-bikeshed "0.5.2"]]}
 
    :eastwood
    {:plugins
-    [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
+    [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
     :eastwood
     {:exclude-namespaces [:test-paths]
