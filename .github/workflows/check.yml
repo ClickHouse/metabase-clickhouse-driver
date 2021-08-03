@@ -27,5 +27,7 @@ jobs:
         run: lein install-for-building-drivers
       - name: Install clojure tools
         uses: DeLaGuardo/setup-clojure@3.4
+        with:
+          cli: 1.10.3
       - name: Build ClickHouse driver
         run: ./bin/build-driver.sh clickhouse
