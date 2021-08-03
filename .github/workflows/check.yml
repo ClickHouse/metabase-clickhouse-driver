@@ -14,5 +14,16 @@ jobs:
           TZ: "/usr/share/zoneinfo/UTC"
 
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Metbase Repo
+        uses: actions/checkout@v2
+        with:
+          repository: enqueue/metabase
+          ref: clickhouse_driver_testing
+      - name: Checkout Driver Repo
+        uses: actions/checkout@v2
+        with:
+          path: modules/drivers/clickhouse
+      - name: Debug the Thing
+        run: "ls -l modules/drivers"
+
 
