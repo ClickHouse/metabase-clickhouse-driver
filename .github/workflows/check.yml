@@ -36,9 +36,12 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/project.clj', '**/package.json', '**/pom.xml') }}
       - name: Building and Installing Metabase
         run: lein install-for-building-drivers
-      - name: Install clojure tools
-        run: sudo apt-get install -y clojure
+      # - name: Install clojure tools
+        # run: sudo apt-get install -y clojure
+      - name: Install Clojure CLI
+        run: |
+          curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
+          sudo bash ./linux-install-1.10.1.708.sh
       - name: Build ClickHouse driver
         run: |
-          cd bin/build-drivers
-          clojure -M -m build-driver "clickhouse"
+          bin/build-driver.sh clickhouse
