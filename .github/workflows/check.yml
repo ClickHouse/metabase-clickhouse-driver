@@ -14,7 +14,11 @@ jobs:
           TZ: "/usr/share/zoneinfo/UTC"
 
     steps:
-      - name: Checkout Metbase Repo
+      - name: Prepare JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+      - name: Checkout Metabase Repo
         uses: actions/checkout@v2
         with:
           repository: enqueue/metabase
@@ -22,18 +26,18 @@ jobs:
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
         with:
-          path: modules/drivers/clickhouse
-      - name: Building and Installing Metabase
-        run: lein install-for-building-drivers
+          path: ${GITHUB_WORKSPACE}/modules/drivers/clickhouse
       - name: Cache Dependencies
         uses: actions/cache@v2
         env:
           cache-name: cache-metabase-deps
         with:
           path: ~/.m2
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/project.clj', '**/package.json') }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/project.clj', '**/package.json', '**/pom.xml') }}
+      - name: Building and Installing Metabase
+        run: lein install-for-building-drivers
       - name: Install clojure tools
         run: sudo apt-get install -y clojure
       - name: Build ClickHouse driver
         run: |
-          ${GITHUB_WORKSPACE}/bin/build-driver.sh clickhouse
+          ./bin/build-driver.sh clickhouse
