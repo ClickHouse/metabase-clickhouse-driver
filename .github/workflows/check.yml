@@ -23,6 +23,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: modules/drivers/clickhouse
+      - name: Building and Installing Metabase
+        run: lein install-for-building-drivers
       - name: Cache Dependencies
         uses: actions/cache@v2
         env:
@@ -30,9 +32,9 @@ jobs:
         with:
           path: ~/.m2
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/project.clj', '**/package.json') }}
-      - name: Building and Installing Metabase
-        run: lein install-for-building-drivers
       - name: Install clojure tools
         run: sudo apt-get install -y clojure
       - name: Build ClickHouse driver
-        run: echo ${GITHUB_WORKSPACE} && ${GITHUB_WORKSPACE}/bin/build-driver.sh clickhouse
+        run: |
+          ls -l ${GITHUB_WORKSPACE}
+          ${GITHUB_WORKSPACE}/bin/build-driver.sh clickhouse
