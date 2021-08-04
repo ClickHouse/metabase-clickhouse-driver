@@ -36,5 +36,4 @@ jobs:
         run: sudo apt-get install -y clojure
       - name: Build ClickHouse driver
         run: |
-          ls -l ${GITHUB_WORKSPACE}
           ${GITHUB_WORKSPACE}/bin/build-driver.sh clickhouse
