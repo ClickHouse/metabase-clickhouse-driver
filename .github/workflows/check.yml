@@ -41,3 +41,8 @@ jobs:
       - name: Build ClickHouse driver
         run: |
           bin/build-driver.sh clickhouse
+      - name: Archive driver JAR
+        uses: actions/upload-artifact@v2
+        with:
+          name: Driver JAR
+          path: modules/drivers/clickhouse/target/uberjar/clickhouse.metabase-driver.jar
