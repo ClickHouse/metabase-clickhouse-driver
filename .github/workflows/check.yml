@@ -40,7 +40,5 @@ jobs:
         run: sudo apt-get install -y clojure
       - name: Build ClickHouse driver
         run: |
-          source "./bin/check-clojure-cli.sh"
-          check_clojure_cli
           cd bin/build-drivers
           clojure -M -m build-driver "clickhouse"
