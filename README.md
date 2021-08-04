@@ -4,7 +4,6 @@
 
 ![Metabase Logo in ClickHouse colours](docs/images/mbch_logo.png)
 
-[![CircleCI](https://circleci.com/gh/enqueue/metabase-clickhouse-driver.svg?style=svg)](https://circleci.com/gh/enqueue/metabase-clickhouse-driver)
 [![Latest Release](https://img.shields.io/github/release/enqueue/metabase-clickhouse-driver.svg?label=latest%20release)](https://github.com/enqueue/metabase-clickhouse-driver/releases)
 [![GitHub license](https://img.shields.io/badge/license-AGPL-05B8CC.svg)](https://raw.githubusercontent.com/enqueue/metabase-clickhouse-driver/master/LICENSE.txt)
 

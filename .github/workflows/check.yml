@@ -46,3 +46,8 @@ jobs:
         with:
           name: Driver JAR
           path: modules/drivers/clickhouse/target/uberjar/clickhouse.metabase-driver.jar
+      - name: Run tests
+        env:
+          DRIVERS: h2,clickhouse
+        run:
+          lein with-profile +ci test
