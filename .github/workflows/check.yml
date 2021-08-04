@@ -10,6 +10,8 @@ jobs:
     services:
       clickhouse:
         image: yandex/clickhouse-server:latest
+        ports:
+          - 8123:8123
         env:
           TZ: "/usr/share/zoneinfo/UTC"
 
