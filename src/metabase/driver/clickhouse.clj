@@ -19,9 +19,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]]
+            [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
   (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
            [java.sql DatabaseMetaData PreparedStatement ResultSet Time Types]

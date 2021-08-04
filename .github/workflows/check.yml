@@ -52,4 +52,8 @@ jobs:
         env:
           DRIVERS: h2,clickhouse
         run:
-          lein with-profile +ci test
+          lein with-profile +ci,+junit test
+      - name: Report test results
+        uses: mikepenz/action-junit-report@v2
+        with:
+          report_paths: 'target/junit/test/TEST-*.xml'
