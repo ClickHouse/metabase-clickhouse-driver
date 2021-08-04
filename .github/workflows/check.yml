@@ -57,4 +57,4 @@ jobs:
         uses: mikepenz/action-junit-report@v2
         if: always()
         with:
-          report_paths: 'target/junit/test/TEST-*.xml'
+          report_paths: '**/target/junit/TEST-*.xml'
