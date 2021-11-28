@@ -24,6 +24,7 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
+          cache: 'maven'
       - name: Checkout Metabase Repo
         uses: actions/checkout@v2
         with:
@@ -33,13 +34,6 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: modules/drivers/clickhouse
-      - name: Cache Dependencies
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-metabase-deps
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/project.clj', '**/package.json', '**/pom.xml') }}
       - name: Install Clojure CLI
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.10.3.1029.sh &&
@@ -51,9 +45,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: Driver JAR
-          path: modules/drivers/clickhouse/target/uberjar/clickhouse.metabase-driver.jar
+          path: resources/modules/clickhouse.metabase-driver.jar
       - name: Run tests
-        env:
-          DRIVERS: h2,clickhouse
         run:
           DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test
