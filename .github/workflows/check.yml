@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: enqueue/metabase
-          ref: clickhouse_driver_testing
+          ref: metabase_0.41.2
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
         with:
@@ -38,8 +38,8 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/project.clj', '**/package.json', '**/pom.xml') }}
       - name: Install Clojure CLI
         run: |
-          curl -O https://download.clojure.org/install/linux-install-1.10.1.708.sh &&
-          sudo bash ./linux-install-1.10.1.708.sh
+          curl -O https://download.clojure.org/install/linux-install-1.10.3.1029.sh &&
+          sudo bash ./linux-install-1.10.3.1029.sh
       - name: Build ClickHouse driver
         run: |
           bin/build-driver.sh clickhouse
@@ -52,9 +52,4 @@ jobs:
         env:
           DRIVERS: h2,clickhouse
         run:
-          lein with-profile +ci,+junit test
-      - name: Report test results
-        uses: mikepenz/action-junit-report@v2
-        if: always()
-        with:
-          report_paths: '**/target/junit/TEST-*.xml'
+          DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test
