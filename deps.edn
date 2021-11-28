@@ -1,0 +1,5 @@
+{:paths
+ ["src" "resources"]
+
+ :deps
+ {ru.yandex.clickhouse/clickhouse-jdbc {:mvn/version "0.3.1"}}}
