@@ -50,3 +50,9 @@ jobs:
       - name: Run tests
         run:
           DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test
+      - name: Publish JUnit Report
+        uses: mikepenz/action-junit-report@v2.8.1
+        if: always()
+        with:
+          report_paths: '**/target/junit/*.xml'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
