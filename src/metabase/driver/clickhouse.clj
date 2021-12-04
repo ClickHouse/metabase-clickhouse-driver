@@ -37,8 +37,8 @@
     [#"DateTime64"  :type/DateTime]
     [#"Date"        :type/Date]
     [#"Decimal"     :type/Decimal]
-    [#"Enum8"       :type/Enum]
-    [#"Enum16"      :type/Enum]
+    [#"Enum8"       :type/Text]
+    [#"Enum16"      :type/Text]
     [#"FixedString" :type/TextLike]
     [#"Float32"     :type/Float]
     [#"Float64"     :type/Float]
@@ -76,7 +76,7 @@
        :user                           user
        :ssl                            (boolean ssl)
        :use_server_time_zone_for_dates true}
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :url)))
+      (sql-jdbc.common/handle-additional-options details, :separator-style :url)))
 
 (defn- to-relative-day-num [expr]
   (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
@@ -244,12 +244,6 @@
     (hsql/call :count (sql.qp/->honeysql driver field))
     :%count))
 
-;; better performance than count(distinct ...) which gets
-;; translated into uniqExact
-(defmethod sql.qp/->honeysql [:clickhouse :distinct]
-  [driver [_ field]]
-  (hsql/call :uniq (sql.qp/->honeysql driver field)))
-
 (defmethod hformat/fn-handler "quantile"
   [_ field p]
   (str "quantile("
@@ -273,12 +267,6 @@
 (defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :extract_ch (sql.qp/->honeysql driver arg) pattern))
-
-(defmethod sql.qp/->honeysql [:clickhouse :/]
-  [driver args]
-  (let [args (for [arg args]
-               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
-    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
 
 (defmethod sql.qp/->float :clickhouse
   [_ value]
