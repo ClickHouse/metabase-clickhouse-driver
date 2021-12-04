@@ -370,6 +370,11 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME] [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (.getObject rs i OffsetTime))
 
+(defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY] [driver calendar resultset meta i]
+  (when-let [arr (.getArray resultset i)]
+    (let [tz (if (nil? calendar) (TimeZone/getDefault) (.getTimeZone calendar))]
+      (ClickHouseArrayUtil/arrayToString (.getArray arr) tz tz))))
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
