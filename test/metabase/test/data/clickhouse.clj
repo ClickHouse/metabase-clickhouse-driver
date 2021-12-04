@@ -24,7 +24,7 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime64")
 
-(defmethod tx/sorts-nil-first? :clickhouse [_] false)
+(defmethod tx/sorts-nil-first? :clickhouse [_ _] false)
 
 (defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
     (merge

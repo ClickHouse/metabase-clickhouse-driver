@@ -38,6 +38,11 @@ jobs:
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.10.3.1029.sh &&
           sudo bash ./linux-install-1.10.3.1029.sh
+      - name: Setup Node
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+          cache: 'yarn'
       - name: Get M2 cache
         uses: actions/cache@v2
         with:
@@ -53,6 +58,8 @@ jobs:
         with:
           name: Driver JAR
           path: resources/modules/clickhouse.metabase-driver.jar
+      - name: Prepare stuff for pulses
+        run: yarn build-static-viz
       - name: Run tests
         run:
           DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test

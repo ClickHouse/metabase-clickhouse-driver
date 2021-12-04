@@ -61,7 +61,9 @@
    (str/replace (name database-type) #"(?:Nullable|LowCardinality)\((\S+)\)" "$1")))
 
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
-  #{"system"})
+  #{"system"
+    "information_schema"
+    "INFORMATION_SCHEMA"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ {:keys [user password dbname host port ssl]
@@ -75,9 +77,6 @@
        :ssl                            (boolean ssl)
        :use_server_time_zone_for_dates true}
       (sql-jdbc.common/handle-additional-options details, :seperator-style :url)))
-
-(defn- modulo [a b]
-  (hsql/call :modulo a b))
 
 (defn- to-relative-day-num [expr]
   (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
@@ -422,10 +421,9 @@
 
 (defmethod driver/supports? [:clickhouse :standard-deviation-aggregations] [_ _] true)
 
-(defmethod driver/db-default-timezone :clickhouse
-  [_ db]
-  (let [spec                             (sql-jdbc.conn/db->pooled-connection-spec db)
-        sql                              (str "SELECT timezone() AS tz")
+(defmethod sql-jdbc.sync/db-default-timezone :clickhouse
+  [_ spec]
+  (let [sql            (str "SELECT timezone() AS tz")
         [{:keys [tz]}] (jdbc/query spec sql)]
     tz))
 
