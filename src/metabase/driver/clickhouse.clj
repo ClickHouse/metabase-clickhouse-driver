@@ -22,7 +22,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
   (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
-           [java.sql DatabaseMetaData PreparedStatement ResultSet Time Types]
+           [java.sql DatabaseMetaData PreparedStatement ResultSet ResultSetMetaData Time Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.time.temporal Temporal]
            [java.util TimeZone]))
@@ -37,8 +37,8 @@
     [#"DateTime64"  :type/DateTime]
     [#"Date"        :type/Date]
     [#"Decimal"     :type/Decimal]
-    [#"Enum8"       :type/Enum]
-    [#"Enum16"      :type/Enum]
+    [#"Enum8"       :type/Text]
+    [#"Enum16"      :type/Text]
     [#"FixedString" :type/TextLike]
     [#"Float32"     :type/Float]
     [#"Float64"     :type/Float]
@@ -61,7 +61,9 @@
    (str/replace (name database-type) #"(?:Nullable|LowCardinality)\((\S+)\)" "$1")))
 
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
-  #{"system"})
+  #{"system"
+    "information_schema"
+    "INFORMATION_SCHEMA"})
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ {:keys [user password dbname host port ssl]
@@ -74,10 +76,7 @@
        :user                           user
        :ssl                            (boolean ssl)
        :use_server_time_zone_for_dates true}
-      (sql-jdbc.common/handle-additional-options details, :seperator-style :url)))
-
-(defn- modulo [a b]
-  (hsql/call :modulo a b))
+      (sql-jdbc.common/handle-additional-options details, :separator-style :url)))
 
 (defn- to-relative-day-num [expr]
   (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
@@ -130,9 +129,9 @@
 (defn- to-day [expr]
   (hsql/call :toDate expr))
 
-(defn- to-day-of-week [expr]
-  ;; ClickHouse weeks usually start on Monday
-  (hx/+ (modulo (hsql/call :toDayOfWeek (hsql/call :toDateTime expr)) 7) 1))
+(defmethod sql.qp/date [:clickhouse :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :clickhouse (hsql/call :dayOfWeek expr)))
 
 (defn- to-day-of-month [expr]
   (hsql/call :toDayOfMonth (hsql/call :toDateTime expr)))
@@ -148,7 +147,6 @@
 (defmethod sql.qp/date [:clickhouse :minute-of-hour]  [_ _ expr] (to-minute expr))
 (defmethod sql.qp/date [:clickhouse :hour]            [_ _ expr] (to-start-of-hour expr))
 (defmethod sql.qp/date [:clickhouse :hour-of-day]     [_ _ expr] (to-hour expr))
-(defmethod sql.qp/date [:clickhouse :day-of-week]     [_ _ expr] (to-day-of-week expr))
 (defmethod sql.qp/date [:clickhouse :day-of-month]    [_ _ expr] (to-day-of-month expr))
 (defmethod sql.qp/date [:clickhouse :day-of-year]     [_ _ expr] (to-day-of-year expr))
 (defmethod sql.qp/date [:clickhouse :week-of-year]    [_ _ expr] (to-week-of-year expr))
@@ -176,9 +174,10 @@
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
+
 (defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
   [_ t]
-  (format "parseDateTimeBestEffort('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+  (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
   [_ t]
@@ -245,12 +244,6 @@
     (hsql/call :count (sql.qp/->honeysql driver field))
     :%count))
 
-;; better performance than count(distinct ...) which gets
-;; translated into uniqExact
-(defmethod sql.qp/->honeysql [:clickhouse :distinct]
-  [driver [_ field]]
-  (hsql/call :uniq (sql.qp/->honeysql driver field)))
-
 (defmethod hformat/fn-handler "quantile"
   [_ field p]
   (str "quantile("
@@ -275,6 +268,7 @@
   [driver [_ arg pattern]]
   (hsql/call :extract_ch (sql.qp/->honeysql driver arg) pattern))
 
+;; we still need this for decimal versus float
 (defmethod sql.qp/->honeysql [:clickhouse :/]
   [driver args]
   (let [args (for [arg args]
@@ -351,22 +345,23 @@
   (ch-like-clause driver (sql.qp/->honeysql driver field) (update-string-value value #(str \% %)) options))
 
 ;; We do not have Time data types, so we cheat a little bit
-(defmethod sql.qp/cast-temporal-string [:clickhouse :type/ISO8601TimeString]
+(defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
-  (hsql/call :parseDateTimeBestEffort (hsql/call :concat "1970-01-01T" expr)))
+  (hx/->timestamp (hsql/call :parseDateTimeBestEffort (hsql/call :concat "1970-01-01T", expr))))
 
-(defmethod sql.qp/cast-temporal-string [:clickhouse :type/ISO8601DateString]
-  [_driver _semantic_type expr]
-  (hx/->date expr))
+(defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
+  [_driver _special_type expr]
+  (hx/->timestamp expr))
 
-(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIMESTAMP] [_ _ rs _ i]
-  (let [r (.getObject rs i OffsetDateTime)]
-    (cond
-      (nil? r) nil
-      (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toOffsetTime r)
-      :else r)))
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP] [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (fn []
+    (let [r (.getObject rs i LocalDateTime)]
+      (cond
+        (nil? r) nil
+        (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
+        :else r))))
 
-(defmethod sql-jdbc.execute/read-column [:clickhouse Types/TIME] [_ _ rs _ i]
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME] [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (.getObject rs i OffsetTime))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY] [driver calendar resultset meta i]
@@ -421,10 +416,9 @@
 
 (defmethod driver/supports? [:clickhouse :standard-deviation-aggregations] [_ _] true)
 
-(defmethod driver/db-default-timezone :clickhouse
-  [_ db]
-  (let [spec                             (sql-jdbc.conn/db->pooled-connection-spec db)
-        sql                              (str "SELECT timezone() AS tz")
+(defmethod sql-jdbc.sync/db-default-timezone :clickhouse
+  [_ spec]
+  (let [sql            (str "SELECT timezone() AS tz")
         [{:keys [tz]}] (jdbc/query spec sql)]
     tz))
 
