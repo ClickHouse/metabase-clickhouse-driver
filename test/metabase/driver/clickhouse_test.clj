@@ -17,10 +17,6 @@
             [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
-(deftest clickhouse-timezone-is-utc
-  (mt/test-driver :clickhouse
-                  (is (= "UTC"
-                         (tu/db-timezone-id)))))
 
 (deftest clickhouse-decimal-division-simple
   (mt/test-driver :clickhouse
@@ -178,11 +174,11 @@
                   (is (= {:name   "enums_test"
                           :fields #{{:name              "enum1"
                                      :database-type     "Enum8"
-                                     :base-type         :type/Enum
+                                     :base-type         :type/Text
                                      :database-position 0}
                                     {:name              "enum2"
                                      :database-type     "Enum16"
-                                     :base-type         :type/Enum
+                                     :base-type         :type/Text
                                      :database-position 1}}}
                          (do-with-enums-db
                           (fn [db]
