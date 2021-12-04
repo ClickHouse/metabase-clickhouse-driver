@@ -34,11 +34,17 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '11'
-          cache: 'maven'
       - name: Install Clojure CLI
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.10.3.1029.sh &&
           sudo bash ./linux-install-1.10.3.1029.sh
+      - name: Get M2 cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: ${{ runner.os }}-clickhouse-${{ hashFiles('**/deps.edn') }}
       - name: Build ClickHouse driver
         run: |
           bin/build-driver.sh clickhouse
