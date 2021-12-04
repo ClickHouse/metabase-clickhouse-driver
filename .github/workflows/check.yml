@@ -56,7 +56,7 @@ jobs:
       - name: Archive driver JAR
         uses: actions/upload-artifact@v2
         with:
-          name: Driver JAR
+          name: clickhouse.metabase-driver.jar
           path: resources/modules/clickhouse.metabase-driver.jar
       - name: Prepare stuff for pulses
         run: yarn build-static-viz
