@@ -21,13 +21,14 @@
 
 ### Choosing the Right Version
 
-| Metabase Release | Driver Version |
-| ---------------- | -------------- |
-| 0.33.x           | 0.6   |
-| 0.34.x           | 0.7.0 |
-| 0.35.x           | 0.7.1 |
-| 0.37.3           | 0.7.3 |
-| 0.38.1+          | 0.7.5 |
+Metabase Release | Driver Version 
+---------------- | -------------- 
+0.33.x           | 0.6   
+0.34.x           | 0.7.0 
+0.35.x           | 0.7.1 
+0.37.3           | 0.7.3 
+0.38.1+          | 0.7.5
+0.42.1+          | 0.8.0
 
 ### Building from Source
 
@@ -36,7 +37,7 @@ Please refer to the extensive documentation available in the Metabase Wiki: [Wri
 1. Clone [metabase repository](https://github.com/metabase/metabase)
 2. Clone this repository, and follow [the instructions for building the driver](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Packaging-a-Driver-&-Metabase-Plugin-Basics). Alternatively, download a pre-release jar.
 3. Copy `clickhouse.metabase-driver.jar` into your Metabase `plugins` directory
-4. Start Metabase, e.g. by invoking `lein run` in your Metabase directory.
+4. Start Metabase, e.g. by invoking `DRIVERS=clickhouse clojure -M:run:drivers` in your Metabase directory.
 
 If you want to develop simply create a symbolic link from the Metabase `modules/drivers` directory to the root of the driver directory.
 
