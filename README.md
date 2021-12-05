@@ -28,7 +28,7 @@ Metabase Release | Driver Version
 0.35.x           | 0.7.1 
 0.37.3           | 0.7.3 
 0.38.1+          | 0.7.5
-0.42.1+          | 0.8.0
+0.41.2+          | 0.8.0
 
 ### Building from Source
 
