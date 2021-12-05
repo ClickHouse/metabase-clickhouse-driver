@@ -188,6 +188,21 @@
                           (fn [db]
                             (driver/describe-table :clickhouse db {:name "enums_test"})))))))
 
+(deftest clickhouse-enums-test
+  (mt/test-driver :clickhouse
+                  (is (=
+                       [["use"]]
+                       (qp.test/formatted-rows [str] :format-nil-values
+                                               (do-with-enums-db
+                                                (fn [db]
+                                                  (data/with-db
+                                                    db
+                                                    (data/run-mbql-query enums_test
+                                                                         {:expressions {"test" [:substring $enum2 3 3]}
+                                                                         :fields [[:expression "test"]]
+                                                                         :filter [:= $enum1 "foo" ]})))))))))
+
+
 (deftest clickhouse-basic-connection-string
   (is (=
        {:classname                      "ru.yandex.clickhouse.ClickHouseDriver"

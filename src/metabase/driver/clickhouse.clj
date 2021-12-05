@@ -244,6 +244,13 @@
     (hsql/call :count (sql.qp/->honeysql driver field))
     :%count))
 
+;; Substring does not work for Enums, so we need to cast to String
+(defmethod sql.qp/->honeysql [:clickhouse :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substring (hsql/call :toString (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substring (hsql/call :toString (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver start))))
+
 (defmethod hformat/fn-handler "quantile"
   [_ field p]
   (str "quantile("
