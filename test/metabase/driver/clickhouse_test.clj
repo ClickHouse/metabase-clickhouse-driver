@@ -17,6 +17,10 @@
             [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
+(deftest clickhouse-timezone-is-utc
+  (mt/test-driver :clickhouse
+                  (is (= "UTC"
+                         (tu/db-timezone-id)))))
 
 (deftest clickhouse-decimal-division-simple
   (mt/test-driver :clickhouse
