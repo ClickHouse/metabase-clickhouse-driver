@@ -64,7 +64,7 @@
 (deftest clickhouse-array-uint64
   (mt/test-driver :clickhouse
                   (is (= "[23,42]"
-                         (-> (data/dataset (tx/dataset-definition "metabase_tests_array_uint64"
+                         (-> (data/dataset (tx/dataset-definition "metabase_tests_array_uint"
                                                                   ["test-data-array-uint64"
                                                                    [{:field-name "my_array", :base-type {:native "Array(UInt64)"}}]
                                                                    [[(into-array (list 23 42))]]])
@@ -116,7 +116,7 @@
                            [4 "Я"]]
                           (qp.test/formatted-rows [int str] :format-nil-values
                                                   (data/dataset (tx/dataset-definition
-                                                                 "metabase_tests_lowercase"
+                                                                 "metabase_test_lowercases"
                                                                  ["test-data-lowercase"
                                                                   [{:field-name "mystring", :base-type :type/Text}]
                                                                   [["Я_1"], ["R"] ["Я_2"], ["Я"], ["я"], [nil]]])
@@ -146,29 +146,34 @@
     (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)])
     (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)])))
 
-(defn- enums-test-db-details [] (tx/dbdef->connection-details :clickhouse :db {:database-name "enums_test"}))
+(defn- metabase-test-db-details [] (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"}))
 
-(defn- create-enums-db!
-  "Create a ClickHouse database called `enums_test` that has a couple of enum types and a couple columns of those types.
-  One of those types has a space in the name, which is legal when quoted, to make sure we handle such wackiness
-  properly."
+(defn- create-metabase-test-db!
+  "Create a ClickHouse database called `metabase_test` and initialize some test data"
   []
-  (drop-if-exists-and-create-db! "enums_test")
-  (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :clickhouse (enums-test-db-details))]
+  (drop-if-exists-and-create-db! "metabase_test")
+  (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :clickhouse (metabase-test-db-details))]
     (doseq [sql [
-                 (str "CREATE TABLE `enums_test`.`enums_test` ("
+                 (str "CREATE TABLE `metabase_test`.`enums_test` ("
                       " enum1 Enum8('foo' = 0, 'bar' = 1, 'foo bar' = 2),"
                       " enum2 Enum16('click' = 0, 'house' = 1)"
                       ") ENGINE = Memory")
-                 (str "INSERT INTO `enums_test`.`enums_test` (\"enum1\", \"enum2\") VALUES"
+                 (str "INSERT INTO `metabase_test`.`enums_test` (\"enum1\", \"enum2\") VALUES"
                       "  ('foo', 'house'),"
                       "  ('foo bar', 'click'),"
-                      "  ('bar', 'house');")]]
+                      "  ('bar', 'house');")
+                 (str "CREATE TABLE `metabase_test`.`ipaddress_test` ("
+                      " ipvfour Nullable(IPv4), ipvsix Nullable(IPv6)) Engine = Memory")
+                 (str "INSERT INTO `metabase_test`.`ipaddress_test` (ipvfour, ipvsix) VALUES"
+                      " (toIPv4('127.0.0.1'), toIPv6('127.0.0.1')),"
+                      " (toIPv4('0.0.0.0'), toIPv6('0.0.0.0')),"
+                      " (null, null);")]
+            ]
       (jdbc/execute! conn [sql]))))
 
-(defn- do-with-enums-db {:style/indent 0} [f]
-  (create-enums-db!)
-  (tt/with-temp Database [database {:engine :clickhouse, :details (enums-test-db-details)}]
+(defn- do-with-metabase-test-db {:style/indent 0} [f]
+  (create-metabase-test-db!)
+  (tt/with-temp Database [database {:engine :clickhouse, :details (metabase-test-db-details)}]
     (sync-metadata/sync-db-metadata! database)
     (f database)))
 
@@ -184,7 +189,7 @@
                                      :database-type     "Enum16"
                                      :base-type         :type/Text
                                      :database-position 1}}}
-                         (do-with-enums-db
+                         (do-with-metabase-test-db
                           (fn [db]
                             (driver/describe-table :clickhouse db {:name "enums_test"})))))))
 
@@ -193,7 +198,7 @@
                   (is (=
                        [["use"]]
                        (qp.test/formatted-rows [str] :format-nil-values
-                                               (do-with-enums-db
+                                               (do-with-metabase-test-db
                                                 (fn [db]
                                                   (data/with-db
                                                     db
@@ -201,6 +206,19 @@
                                                                          {:expressions {"test" [:substring $enum2 3 3]}
                                                                          :fields [[:expression "test"]]
                                                                          :filter [:= $enum1 "foo" ]})))))))))
+
+(deftest clickhouse-ipv4query-test
+  (mt/test-driver :clickhouse
+                  (is (=
+                       [[1]]
+                       (qp.test/formatted-rows [int] :format-nil-values
+                                               (do-with-metabase-test-db
+                                                (fn [db]
+                                                  (data/with-db
+                                                    db
+                                                    (data/run-mbql-query ipaddress_test
+                                                                         {:filter [:= $ipvfour "127.0.0.1"]
+                                                                          :aggregation [:count]})))))))))
 
 
 (deftest clickhouse-basic-connection-string

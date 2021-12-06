@@ -230,26 +230,22 @@
                               (.toLocalTime t))
                              (.getOffset t))))
 
-(defmethod sql.qp/->honeysql [:clickhouse :stddev]
-  [driver [_ field]]
-  (hsql/call :stddevPop (sql.qp/->honeysql driver field)))
+;; we still need this for decimal versus float
+(defmethod sql.qp/->honeysql [:clickhouse :/]
+  [driver args]
+  (let [args (for [arg args]
+               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
+    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
 
-(defmethod sql.qp/->honeysql [:clickhouse :var]
-  [driver [_ field]]
-  (hsql/call :varPop (sql.qp/->honeysql driver field)))
+;; (defmethod sql.qp/->honeysql [:clickhouse :count]
+;;   [driver [_ field]]
+;;   (if field
+;;     (hsql/call :count (sql.qp/->honeysql driver field))
+;;     :%count))
 
-(defmethod sql.qp/->honeysql [:clickhouse :count]
+(defmethod sql.qp/->honeysql [:clickhouse :log]
   [driver [_ field]]
-  (if field
-    (hsql/call :count (sql.qp/->honeysql driver field))
-    :%count))
-
-;; Substring does not work for Enums, so we need to cast to String
-(defmethod sql.qp/->honeysql [:clickhouse :substring]
-  [driver [_ arg start length]]
-  (if length
-    (hsql/call :substring (hsql/call :toString (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
-    (hsql/call :substring (hsql/call :toString (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver start))))
+  (hsql/call :log10 (sql.qp/->honeysql driver field)))
 
 (defmethod hformat/fn-handler "quantile"
   [_ field p]
@@ -263,10 +259,6 @@
   [driver [_ field p]]
   (hsql/call :quantile (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver p)))
 
-(defmethod sql.qp/->honeysql [:clickhouse :log]
-  [driver [_ field]]
-  (hsql/call :log10 (sql.qp/->honeysql driver field)))
-
 (defmethod hformat/fn-handler "extract_ch"
   [_ s p]
   (str "extract(" (hformat/to-sql s) "," (hformat/to-sql p) ")"))
@@ -275,16 +267,35 @@
   [driver [_ arg pattern]]
   (hsql/call :extract_ch (sql.qp/->honeysql driver arg) pattern))
 
-;; we still need this for decimal versus float
-(defmethod sql.qp/->honeysql [:clickhouse :/]
-  [driver args]
-  (let [args (for [arg args]
-               (hsql/call :toFloat64 (sql.qp/->honeysql driver arg)))]
-    ((get-method sql.qp/->honeysql [:sql :/]) driver args)))
+(defmethod sql.qp/->honeysql [:clickhouse :stddev]
+  [driver [_ field]]
+  (hsql/call :stddevPop (sql.qp/->honeysql driver field)))
+
+;; Substring does not work for Enums, so we need to cast to String
+(defmethod sql.qp/->honeysql [:clickhouse :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substring
+               (hsql/call :toString (sql.qp/->honeysql driver arg))
+               (sql.qp/->honeysql driver start)
+               (sql.qp/->honeysql driver length))
+    (hsql/call :substring (hsql/call :toString (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:clickhouse :var]
+  [driver [_ field]]
+  (hsql/call :varPop (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->float :clickhouse
   [_ value]
   (hsql/call :toFloat64 value))
+
+(defmethod sql.qp/->honeysql [:clickhouse :value]
+  [driver value]
+  (let [[_ value {base-type :base_type}] value]
+    (when (some? value)
+      (condp #(isa? %2 %1) base-type
+        :type/IPAddress    (hsql/call :toIPv4 value)
+        (sql.qp/->honeysql driver value)))))
 
 ;; the filter criterion reads "is empty"
 ;; also see desugar.clj
@@ -314,6 +325,9 @@
 
 ;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)
+;;
+;; It would even be better if we could use countIf and sumIf directly
+;;
 ;; metabase.query-processor-test.count-where-test
 ;; metabase.query-processor-test.share-test
 (defmethod sql.qp/->honeysql [:clickhouse :count-where]
