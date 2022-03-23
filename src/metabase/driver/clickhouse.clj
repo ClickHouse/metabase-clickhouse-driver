@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [honeysql
              [core :as hsql]
-             [format :as hformat]]
+             [format :as hformat]
+             [helpers :as h]]
             [java-time :as t]
             [metabase
              [config :as config]
@@ -20,12 +21,15 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.models.field :refer [Field]]
             [schema.core :as s])
   (:import [ru.yandex.clickhouse.util ClickHouseArrayUtil]
            [java.sql DatabaseMetaData PreparedStatement ResultSet ResultSetMetaData Time Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.time.temporal Temporal]
-           [java.util TimeZone]))
+           [java.util TimeZone]
+           (org.eclipse.jetty.util Fields$Field)))
 
 (driver/register! :clickhouse, :parent :sql-jdbc)
 
@@ -55,6 +59,42 @@
     [#"UInt32"      :type/Integer]
     [#"UInt64"      :type/BigInteger]
     [#"UUID"        :type/UUID]]))
+
+;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
+
+(def ^:private source-table-alias
+  "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
+  "t1")
+
+;; use `source-table-alias` for the source Table, e.g. `t1.field` instead of the normal `schema.table.field`
+(defmethod sql.qp/->honeysql [:clickhouse (class Field)]
+  [driver field]
+  (binding [sql.qp/*table-alias* (or sql.qp/*table-alias* source-table-alias)]
+    ((get-method sql.qp/->honeysql [:sql-jdbc (class Field)]) driver field)))
+
+(defmethod sql.qp/apply-top-level-clause [:clickhouse :page] [_ _ honeysql-form {{:keys [items page]} :page}]
+  (let [offset (* (dec page) items)]
+    (if (zero? offset)
+      ;; if there's no offset we can simply use limit
+      (h/limit honeysql-form items)
+      ;; if we need to do an offset we have to do nesting to generate a row number and where on that
+      (let [over-clause (format "row_number() OVER (%s)"
+                                (first (hsql/format (select-keys honeysql-form [:order-by])
+                                                    :allow-dashed-names? true
+                                                    :quoting :mysql)))]
+        (-> (apply h/select (map last (:select honeysql-form)))
+            (h/from (h/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
+            (h/where [:> :__rownum__ offset])
+            (h/limit items))))))
+
+
+(defmethod sql.qp/apply-top-level-clause [:clickhouse :source-table]
+  [driver _ honeysql-form {source-table-id :source-table}]
+  (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
+    (h/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
+                           (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
+
+;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse [_ database-type]
   (database-type->base-type
@@ -336,7 +376,7 @@
              (hsql/call :> (hsql/call :count) 0)
              (hsql/call :sum (hsql/call :case
                                         (sql.qp/->honeysql driver pred) 1.0
-                                        :else                           0.0))
+                                        :else                           nil))
              :else nil))
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
