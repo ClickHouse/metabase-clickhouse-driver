@@ -10,11 +10,13 @@
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
-            [metabase.test.util :as tu]
             [toucan.util.test :as tt]))
 
 (deftest clickhouse-timezone-is-utc
-  (mt/test-driver :clickhouse (is (= "UTC" (tu/db-timezone-id)))))
+  (mt/test-driver :clickhouse
+                  (is (= "UTC"
+                         (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
+                           (metabase.driver/db-default-timezone :clickhouse spec))))))
 
 (deftest clickhouse-decimal-division-simple
   (mt/test-driver
@@ -220,11 +222,13 @@
            :fields #{{:name "enum1"
                       :database-type "Enum8"
                       :base-type :type/Text
-                      :database-position 0}
+                      :database-position 0
+                      :database-required true}
                      {:name "enum2"
                       :database-type "Enum16"
                       :base-type :type/Text
-                      :database-position 1}}}
+                      :database-position 1
+                      :database-required true}}}
           (do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))

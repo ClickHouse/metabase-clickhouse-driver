@@ -4,25 +4,27 @@
                             :extra-deps  {metabase/clickhouse {:local/root "PWD/modules/drivers/clickhouse"}}}
           :user/test       {:exec-fn   metabase.test-runner/run-tests
                             :exec-args {:only [; Currently, there is no way to exclude the tests, 
-                                          ; so we list all known namespaces here and comment ones 
-                                          ; that do not work with ClickHouse
-                                          ;
-                                          ; Does not work and there are no plans to fix it in Metabase
-                                          ; metabase.api.table-test
-                                          ; metabase.query-processor-test.date-bucketing-test
-                                          ;
-                                          ; Should be fixed as of 0.45.x
-                                          ; See https://github.com/metabase/metabase/pull/26485
-                                          ; metabase.query-processor-test.case-test
+                                               ; so we list all known namespaces here and comment ones 
+                                               ; that do not work with ClickHouse
+                                               ;
+                                               ; Cannot be fixed due as timezone cannot be changed properly
+                                               ; metabase.query-processor-test.date-bucketing-test
+                                               ; metabase.query-processor-test.date-time-zone-functions-test
+                                               
+                                               ; Fails due to like of TIME type
+                                               ; metabase.api.table-test
+                                               metabase.actions-test
                                                metabase.analytics.prometheus-test
                                                metabase.analytics.snowplow-test
                                                metabase.analytics.stats-test
-                                               metabase.api.activity-test
                                                metabase.mbql.normalize-test
                                                metabase.mbql.schema-test
                                                metabase.mbql.util.match-test
                                                metabase.mbql.util-test
+                                               metabase.api.action-test
+                                               metabase.api.activity-test
                                                metabase.api.alert-test
+                                               metabase.api.app-test
                                                metabase.api.automagic-dashboards-test
                                                metabase.api.bookmark-test
                                                metabase.api.card-test
@@ -36,9 +38,11 @@
                                                metabase.api.embed-test
                                                metabase.api.field-test
                                                metabase.api.geojson-test
+                                               metabase.api.google-test
                                                metabase.api.ldap-test
                                                metabase.api.login-history-test
                                                metabase.api.metric-test
+                                               metabase.api.model-action-test
                                                metabase.api.native-query-snippet-test
                                                metabase.api.notify-test
                                                metabase.api.permissions-test
@@ -74,6 +78,7 @@
                                                metabase.cmd.copy-test
                                                metabase.cmd.dump-to-h2-test
                                                metabase.cmd.endpoint-dox-test
+                                               metabase.cmd.env-var-dox-test
                                                metabase.cmd.load-and-dump-test
                                                metabase.cmd.load-from-h2-test
                                                metabase.cmd.reset-password-test
@@ -108,6 +113,7 @@
                                                metabase.driver.sql.query-processor-test
                                                metabase.driver.sql.util.unprepare-test
                                                metabase.driver.sql.util-test
+                                               metabase.driver.sql-jdbc.actions-test
                                                metabase.driver.sql-jdbc.common-test
                                                metabase.driver.sql-jdbc.connection-test
                                                metabase.driver.sql-jdbc.execute.diagnostic-test
@@ -121,7 +127,6 @@
                                                metabase.email.messages-test
                                                metabase.email-test
                                                metabase.events.activity-feed-test
-                                               metabase.events.dependencies-test
                                                metabase.events.last-login-test
                                                metabase.events.persisted-info-test
                                                metabase.events.revision-test
@@ -131,14 +136,18 @@
                                                metabase.integrations.google-test
                                                metabase.integrations.ldap-test
                                                metabase.integrations.slack-test
+                                               metabase.logger-test
+                                               metabase.models.action-test
+                                               metabase.models.bookmark-test
                                                metabase.models.card-test
                                                metabase.models.collection.graph-test
+                                               metabase.models.collection.root-test
                                                metabase.models.collection-test
                                                metabase.models.dashboard-card-test
                                                metabase.models.dashboard-test
                                                metabase.models.database-test
-                                               metabase.models.dependency-test
                                                metabase.models.dimension-test
+                                               metabase.models.dispatch-test
                                                metabase.models.field-test
                                                metabase.models.field-values-test
                                                metabase.models.humanization-test
@@ -186,7 +195,6 @@
                                                metabase.pulse.render.js-engine-test
                                                metabase.pulse.render.js-svg-test
                                                metabase.pulse.render.png-test
-                                               metabase.pulse.render.sparkline-test
                                                metabase.pulse.render.style-test
                                                metabase.pulse.render.table-test
                                                metabase.pulse.render-test
@@ -253,6 +261,7 @@
                                                metabase.query-processor-test.aggregation-test
                                                metabase.query-processor-test.alternative-date-test
                                                metabase.query-processor-test.breakout-test
+                                               metabase.query-processor-test.case-test
                                                metabase.query-processor-test.constraints-test
                                                metabase.query-processor-test.count-where-test
                                                metabase.query-processor-test.explicit-joins-test
@@ -333,9 +342,11 @@
                                                metabase.util.date-2-test
                                                metabase.util.embed-test
                                                metabase.util.encryption-test
+                                               metabase.util.files-test
                                                metabase.util.fonts-test
                                                metabase.util.honeysql-extensions-test
                                                metabase.util.i18n.impl-test
+                                               metabase.util.i18n.plural-test
                                                metabase.util.i18n-test
                                                metabase.util.password-test
                                                metabase.util.regex-test
