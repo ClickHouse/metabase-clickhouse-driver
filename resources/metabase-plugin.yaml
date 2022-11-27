@@ -26,4 +26,4 @@ init:
   - step: load-namespace
     namespace: metabase.driver.clickhouse
   - step: register-jdbc-driver
-    class: ru.yandex.clickhouse.ClickHouseDriver
+    class: com.clickhouse.jdbc.ClickHouseDriver
