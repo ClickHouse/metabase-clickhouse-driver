@@ -12,37 +12,41 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-
-    services:
-      clickhouse:
-        image: yandex/clickhouse-server:latest
-        ports:
-          - 8123:8123
-
     steps:
       - name: Checkout Metabase Repo
         uses: actions/checkout@v2
         with:
-          repository: enqueue/metabase
-          ref: metabase_0.41.3.1
+          repository: metabase/metabase
+          ref: v0.44.6
+          
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
         with:
           path: modules/drivers/clickhouse
-      - name: Prepare JDK 11
+
+      - name: Prepare JDK 17
         uses: actions/setup-java@v2
         with:
           distribution: "temurin"
-          java-version: "11"
+          java-version: "17"
+
+      - name: Start ClickHouse in Docker
+        uses: isbang/compose-action@v1.4.0
+        with:
+          compose-file: "modules/drivers/clickhouse/docker-compose.yml"
+          down-flags: "--volumes"
+
       - name: Install Clojure CLI
         run: |
-          curl -O https://download.clojure.org/install/linux-install-1.10.3.1029.sh &&
-          sudo bash ./linux-install-1.10.3.1029.sh
+          curl -O https://download.clojure.org/install/linux-install-1.11.1.1182.sh &&
+          sudo bash ./linux-install-1.11.1.1182.sh
+
       - name: Setup Node
         uses: actions/setup-node@v2
         with:
-          node-version: "14"
+          node-version: "16"
           cache: "yarn"
+
       - name: Get M2 cache
         uses: actions/cache@v2
         with:
@@ -50,18 +54,29 @@ jobs:
             ~/.m2
             ~/.gitlibs
           key: ${{ runner.os }}-clickhouse-${{ hashFiles('**/deps.edn') }}
+
+      - name: Prepare stuff for pulses
+        run: yarn build-static-viz
+
+      # Use custom deps.edn containing "user/clickhouse" and "user/test" aliases
+      # to include driver sources and exclude unwanted tests
+      - name: Run tests
+        run: |
+          mkdir /home/runner/.config/clojure
+          cat modules/drivers/clickhouse/.github/deps.edn | sed -e "s|PWD|$PWD|g" > /home/runner/.config/clojure/deps.edn
+          DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test:user/clickhouse:user/test
+
       - name: Build ClickHouse driver
         run: |
+          echo "{:deps {metabase/clickhouse {:local/root \"clickhouse\" }}}" > modules/drivers/deps.edn
           bin/build-driver.sh clickhouse
+
       - name: Archive driver JAR
         uses: actions/upload-artifact@v2
         with:
           name: clickhouse.metabase-driver.jar
           path: resources/modules/clickhouse.metabase-driver.jar
-      - name: Prepare stuff for pulses
-        run: yarn build-static-viz
-      - name: Run tests
-        run: DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test
+
       - name: Report test results
         uses: mikepenz/action-junit-report@v2.8.1
         if: always()

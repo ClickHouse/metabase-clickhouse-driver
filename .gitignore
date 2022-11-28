@@ -8,3 +8,6 @@
 /.lein-plugins
 /.lein-repl-history
 .eastwood
+.calva
+.cpcache
+.joyride

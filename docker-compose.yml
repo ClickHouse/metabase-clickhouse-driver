@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  clickhouse:
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-22.10.2-alpine}'
+    container_name: 'metabase-driver-clickhouse-server'
+    ports:
+      - '8123:8123'
+      - '9000:9000'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
