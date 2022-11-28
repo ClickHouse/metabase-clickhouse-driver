@@ -470,8 +470,8 @@
   (not (contains? excluded-schemas (:table_schem table-schem))))
 
 (defn- post-filtered-active-tables
-  [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
-  (let [db-name-snake-case (ddl.i/format-name driver db-name-or-nil) 
+  [^DatabaseMetaData metadata db-name-or-nil]
+  (let [db-name-snake-case (ddl.i/format-name :clickhouse db-name-or-nil)
         tables (get-tables metadata db-name-snake-case)]
     (set
      (for [table (filter is-not-excluded-schema tables)]
@@ -486,22 +486,27 @@
     (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
     db-or-id-or-spec))
 
+;; Strangely enough, the tests only work with :db keyword, 
+;; but the actual sync from the UI uses :dbname
+(defn- get-db-name
+  [db-or-id-or-spec]
+  (or (get-in db-or-id-or-spec [:details :dbname])
+      (get-in db-or-id-or-spec [:details :db])))
+
 ;; ClickHouse exposes databases as schemas, but MetaBase sees
 ;; schemas as sub-entities of a database, at least the fast-active-tables
 ;; implementation would lead to duplicate tables because it iterates
 ;; over all schemas of the current dbs and then retrieves all tables of a schema
 (defmethod driver/describe-database :clickhouse
-  [driver db-or-id-or-spec]
+  [_ db-or-id-or-spec]
   (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    {:tables (post-filtered-active-tables
-             ;; TODO: this only covers the db case, not id or spec
-              driver
-              metadata
-              (get-in db-or-id-or-spec [:details :db]))}))
+    (let [db-name (get-db-name db-or-id-or-spec)]
+      ;; TODO: this only covers the db case, not id or spec
+      {:tables (post-filtered-active-tables metadata db-name)})))
 
 (defmethod driver/describe-table :clickhouse
-  [driver database table]
-  (let [t (sql-jdbc.sync/describe-table driver database table)]
+  [_ database table]
+  (let [t (sql-jdbc.sync/describe-table :clickhouse database table)]
     (merge t
            {:fields (set (for [f (:fields t)]
                            (update-in f [:database-type]
