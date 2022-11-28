@@ -16,8 +16,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s]
-            [metabase.pulse.render.table :as table])
+            [schema.core :as s])
   (:import [java.sql
             DatabaseMetaData
             ResultSet
