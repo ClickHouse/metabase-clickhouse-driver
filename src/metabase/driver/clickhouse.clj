@@ -66,10 +66,8 @@
   (database-type->base-type (str/replace (name database-type)
                                          #"(?:Nullable|LowCardinality)\((\S+)\)"
                                          "$1")))
-
-(defmethod sql-jdbc.sync/excluded-schemas :clickhouse
-  [_]
-  #{"system" "information_schema" "INFORMATION_SCHEMA"})
+(def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
+(defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_
@@ -470,8 +468,7 @@
 
 (defn- is-not-excluded-schema
   [table-schem]
-  (let [excluded-schemas (sql-jdbc.sync/excluded-schemas :clickhouse)]
-    (not (contains? excluded-schemas (:table_schem table-schem)))))
+  (not (contains? excluded-schemas (:table_schem table-schem))))
 
 (defn- post-filtered-active-tables
   [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
