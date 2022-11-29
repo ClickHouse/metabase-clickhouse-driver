@@ -66,9 +66,8 @@
                                          #"(?:Nullable|LowCardinality)\((\S+)\)"
                                          "$1")))
 
-(defmethod sql-jdbc.sync/excluded-schemas :clickhouse
-  [_]
-  #{"system" "information_schema" "INFORMATION_SCHEMA"})
+(def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
+(defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_
@@ -451,28 +450,34 @@
     (let [tz (if (nil? calendar) (TimeZone/getDefault) (.getTimeZone calendar))]
       (ClickHouseArrayUtil/arrayToString (.getArray arr) tz tz))))
 
+(def ^:private allowed-table-types
+  (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
+
 (defn- get-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  "Fetch a JDBC Metadata ResultSet of tables in the DB, 
+   optionally limited to ones belonging to a given schema."
+  [^DatabaseMetaData metadata ^String schema-or-nil]
   (vec (jdbc/metadata-result
-        (.getTables metadata
-                    db-name-or-nil
+        (.getTables metadata      ; com.clickhouse.jdbc.ClickHouseDatabaseMetaData#getTables
+                    nil           ; catalog - unused in the source code there
                     schema-or-nil
-                    "%" ; tablePattern "%" = match all tables
-                    (into-array String
-                                ["TABLE" "VIEW" "FOREIGN TABLE"
-                                 "MATERIALIZED VIEW"])))))
+                    "%"           ; tablePattern "%" = match all tables
+                    allowed-table-types))))
+
+(defn- is-not-excluded-schema
+  [table-schem]
+  (not (contains? excluded-schemas (:table_schem table-schem))))
 
 (defn- post-filtered-active-tables
-  [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
-  (set
-   (for [table (filter #(not (contains? (sql-jdbc.sync/excluded-schemas driver)
-                                        (:table_schem %)))
-                       (get-tables metadata (ddl.i/format-name driver db-name-or-nil) nil))]
-     (let [remarks (:remarks table)]
-       {:name (:table_name table)
-        :schema (:table_schem table)
-        :description (when-not (str/blank? remarks) remarks)}))))
+  [^DatabaseMetaData metadata db-name-or-nil]
+  (let [db-name-snake-case (ddl.i/format-name :clickhouse db-name-or-nil)
+        tables (get-tables metadata db-name-snake-case)]
+    (set
+     (for [table (filter is-not-excluded-schema tables)]
+       (let [remarks (:remarks table)]
+         {:name (:table_name table)
+          :schema (:table_schem table)
+          :description (when-not (str/blank? remarks) remarks)})))))
 
 (defn- ->spec
   [db-or-id-or-spec]
@@ -480,30 +485,23 @@
     (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
     db-or-id-or-spec))
 
+;; Strangely enough, the tests only work with :db keyword, 
+;; but the actual sync from the UI uses :dbname
+(defn- get-db-name
+  [db-or-id-or-spec]
+  (or (get-in db-or-id-or-spec [:details :dbname])
+      (get-in db-or-id-or-spec [:details :db])))
+
 ;; ClickHouse exposes databases as schemas, but MetaBase sees
 ;; schemas as sub-entities of a database, at least the fast-active-tables
 ;; implementation would lead to duplicate tables because it iterates
-;; over all schemas of the current dbs and then retrieves all
-;; tables of a schema
+;; over all schemas of the current dbs and then retrieves all tables of a schema
 (defmethod driver/describe-database :clickhouse
-  [driver db-or-id-or-spec]
+  [_ db-or-id-or-spec]
   (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    {:tables (post-filtered-active-tables
-             ;; TODO: this only covers the db case, not id or spec
-              driver
-              metadata
-              (get-in db-or-id-or-spec [:details :db]))}))
-
-(defmethod driver/describe-table :clickhouse
-  [driver database table]
-  (let [t (sql-jdbc.sync/describe-table driver database table)]
-    (merge t
-           {:fields (set (for [f (:fields t)]
-                           (update-in f
-                                      [:database-type]
-                                      clojure.string/replace
-                                      #"^(Enum.+)\(.+\)"
-                                      "$1")))})))
+    (let [db-name (get-db-name db-or-id-or-spec)]
+      ;; TODO: this only covers the db case, not id or spec
+      {:tables (post-filtered-active-tables metadata db-name)})))
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
