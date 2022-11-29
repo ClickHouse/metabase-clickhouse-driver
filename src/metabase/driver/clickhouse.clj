@@ -65,6 +65,7 @@
   (database-type->base-type (str/replace (name database-type)
                                          #"(?:Nullable|LowCardinality)\((\S+)\)"
                                          "$1")))
+
 (def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
