@@ -503,6 +503,15 @@
       ;; TODO: this only covers the db case, not id or spec
       {:tables (post-filtered-active-tables metadata db-name)})))
 
+(defmethod driver/describe-table :clickhouse
+  [driver database table]
+  (let [t (sql-jdbc.sync/describe-table driver database table)]
+    (merge t
+           {:fields (set (for [f (:fields t)]
+                           (update-in f [:database-type]
+                                      clojure.string/replace
+                                      #"^(Enum.+)\(.+\)" "$1")))})))
+
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 
 (defmethod driver/supports? [:clickhouse :standard-deviation-aggregations] [_ _] true)
