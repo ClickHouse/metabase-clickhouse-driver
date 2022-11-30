@@ -56,6 +56,22 @@
            last
            double)))))
 
+(deftest clickhouse-large-decimal64
+  (mt/test-driver
+   :clickhouse
+   (let [[d1 d2] ["12345123.123456789", "78.245"]
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_decimal"
+                                              ["test-data-large-decimal64"
+                                               [{:field-name "my_money"
+                                                 :base-type {:native "Decimal(18,10)"}}]
+                                               [[d1] [d2]]])
+                       (data/run-mbql-query test-data-large-decimal64 {}))
+         rows (qp.test/rows query-result)
+         result (map last rows)]
+     (println rows)
+     (is (= [(bigdec d1) (bigdec d2)] result)))))
+
 (deftest clickhouse-array-string
   (mt/test-driver
    :clickhouse
