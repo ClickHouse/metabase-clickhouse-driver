@@ -69,7 +69,6 @@
                        (data/run-mbql-query test-data-large-decimal64 {}))
          rows (qp.test/rows query-result)
          result (map last rows)]
-     (println rows)
      (is (= [(bigdec d1) (bigdec d2)] result)))))
 
 (deftest clickhouse-array-string
