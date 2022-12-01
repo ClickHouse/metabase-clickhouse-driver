@@ -1,6 +1,6 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 0.8.3
+  version: 0.9.0
   description: Allows Metabase to connect to ClickHouse databases.
 driver:
   name: clickhouse
@@ -28,4 +28,4 @@ init:
   - step: load-namespace
     namespace: metabase.driver.clickhouse
   - step: register-jdbc-driver
-    class: ru.yandex.clickhouse.ClickHouseDriver
+    class: com.clickhouse.jdbc.ClickHouseDriver

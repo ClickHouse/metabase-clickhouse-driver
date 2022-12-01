@@ -76,7 +76,7 @@
     {user "default" password "" dbname "default" host "localhost" port "8123"}
     :as details}]
   (->
-   {:classname "ru.yandex.clickhouse.ClickHouseDriver"
+   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
     :subprotocol "clickhouse"
     :subname (str "//" host ":" port "/" dbname)
     :password password
@@ -451,7 +451,9 @@
       (ClickHouseArrayUtil/arrayToString (.getArray arr) tz tz))))
 
 (def ^:private allowed-table-types
-  (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
+  (into-array String
+              ["TABLE" "VIEW" "FOREIGN TABLE" "REMOTE TABLE" "DICTIONARY"
+               "MATERIALIZED VIEW" "MEMORY TABLE" "LOG TABLE"]))
 
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, 
@@ -504,8 +506,8 @@
       {:tables (post-filtered-active-tables metadata db-name)})))
 
 (defmethod driver/describe-table :clickhouse
-  [driver database table]
-  (let [t (sql-jdbc.sync/describe-table driver database table)]
+  [_ database table]
+  (let [t (sql-jdbc.sync/describe-table :clickhouse database table)]
     (merge t
            {:fields (set (for [f (:fields t)]
                            (update-in f [:database-type]

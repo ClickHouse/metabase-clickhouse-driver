@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {ru.yandex.clickhouse/clickhouse-jdbc {:mvn/version "0.3.1"}}}
+ {com.clickhouse/clickhouse-jdbc {:mvn/version "0.3.2-patch11"}}}

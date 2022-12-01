@@ -262,7 +262,7 @@
 
 
 (deftest clickhouse-basic-connection-string
-  (is (= {:classname "ru.yandex.clickhouse.ClickHouseDriver"
+  (is (= {:classname "com.clickhouse.jdbc.ClickHouseDriver"
           :subprotocol "clickhouse"
           :subname "//localhost:8123/foo?sessionTimeout=42"
           :user "default"
