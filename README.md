@@ -222,4 +222,4 @@ The driver should work fine for many use cases. Please consider the following it
 
 The contents of this repository are made available under the GNU Affero General Public License v3.0 (AGPL), see [LICENSE](https://github.com/enqueueu/metabase-clickhouse-driver/blob/master/LICENSE).
 
-Unless explicitly stated differently in the respective file, all files are `Copyright 2018-2021 the metabase-clickhouse-driver contributors`.
+Unless explicitly stated differently in the respective file, all files are `Copyright 2018-2022 the metabase-clickhouse-driver contributors`.
