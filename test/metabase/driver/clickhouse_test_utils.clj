@@ -33,15 +33,17 @@
   "Create a ClickHouse database called `metabase_test` and initialize some test data"
   []
   (drop-if-exists-and-create-db! "metabase_test")
-  (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :clickhouse (metabase-test-db-details))]
+  (jdbc/with-db-connection
+    [conn (sql-jdbc.conn/connection-details->spec :clickhouse (metabase-test-db-details))]
     (doseq [sql [(str "CREATE TABLE `metabase_test`.`enums_test` ("
                       " enum1 Enum8('foo' = 0, 'bar' = 1, 'foo bar' = 2),"
-                      " enum2 Enum16('click' = 0, 'house' = 1)"
+                      " enum2 Enum16('click' = 0, 'house' = 1),"
+                      " enum3 Enum8('qaz' = 42, 'qux' = 23)"
                       ") ENGINE = Memory")
-                 (str "INSERT INTO `metabase_test`.`enums_test` (\"enum1\", \"enum2\") VALUES"
-                      "  ('foo', 'house'),"
-                      "  ('foo bar', 'click'),"
-                      "  ('bar', 'house');")
+                 (str "INSERT INTO `metabase_test`.`enums_test` (\"enum1\", \"enum2\", \"enum3\") VALUES"
+                      "  ('foo', 'house', 'qaz'),"
+                      "  ('foo bar', 'click', 'qux'),"
+                      "  ('bar', 'house', 'qaz');")
                  (str "CREATE TABLE `metabase_test`.`ipaddress_test` ("
                       " ipvfour Nullable(IPv4), ipvsix Nullable(IPv6)) Engine = Memory")
                  (str "INSERT INTO `metabase_test`.`ipaddress_test` (ipvfour, ipvsix) VALUES"

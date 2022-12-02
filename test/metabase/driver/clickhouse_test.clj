@@ -210,8 +210,7 @@
                                  {:filter [:contains $mystring "Я"
                                            {:case-sensitive false}]})))))))
 
-;; check that describe-table properly describes the database & base types of the enum fields
-(deftest clickhouse-enums-test
+(deftest clickhouse-enums-schema-test
   (mt/test-driver
    :clickhouse
    (is (= {:name "enums_test"
@@ -222,15 +221,35 @@
                      {:name "enum2"
                       :database-type "Enum16"
                       :base-type :type/Text
-                      :database-position 1}}}
+                      :database-position 1}
+                     {:name "enum3"
+                      :database-type "Enum8"
+                      :base-type :type/Text
+                      :database-position 2}}}
           (ctu/do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))
 
+(deftest clickhouse-enums-values-test
+  (mt/test-driver
+   :clickhouse
+   (is (= [["foo" "house" "qaz"]
+           ["foo bar" "click" "qux"]
+           ["bar" "house" "qaz"]]
+          (qp.test/formatted-rows
+           [str str str]
+           :format-nil-values
+           (ctu/do-with-metabase-test-db
+            (fn [db]
+              (data/with-db db
+                (data/run-mbql-query
+                 enums_test
+                 {})))))))))
+
 (deftest clickhouse-enums-test-filter
   (mt/test-driver
    :clickhouse
-   (is (= [["use"]]
+   (is (= [["useqa"]]
           (qp.test/formatted-rows
            [str]
            :format-nil-values
@@ -239,7 +258,9 @@
               (data/with-db db
                 (data/run-mbql-query
                  enums_test
-                 {:expressions {"test" [:substring $enum2 3 3]}
+                 {:expressions {"test" [:concat
+                                        [:substring $enum2 3 3]
+                                        [:substring $enum3 1 2]]}
                   :fields [[:expression "test"]]
                   :filter [:= $enum1 "foo"]})))))))))
 
