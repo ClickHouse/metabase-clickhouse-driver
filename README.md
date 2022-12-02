@@ -96,7 +96,7 @@ git clone https://github.com/enqueue/metabase-clickhouse-driver.git modules/driv
 * Create custom Clojure profiles
 
 ```bash
-mkdir -p ~/.config/clojure
+mkdir -p ~/.clojure
 cat modules/drivers/clickhouse/.github/deps.edn | sed -e "s|PWD|$PWD|g" > ~/.clojure/deps.edn
 ```
 
