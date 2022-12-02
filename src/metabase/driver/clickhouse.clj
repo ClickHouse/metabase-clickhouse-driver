@@ -37,6 +37,7 @@
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"Array" :type/Array]
+    [#"Boolean" :type/Boolean]
     [#"DateTime" :type/DateTime]
     [#"DateTime64" :type/DateTime]
     [#"Date" :type/Date]
@@ -217,14 +218,6 @@
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
-
-;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
-;; convert these booleans to UInt8
-(defmethod sql.qp/->honeysql [:clickhouse Boolean] [_ bool] (if bool 1 0))
-
-(defmethod sql/->prepared-substitution [:clickhouse Boolean]
-  [driver bool]
-  (sql/->prepared-substitution driver (if bool 1 0)))
 
 ;; Metabase supplies parameters for Date fields as ZonedDateTime
 ;; ClickHouse complains about too long parameter values. This is unfortunate

@@ -210,6 +210,23 @@
                                  {:filter [:contains $mystring "Я"
                                            {:case-sensitive false}]})))))))
 
+(deftest clickhouse-booleans
+  (mt/test-driver
+   :clickhouse
+   (let [[row1 row2 row3 row4] [["#1" true] ["#2" false] ["#3" false] ["#4" true]]
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_booleans"
+                                              ["test-data-booleans"
+                                               [{:field-name "name"
+                                                 :base-type :type/Text}
+                                                {:field-name "is_active"
+                                                 :base-type :type/Boolean}]
+                                               [row1 row2 row3 row4]])
+                       (data/run-mbql-query test-data-booleans {:filter [:= $is_active false]}))
+         rows (qp.test/rows query-result)
+         result (map #(drop 1 %) rows)] ; remove db "index" which is the first column in the result set
+     (is (= [row2 row3] result)))))
+
 (deftest clickhouse-enums-schema-test
   (mt/test-driver
    :clickhouse
