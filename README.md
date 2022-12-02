@@ -68,6 +68,15 @@ Metabase Release | Driver Version
 
 ## Setting up a development environment
 
+### Requirements
+
+* Clojure 1.11+
+* OpenJDK 17
+* Node.js 16.x
+* Yarn
+
+For testing: Docker Compose
+
 Please refer to the extensive documentation available on the Metabase website: [Guide to writing a Metabase driver](https://www.metabase.com/docs/latest/developers-guide/drivers/start.html)
 
 ClickHouse driver's code should be inside the main Metabase repository checkout in `modules/drivers/clickhouse` directory.
@@ -75,9 +84,6 @@ ClickHouse driver's code should be inside the main Metabase repository checkout 
 Additionally, you need to tweak Metabase `deps.edn` a bit.
 
 The easiest way to set up a development environment is as follows (mostly the same as in the [CI](https://github.com/enqueue/metabase-clickhouse-driver/blob/master/.github/workflows/check.yml)):
-
-* [Install](https://clojure.org/guides/install_clojure) Clojure first.
-Additionally, it is recommended to have `rlwrap` as well, as it allows to use shorthand aliases such as `clj`.
 
 * Clone Metabase and ClickHouse driver repositories
 ```bash
@@ -98,13 +104,19 @@ Modifying `~/.clojure/deps.edn` will create two useful profiles: `user/clickhous
 * Install the Metabase dependencies:
 
 ```bash
-clj -X:deps:drivers prep
+clojure -X:deps:drivers prep
 ```
 
 * Build the frontend:
 
 ```bash
 yarn && yarn build-static-viz
+```
+
+* Start ClickHouse as a Docker container
+
+```bash
+docker compose -f modules/drivers/clickhouse/docker-compose.yml up -d
 ```
 
 Now, you should be able to run the tests:
