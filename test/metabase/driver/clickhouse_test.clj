@@ -1,17 +1,16 @@
 (ns metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models [database :refer [Database]]]
-            [metabase.query-processor-test :as qp.test]
-            [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data [interface :as tx]]
-            [metabase.test.util :as tu]
-            [toucan.util.test :as tt]))
+  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
+  (:require
+   [metabase.driver.clickhouse-test-utils :as ctu]
+   [clojure.test :refer :all]
+   [metabase.driver :as driver]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.test :as mt]
+   [metabase.test.data :as data]
+   [metabase.test.data [interface :as tx]]
+   [metabase.test.util :as tu]))
 
 (deftest clickhouse-timezone-is-utc
   (mt/test-driver :clickhouse (is (= "UTC" (tu/db-timezone-id)))))
@@ -85,6 +84,53 @@
             (data/run-mbql-query test-data-array-uint64 {:limit 1}))
            qp.test/first-row
            last)))))
+
+(deftest clickhouse-array-of-arrays
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list
+                           (into-array (list "foo" "bar"))
+                           (into-array (list "qaz" "qux"))))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_arrays"
+                                              ["test-data-array-of-arrays"
+                                               [{:field-name "my_array_of_arrays"
+                                                 :base-type {:native "Array(Array(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-arrays {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[['foo','bar'],['qaz','qux']]"], ["[]"]] result)))))
+
+(deftest clickhouse-low-cardinality-array
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "foo" "bar"))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_low_cardinality_array"
+                                              ["test-data-low-cardinality-array"
+                                               [{:field-name "my_low_card_array"
+                                                 :base-type {:native "Array(LowCardinality(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-low-cardinality-array {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["['foo','bar']"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-nullables
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "foo" nil "bar"))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_nullables"
+                                              ["test-data-array-of-nullables"
+                                               [{:field-name "my_array_of_nullables"
+                                                 :base-type {:native "Array(Nullable(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-nullables {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["['foo',NULL,'bar']"], ["[]"]] result)))))
 
 (deftest clickhouse-nullable-strings
   (mt/test-driver
@@ -181,55 +227,7 @@
          result (map #(drop 1 %) rows)] ; remove db "index" which is the first column in the result set
      (is (= [row2 row3] result)))))
 
-(defn drop-if-exists-and-create-db!
-  "Drop a ClickHouse database named `db-name` if it already exists;
-   then create a new empty one with that name."
-  [db-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec
-              :clickhouse
-              (tx/dbdef->connection-details :clickhouse :server nil))]
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)])
-    (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)])))
-
-(defn- metabase-test-db-details
-  []
-  (tx/dbdef->connection-details :clickhouse
-                                :db
-                                {:database-name "metabase_test"}))
-
-(defn- create-metabase-test-db!
-  "Create a ClickHouse database called `metabase_test` and initialize some test data"
-  []
-  (drop-if-exists-and-create-db! "metabase_test")
-  (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :clickhouse (metabase-test-db-details))]
-    (doseq [sql [(str "CREATE TABLE `metabase_test`.`enums_test` ("
-                      " enum1 Enum8('foo' = 0, 'bar' = 1, 'foo bar' = 2),"
-                      " enum2 Enum16('click' = 0, 'house' = 1)"
-                      ") ENGINE = Memory")
-                 (str "INSERT INTO `metabase_test`.`enums_test` (\"enum1\", \"enum2\") VALUES"
-                      "  ('foo', 'house'),"
-                      "  ('foo bar', 'click'),"
-                      "  ('bar', 'house');")
-                 (str "CREATE TABLE `metabase_test`.`ipaddress_test` ("
-                      " ipvfour Nullable(IPv4), ipvsix Nullable(IPv6)) Engine = Memory")
-                 (str "INSERT INTO `metabase_test`.`ipaddress_test` (ipvfour, ipvsix) VALUES"
-                      " (toIPv4('127.0.0.1'), toIPv6('127.0.0.1')),"
-                      " (toIPv4('0.0.0.0'), toIPv6('0.0.0.0')),"
-                      " (null, null);")]]
-      (jdbc/execute! conn [sql]))))
-
-(defn- do-with-metabase-test-db
-  {:style/indent 0}
-  [f]
-  (create-metabase-test-db!)
-  (tt/with-temp Database
-    [database
-     {:engine :clickhouse :details (metabase-test-db-details)}]
-    (sync-metadata/sync-db-metadata! database)
-    (f database)))
-
-;; check that describe-table properly describes the database & base types of the enum fields
-(deftest clickhouse-enums-test
+(deftest clickhouse-enums-schema-test
   (mt/test-driver
    :clickhouse
    (is (= {:name "enums_test"
@@ -240,24 +238,46 @@
                      {:name "enum2"
                       :database-type "Enum16"
                       :base-type :type/Text
-                      :database-position 1}}}
-          (do-with-metabase-test-db
+                      :database-position 1}
+                     {:name "enum3"
+                      :database-type "Enum8"
+                      :base-type :type/Text
+                      :database-position 2}}}
+          (ctu/do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))
 
-(deftest clickhouse-enums-test-filter
+(deftest clickhouse-enums-values-test
   (mt/test-driver
    :clickhouse
-   (is (= [["use"]]
+   (is (= [["foo" "house" "qaz"]
+           ["foo bar" "click" "qux"]
+           ["bar" "house" "qaz"]]
           (qp.test/formatted-rows
-           [str]
+           [str str str]
            :format-nil-values
-           (do-with-metabase-test-db
+           (ctu/do-with-metabase-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
                  enums_test
-                 {:expressions {"test" [:substring $enum2 3 3]}
+                 {})))))))))
+
+(deftest clickhouse-enums-test-filter
+  (mt/test-driver
+   :clickhouse
+   (is (= [["useqa"]]
+          (qp.test/formatted-rows
+           [str]
+           :format-nil-values
+           (ctu/do-with-metabase-test-db
+            (fn [db]
+              (data/with-db db
+                (data/run-mbql-query
+                 enums_test
+                 {:expressions {"test" [:concat
+                                        [:substring $enum2 3 3]
+                                        [:substring $enum3 1 2]]}
                   :fields [[:expression "test"]]
                   :filter [:= $enum1 "foo"]})))))))))
 
@@ -268,7 +288,7 @@
           (qp.test/formatted-rows
            [int]
            :format-nil-values
-           (do-with-metabase-test-db
+           (ctu/do-with-metabase-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
