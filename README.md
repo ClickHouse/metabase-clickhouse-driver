@@ -49,7 +49,7 @@ Alternatively, if you don't want to run Metabase Jar, you can use a Docker image
 mkdir -p mb/plugins && cd mb
 curl -L -o plugins/ch.jar https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.8.3/clickhouse.metabase-driver.jar
 docker run -d -p 3000:3000 \
-  --mount type=bind,source=$PWD/plugins/clickhouse.metabase-driver.jar,destination=/plugins/clickhouse.jar \
+  --mount type=bind,source=$PWD/plugins/ch.jar,destination=/plugins/clickhouse.jar \
   --name metabase metabase/metabase:v0.44.6
 ```
 
