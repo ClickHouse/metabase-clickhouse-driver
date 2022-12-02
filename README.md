@@ -1,4 +1,5 @@
-<p align="center">
+<p align="center" style="font-size:300%">
+<img src="https://www.metabase.com/images/logo.svg" width="200px" align="center">
 <img src=".static/logo.png" width="200px" align="center">
 <h1 align="center">ClickHouse driver for Metabase</h1>
 </p>
