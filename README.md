@@ -149,7 +149,7 @@ You need to add an entry for ClickHouse in `modules/drivers/deps.edn
 ```clj
 {:deps
  {...
-  metabase/clickhouse         {:local/root "clickhouse"}
+  metabase/clickhouse {:local/root "clickhouse"}
   ...}}
 ```
 
@@ -174,6 +174,8 @@ You can use a convenience script `build_docker_image.sh` which takes three argum
 ```bash
 ./build_docker_image.sh v0.44.6 0.8.3 my-metabase-with-clickhouse:v0.0.1
 ```
+
+where `v0.44.6` is Metabase version, `0.8.3` is ClickHouse driver version, and `my-metabase-with-clickhouse:v0.0.1` being the tag.
 
 Then you should be able to run it:
 
