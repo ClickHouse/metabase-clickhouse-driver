@@ -2,13 +2,13 @@
 
 if [ $# -lt 3 ]; then
     echo
-    echo "Usage: ./build.sh METABASE_VERSION CLICKHOUSE_DRIVER_VERSION DOCKER_IMAGE_TAG"
+    echo "Usage: ./build_docker_image.sh METABASE_VERSION CLICKHOUSE_DRIVER_VERSION DOCKER_IMAGE_TAG"
     echo
     echo "This script builds and tags a Metabase Docker image with ClickHouse driver built-in"
     echo
     echo "Example:"
     echo
-    echo "./build.sh v0.44.6 0.8.3 my-metabase-with-clickhouse:v0.0.1"
+    echo "./build_docker_image.sh v0.44.6 0.8.3 my-metabase-with-clickhouse:v0.0.1"
     exit 1
 fi
 

@@ -168,10 +168,10 @@ As the result, `resources/modules/clickhouse.metabase-driver.jar` should be crea
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
-You can use a convenience script `build.sh` which takes three arguments: Metabase version, ClickHouse driver version, and the desired final Docker image tag.
+You can use a convenience script `build_docker_image.sh` which takes three arguments: Metabase version, ClickHouse driver version, and the desired final Docker image tag.
 
 ```bash
-./build.sh v0.44.6 0.8.3 my-metabase-with-clickhouse:v0.0.1
+./build_docker_image.sh v0.44.6 0.8.3 my-metabase-with-clickhouse:v0.0.1
 ```
 
 Then you should be able to run it:
