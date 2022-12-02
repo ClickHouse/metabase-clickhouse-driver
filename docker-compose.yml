@@ -10,3 +10,6 @@ services:
       nofile:
         soft: 262144
         hard: 262144
+    volumes:
+      - './.docker/config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/users.xml:/etc/clickhouse-server/users.xml'

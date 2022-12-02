@@ -65,7 +65,6 @@
   (database-type->base-type (str/replace (name database-type)
                                          #"(?:Nullable|LowCardinality)\((\S+)\)"
                                          "$1")))
-
 (def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
@@ -206,7 +205,6 @@
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
-
 (defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
@@ -259,8 +257,8 @@
                                           (.toLocalTime t))
                                          (.getOffset t))))
 
-;; We still need this for the tests that use multiple case statements where 
-;; we can have either Int or Float in different branches, 
+;; We still need this for the tests that use multiple case statements where
+;; we can have either Int or Float in different branches,
 ;; so we just coerce everything to Float64.
 ;;
 ;; See metabase.query-processor-test.expressions-test "Can use expressions as values"
@@ -456,7 +454,7 @@
                "MATERIALIZED VIEW" "MEMORY TABLE" "LOG TABLE"]))
 
 (defn- get-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB, 
+  "Fetch a JDBC Metadata ResultSet of tables in the DB,
    optionally limited to ones belonging to a given schema."
   [^DatabaseMetaData metadata ^String schema-or-nil]
   (vec (jdbc/metadata-result
@@ -487,7 +485,7 @@
     (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
     db-or-id-or-spec))
 
-;; Strangely enough, the tests only work with :db keyword, 
+;; Strangely enough, the tests only work with :db keyword,
 ;; but the actual sync from the UI uses :dbname
 (defn- get-db-name
   [db-or-id-or-spec]
