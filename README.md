@@ -144,7 +144,7 @@ DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test:user/clickhouse:user/
 
 ## Building a jar
 
-You need to add an entry for ClickHouse in `modules/drivers/deps.edn
+You need to add an entry for ClickHouse in `modules/drivers/deps.edn`
 
 ```clj
 {:deps
