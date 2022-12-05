@@ -58,7 +58,7 @@ yarn && yarn build-static-viz
 * Start ClickHouse as a Docker container
 
 ```bash
-docker compose -f modules/drivers/clickhouse/docker-compose.yml up -d
+docker compose -f modules/drivers/clickhouse/docker-compose.yml up -d clickhouse
 ```
 
 Now, you should be able to run the tests:
@@ -107,3 +107,11 @@ bin/build-driver.sh clickhouse
 ```
 
 As the result, `resources/modules/clickhouse.metabase-driver.jar` should be created.
+
+For smoke testing, there is a Metabase with the link to the driver available as a Docker container:
+
+```bash
+docker compose -f modules/drivers/clickhouse/docker-compose.yml up -d metabase
+```
+
+It should pick up the driver jar as a volume.
