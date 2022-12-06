@@ -1,16 +1,16 @@
 (ns metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require
-   [metabase.driver.clickhouse-test-utils :as ctu]
-   [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.query-processor-test :as qp.test]
-   [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.data [interface :as tx]]
-   [metabase.test.util :as tu]))
+  (:require [cljc.java-time.offset-date-time :as offset-date-time]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.driver.clickhouse-test-utils :as ctu]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.data [interface :as tx]]
+            [metabase.test.util :as tu]))
 
 (deftest clickhouse-timezone-is-utc
   (mt/test-driver :clickhouse (is (= "UTC" (tu/db-timezone-id)))))
@@ -59,7 +59,7 @@
   (mt/test-driver
    :clickhouse
    (is
-    (= "['foo','bar']"
+    (= "[foo, bar]"
        (-> (data/dataset
             (tx/dataset-definition "metabase_tests_array_string"
                                    ["test-data-array-string"
@@ -74,7 +74,7 @@
   (mt/test-driver
    :clickhouse
    (is
-    (= "[23,42]"
+    (= "[23, 42]"
        (-> (data/dataset
             (tx/dataset-definition "metabase_tests_array_uint"
                                    ["test-data-array-uint64"
@@ -100,7 +100,7 @@
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-arrays {}))
          result (ctu/rows-without-index query-result)]
-     (is (= [["[['foo','bar'],['qaz','qux']]"], ["[]"]] result)))))
+     (is (= [["[[foo, bar], [qaz, qux]]"], ["[]"]] result)))))
 
 (deftest clickhouse-low-cardinality-array
   (mt/test-driver
@@ -115,7 +115,7 @@
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-low-cardinality-array {}))
          result (ctu/rows-without-index query-result)]
-     (is (= [["['foo','bar']"], ["[]"]] result)))))
+     (is (= [["[foo, bar]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-nullables
   (mt/test-driver
@@ -130,7 +130,55 @@
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-nullables {}))
          result (ctu/rows-without-index query-result)]
-     (is (= [["['foo',NULL,'bar']"], ["[]"]] result)))))
+     (is (= [["[foo, null, bar]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-booleans
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list true false true))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_booleans"
+                                              ["test-data-array-of-booleans"
+                                               [{:field-name "my_array_of_booleans"
+                                                 :base-type {:native "Array(Boolean)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-booleans {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[true, false, true]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-floats
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list 1.2 3.4))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_floats"
+                                              ["test-data-array-of-floats"
+                                               [{:field-name "my_array_of_floats"
+                                                 :base-type {:native "Array(Float64)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-floats {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-datetime
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (offset-date-time/parse "2022-12-06T18:28:31Z")
+                (offset-date-time/parse "2021-10-19T13:12:44Z")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_datetime"
+                                              ["test-data-array-of-datetime"
+                                               [{:field-name "my_array_of_datetime"
+                                                 :base-type {:native "Array(DateTime)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-datetime {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2022-12-06T18:28:31, 2021-10-19T13:12:44]"], ["[]"]] result)))))
 
 (deftest clickhouse-nullable-strings
   (mt/test-driver

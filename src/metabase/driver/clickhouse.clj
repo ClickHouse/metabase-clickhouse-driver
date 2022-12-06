@@ -7,7 +7,6 @@
             [java-time :as t]
             [metabase [config :as config] [driver :as driver] [util :as u]]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql :as sql]
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn] [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
@@ -17,7 +16,8 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
-  (:import [java.sql
+  (:import [com.clickhouse.client.data ClickHouseArrayValue]
+           [java.sql
             DatabaseMetaData
             ResultSet
             ResultSetMetaData
@@ -29,8 +29,8 @@
             OffsetDateTime
             OffsetTime
             ZonedDateTime]
-           [java.util TimeZone]
-           [ru.yandex.clickhouse.util ClickHouseArrayUtil]))
+           java.lang.Byte
+           java.util.Arrays))
 
 (driver/register! :clickhouse :parent :sql-jdbc)
 
@@ -436,10 +436,19 @@
   (.getObject rs i OffsetTime))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY]
-  [_ calendar resultset _ i]
+  [_ _ resultset _ i]
   (when-let [arr (.getArray resultset i)]
-    (let [tz (if (nil? calendar) (TimeZone/getDefault) (.getTimeZone calendar))]
-      (ClickHouseArrayUtil/arrayToString (.getArray arr) tz tz))))
+    (let [inner (.getArray arr)]
+      (cond
+        ;; Booleans are returned as just bytes
+        (bytes? inner)
+        (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
+        ;; All other primitives
+        (.isPrimitive (.getComponentType (.getClass inner)))
+        (Arrays/toString inner)
+        ;; Complex types
+        :else
+        (.asString (ClickHouseArrayValue/of inner))))))
 
 (def ^:private allowed-table-types
   (into-array String
