@@ -1,19 +1,37 @@
 (ns metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require
-   [metabase.driver.clickhouse-test-utils :as ctu]
-   [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.query-processor-test :as qp.test]
-   [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.data [interface :as tx]]
-   [metabase.test.util :as tu]))
+  (:require [cljc.java-time.format.date-time-formatter :as date-time-formatter]
+            [cljc.java-time.offset-date-time :as offset-date-time]
+            [cljc.java-time.temporal.chrono-unit :as chrono-unit]
+            [clojure.test :refer :all]
+            [metabase.driver :as driver]
+            [metabase.driver.clickhouse-test-utils :as ctu]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor-test :as qp.test]
+            [metabase.test :as mt]
+            [metabase.test.data :as data]
+            [metabase.test.data [interface :as tx]]
+            [metabase.test.util :as tu]))
 
-(deftest clickhouse-timezone-is-utc
+(deftest clickhouse-server-timezone
   (mt/test-driver :clickhouse (is (= "UTC" (tu/db-timezone-id)))))
+
+(deftest now-converted-to-timezone
+  (mt/test-driver
+   :clickhouse
+   (let [[[utc-now shanghai-now]]
+         (qp.test/rows
+          (qp/process-query
+           (mt/native-query
+            {:query "SELECT now(), now('Asia/Shanghai')"})))]
+     (testing "there is always eight hour difference in time between UTC and Asia/Beijing"
+       (is (= 8
+              (chrono-unit/between
+               chrono-unit/hours
+               (offset-date-time/parse utc-now date-time-formatter/iso-offset-date-time)
+               (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
 
 (deftest clickhouse-decimal-division-simple
   (mt/test-driver

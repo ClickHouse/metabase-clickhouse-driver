@@ -7,7 +7,6 @@
             [java-time :as t]
             [metabase [config :as config] [driver :as driver] [util :as u]]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.driver.sql :as sql]
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn] [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
@@ -15,6 +14,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
   (:import [java.sql
@@ -430,6 +430,12 @@
       (cond (nil? r) nil
             (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
             :else r))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (u.date/parse s))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]

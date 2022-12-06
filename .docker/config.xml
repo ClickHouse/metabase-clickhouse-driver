@@ -14,6 +14,7 @@
   <tmp_path>/var/lib/clickhouse/tmp/</tmp_path>
   <user_files_path>/var/lib/clickhouse/user_files/</user_files_path>
   <access_control_path>/var/lib/clickhouse/access/</access_control_path>
+  <timezone>UTC</timezone>
 
   <logger>
     <level>debug</level>
