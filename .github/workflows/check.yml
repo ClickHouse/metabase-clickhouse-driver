@@ -18,7 +18,7 @@ jobs:
         with:
           repository: metabase/metabase
           ref: v0.44.6
-          
+
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
         with:
@@ -70,6 +70,7 @@ jobs:
         run: |
           echo "{:deps {metabase/clickhouse {:local/root \"clickhouse\" }}}" > modules/drivers/deps.edn
           bin/build-driver.sh clickhouse
+          ls -lah resources/modules
 
       - name: Archive driver JAR
         uses: actions/upload-artifact@v2
