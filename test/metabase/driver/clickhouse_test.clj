@@ -1,7 +1,8 @@
 (ns metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [cljc.java-time.offset-date-time :as offset-date-time]
+  (:require [cljc.java-time.local-date :as local-date]
+            [cljc.java-time.offset-date-time :as offset-date-time]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-test-utils :as ctu]
@@ -162,6 +163,42 @@
          result (ctu/rows-without-index query-result)]
      (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
 
+(deftest clickhouse-array-of-dates
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date/parse "2022-12-06")
+                (local-date/parse "2021-10-19")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_dates"
+                                              ["test-data-array-of-dates"
+                                               [{:field-name "my_array_of_dates"
+                                                 :base-type {:native "Array(Date)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-dates {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2022-12-06, 2021-10-19]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-date32
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date/parse "2122-12-06")
+                (local-date/parse "2099-10-19")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_date32"
+                                              ["test-data-array-of-date32"
+                                               [{:field-name "my_array_of_date32"
+                                                 :base-type {:native "Array(Date32)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-date32 {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2122-12-06, 2099-10-19]"], ["[]"]] result)))))
+
 (deftest clickhouse-array-of-datetime
   (mt/test-driver
    :clickhouse
@@ -179,6 +216,70 @@
                        (data/run-mbql-query test-data-array-of-datetime {}))
          result (ctu/rows-without-index query-result)]
      (is (= [["[2022-12-06T18:28:31, 2021-10-19T13:12:44]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-datetime64
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (offset-date-time/parse "2022-12-06T18:28:31.123Z")
+                (offset-date-time/parse "2021-10-19T13:12:44.456Z")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_datetime64"
+                                              ["test-data-array-of-datetime64"
+                                               [{:field-name "my_array_of_datetime64"
+                                                 :base-type {:native "Array(DateTime64(3))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-datetime64 {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2022-12-06T18:28:31.123, 2021-10-19T13:12:44.456]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-decimals
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "12345123.123456789" "78.245"))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_decimals"
+                                              ["test-data-array-of-decimals"
+                                               [{:field-name "my_array_of_decimals"
+                                                 :base-type {:native "Array(Decimal(18, 9))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-decimals {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-tuples
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list (list "foobar" 1234) (list "qaz" 0)))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_tuples"
+                                              ["test-data-array-of-tuples"
+                                               [{:field-name "my_array_of_tuples"
+                                                 :base-type {:native "Array(Tuple(String, UInt32))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-tuples {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[[foobar, 1234], [qaz, 0]]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-uuids
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
+                                "2eac44f4-7596-11ed-a1eb-0242ac120002"))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_uuids"
+                                              ["test-data-array-of-uuids"
+                                               [{:field-name "my_array_of_uuids"
+                                                 :base-type {:native "Array(UUID)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-uuids {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
 
 (deftest clickhouse-nullable-strings
   (mt/test-driver
