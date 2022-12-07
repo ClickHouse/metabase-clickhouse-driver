@@ -13,3 +13,11 @@ services:
     volumes:
       - './.docker/config.xml:/etc/clickhouse-server/config.xml'
       - './.docker/users.xml:/etc/clickhouse-server/users.xml'
+
+  metabase:
+    image: metabase/metabase:v0.44.6
+    container_name: metabase-with-clickhouse-driver
+    ports:
+      - '3000:3000'
+    volumes:
+      - '../../../resources/modules/clickhouse.metabase-driver.jar:/plugins/clickhouse.jar'
