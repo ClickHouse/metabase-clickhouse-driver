@@ -71,6 +71,7 @@ jobs:
         run: |
           echo "{:deps {metabase/clickhouse {:local/root \"clickhouse\" }}}" > modules/drivers/deps.edn
           bin/build-driver.sh clickhouse
+          ls -lah resources/modules
 
       - name: Archive driver JAR
         uses: actions/upload-artifact@v2
