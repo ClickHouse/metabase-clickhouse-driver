@@ -18,7 +18,7 @@ jobs:
         with:
           repository: metabase/metabase
           ref: v0.44.6
-          
+
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
         with:
@@ -31,10 +31,11 @@ jobs:
           java-version: "17"
 
       - name: Start ClickHouse in Docker
-        uses: isbang/compose-action@v1.4.0
+        uses: isbang/compose-action@v1.4.1
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
+          services: "clickhouse"
 
       - name: Install Clojure CLI
         run: |
