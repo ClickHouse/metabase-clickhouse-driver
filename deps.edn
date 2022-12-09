@@ -2,6 +2,7 @@
  ["src" "resources"]
 
  :deps
- {com.clickhouse/clickhouse-jdbc$http {:mvn/version "0.3.2-patch11"
-                                       :exclusions [com.clickhouse/clickhouse-cli-client$shaded
-                                                    com.clickhouse/clickhouse-grpc-client$shaded]}}}
+ {com.clickhouse/clickhouse-jdbc$http
+  {:mvn/version "0.3.2-patch11"
+   :exclusions [com.clickhouse/clickhouse-cli-client$shaded
+                com.clickhouse/clickhouse-grpc-client$shaded]}}}
