@@ -7,7 +7,10 @@
             [java-time :as t]
             [metabase [config :as config] [driver :as driver] [util :as u]]
             [metabase.driver.ddl.interface :as ddl.i]
+<<<<<<< HEAD
             [metabase.driver.sql :as sql]
+=======
+>>>>>>> origin/master
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn] [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
@@ -15,9 +18,17 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
+<<<<<<< HEAD
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
   (:import [java.sql
+=======
+            [metabase.util.date-2 :as u.date]
+            [metabase.util.honeysql-extensions :as hx]
+            [schema.core :as s])
+  (:import [com.clickhouse.client.data ClickHouseArrayValue]
+           [java.sql
+>>>>>>> origin/master
             DatabaseMetaData
             ResultSet
             ResultSetMetaData
@@ -29,14 +40,20 @@
             OffsetDateTime
             OffsetTime
             ZonedDateTime]
+<<<<<<< HEAD
            [java.util TimeZone]
            [ru.yandex.clickhouse.util ClickHouseArrayUtil]))
+=======
+           java.lang.Byte
+           java.util.Arrays))
+>>>>>>> origin/master
 
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"Array" :type/Array]
+    [#"Boolean" :type/Boolean]
     [#"DateTime" :type/DateTime]
     [#"DateTime64" :type/DateTime]
     [#"Date" :type/Date]
@@ -65,10 +82,8 @@
   (database-type->base-type (str/replace (name database-type)
                                          #"(?:Nullable|LowCardinality)\((\S+)\)"
                                          "$1")))
-
-(defmethod sql-jdbc.sync/excluded-schemas :clickhouse
-  [_]
-  #{"system" "information_schema" "INFORMATION_SCHEMA"})
+(def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
+(defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_
@@ -77,7 +92,7 @@
     {user "default" password "" dbname "default" host "localhost" port "8123"}
     :as details}]
   (->
-   {:classname "ru.yandex.clickhouse.ClickHouseDriver"
+   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
     :subprotocol "clickhouse"
     :subname (str "//" host ":" port "/" dbname)
     :password password
@@ -207,7 +222,6 @@
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
-
 (defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
@@ -220,14 +234,6 @@
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
-
-;; ClickHouse doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively;
-;; convert these booleans to UInt8
-(defmethod sql.qp/->honeysql [:clickhouse Boolean] [_ bool] (if bool 1 0))
-
-(defmethod sql/->prepared-substitution [:clickhouse Boolean]
-  [driver bool]
-  (sql/->prepared-substitution driver (if bool 1 0)))
 
 ;; Metabase supplies parameters for Date fields as ZonedDateTime
 ;; ClickHouse complains about too long parameter values. This is unfortunate
@@ -260,8 +266,8 @@
                                           (.toLocalTime t))
                                          (.getOffset t))))
 
-;; We still need this for the tests that use multiple case statements where 
-;; we can have either Int or Float in different branches, 
+;; We still need this for the tests that use multiple case statements where
+;; we can have either Int or Float in different branches,
 ;; so we just coerce everything to Float64.
 ;;
 ;; See metabase.query-processor-test.expressions-test "Can use expressions as values"
@@ -441,38 +447,61 @@
             (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
             :else r))))
 
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (u.date/parse s))))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (.getObject rs i OffsetTime))
 
 (defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY]
-  [_ calendar resultset _ i]
+  [_ _ resultset _ i]
   (when-let [arr (.getArray resultset i)]
-    (let [tz (if (nil? calendar) (TimeZone/getDefault) (.getTimeZone calendar))]
-      (ClickHouseArrayUtil/arrayToString (.getArray arr) tz tz))))
+    (let [inner (.getArray arr)]
+      (cond
+        ;; Booleans are returned as just bytes
+        (bytes? inner)
+        (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
+        ;; All other primitives
+        (.isPrimitive (.getComponentType (.getClass inner)))
+        (Arrays/toString inner)
+        ;; Complex types
+        :else
+        (.asString (ClickHouseArrayValue/of inner))))))
+
+(def ^:private allowed-table-types
+  (into-array String
+              ["TABLE" "VIEW" "FOREIGN TABLE" "REMOTE TABLE" "DICTIONARY"
+               "MATERIALIZED VIEW" "MEMORY TABLE" "LOG TABLE"]))
 
 (defn- get-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  "Fetch a JDBC Metadata ResultSet of tables in the DB,
+   optionally limited to ones belonging to a given schema."
+  [^DatabaseMetaData metadata ^String schema-or-nil]
   (vec (jdbc/metadata-result
-        (.getTables metadata
-                    db-name-or-nil
+        (.getTables metadata      ; com.clickhouse.jdbc.ClickHouseDatabaseMetaData#getTables
+                    nil           ; catalog - unused in the source code there
                     schema-or-nil
-                    "%" ; tablePattern "%" = match all tables
-                    (into-array String
-                                ["TABLE" "VIEW" "FOREIGN TABLE"
-                                 "MATERIALIZED VIEW"])))))
+                    "%"           ; tablePattern "%" = match all tables
+                    allowed-table-types))))
+
+(defn- is-not-excluded-schema
+  [table-schem]
+  (not (contains? excluded-schemas (:table_schem table-schem))))
 
 (defn- post-filtered-active-tables
-  [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
-  (set
-   (for [table (filter #(not (contains? (sql-jdbc.sync/excluded-schemas driver)
-                                        (:table_schem %)))
-                       (get-tables metadata (ddl.i/format-name driver db-name-or-nil) nil))]
-     (let [remarks (:remarks table)]
-       {:name (:table_name table)
-        :schema (:table_schem table)
-        :description (when-not (str/blank? remarks) remarks)}))))
+  [^DatabaseMetaData metadata db-name-or-nil]
+  (let [db-name-snake-case (ddl.i/format-name :clickhouse db-name-or-nil)
+        tables (get-tables metadata db-name-snake-case)]
+    (set
+     (for [table (filter is-not-excluded-schema tables)]
+       (let [remarks (:remarks table)]
+         {:name (:table_name table)
+          :schema (:table_schem table)
+          :description (when-not (str/blank? remarks) remarks)})))))
 
 (defn- ->spec
   [db-or-id-or-spec]
@@ -480,30 +509,32 @@
     (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
     db-or-id-or-spec))
 
+;; Strangely enough, the tests only work with :db keyword,
+;; but the actual sync from the UI uses :dbname
+(defn- get-db-name
+  [db-or-id-or-spec]
+  (or (get-in db-or-id-or-spec [:details :dbname])
+      (get-in db-or-id-or-spec [:details :db])))
+
 ;; ClickHouse exposes databases as schemas, but MetaBase sees
 ;; schemas as sub-entities of a database, at least the fast-active-tables
 ;; implementation would lead to duplicate tables because it iterates
-;; over all schemas of the current dbs and then retrieves all
-;; tables of a schema
+;; over all schemas of the current dbs and then retrieves all tables of a schema
 (defmethod driver/describe-database :clickhouse
-  [driver db-or-id-or-spec]
+  [_ db-or-id-or-spec]
   (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    {:tables (post-filtered-active-tables
-             ;; TODO: this only covers the db case, not id or spec
-              driver
-              metadata
-              (get-in db-or-id-or-spec [:details :db]))}))
+    (let [db-name (get-db-name db-or-id-or-spec)]
+      ;; TODO: this only covers the db case, not id or spec
+      {:tables (post-filtered-active-tables metadata db-name)})))
 
 (defmethod driver/describe-table :clickhouse
-  [driver database table]
-  (let [t (sql-jdbc.sync/describe-table driver database table)]
+  [_ database table]
+  (let [t (sql-jdbc.sync/describe-table :clickhouse database table)]
     (merge t
            {:fields (set (for [f (:fields t)]
-                           (update-in f
-                                      [:database-type]
+                           (update-in f [:database-type]
                                       clojure.string/replace
-                                      #"^(Enum.+)\(.+\)"
-                                      "$1")))})))
+                                      #"^(Enum.+)\(.+\)" "$1")))})))
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 

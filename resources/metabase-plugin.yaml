@@ -1,6 +1,6 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 0.8.1
+  version: 0.9.0
   description: Allows Metabase to connect to ClickHouse databases.
 driver:
   name: clickhouse
@@ -18,12 +18,14 @@ driver:
     - user
     - password
     - ssl
+    - advanced-options-start
     - merge:
         - additional-options
-        - placeholder: "max_rows_to_group_by=42"
+        - placeholder: "connection_timeout=1000&max_rows_to_group_by=42"
+    - default-advanced-options
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace
     namespace: metabase.driver.clickhouse
   - step: register-jdbc-driver
-    class: ru.yandex.clickhouse.ClickHouseDriver
+    class: com.clickhouse.jdbc.ClickHouseDriver

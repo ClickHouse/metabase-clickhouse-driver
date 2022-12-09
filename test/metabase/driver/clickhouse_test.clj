@@ -1,15 +1,24 @@
 (ns metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
-  (:require [clojure.java.jdbc :as jdbc]
+  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
+  (:require [cljc.java-time.format.date-time-formatter :as date-time-formatter]
+            [cljc.java-time.offset-date-time :as offset-date-time]
+            [cljc.java-time.temporal.chrono-unit :as chrono-unit]
+            [cljc.java-time.local-date :as local-date]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.clickhouse-test-utils :as ctu]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+<<<<<<< HEAD
             [metabase.models [database :refer [Database]]]
+=======
+            [metabase.query-processor :as qp]
+>>>>>>> origin/master
             [metabase.query-processor-test :as qp.test]
-            [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
+<<<<<<< HEAD
             [toucan.util.test :as tt]))
 
 (deftest clickhouse-timezone-is-utc
@@ -17,6 +26,27 @@
                   (is (= "UTC"
                          (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
                            (metabase.driver/db-default-timezone :clickhouse spec))))))
+=======
+            [metabase.test.util :as tu]))
+
+(deftest clickhouse-server-timezone
+  (mt/test-driver :clickhouse (is (= "UTC" (tu/db-timezone-id)))))
+
+(deftest now-converted-to-timezone
+  (mt/test-driver
+   :clickhouse
+   (let [[[utc-now shanghai-now]]
+         (qp.test/rows
+          (qp/process-query
+           (mt/native-query
+            {:query "SELECT now(), now('Asia/Shanghai')"})))]
+     (testing "there is always eight hour difference in time between UTC and Asia/Beijing"
+       (is (= 8
+              (chrono-unit/between
+               chrono-unit/hours
+               (offset-date-time/parse utc-now date-time-formatter/iso-offset-date-time)
+               (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
+>>>>>>> origin/master
 
 (deftest clickhouse-decimal-division-simple
   (mt/test-driver
@@ -62,7 +92,11 @@
   (mt/test-driver
    :clickhouse
    (is
+<<<<<<< HEAD
     (= "['foo','bar']"
+=======
+    (= "[foo, bar]"
+>>>>>>> origin/master
        (-> (data/dataset
             (tx/dataset-definition "metabase_tests_array_string"
                                    ["test-data-array-string"
@@ -77,7 +111,7 @@
   (mt/test-driver
    :clickhouse
    (is
-    (= "[23,42]"
+    (= "[23, 42]"
        (-> (data/dataset
             (tx/dataset-definition "metabase_tests_array_uint"
                                    ["test-data-array-uint64"
@@ -87,6 +121,201 @@
             (data/run-mbql-query test-data-array-uint64 {:limit 1}))
            qp.test/first-row
            last)))))
+
+(deftest clickhouse-array-of-arrays
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list
+                           (into-array (list "foo" "bar"))
+                           (into-array (list "qaz" "qux"))))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_arrays"
+                                              ["test-data-array-of-arrays"
+                                               [{:field-name "my_array_of_arrays"
+                                                 :base-type {:native "Array(Array(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-arrays {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[[foo, bar], [qaz, qux]]"], ["[]"]] result)))))
+
+(deftest clickhouse-low-cardinality-array
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "foo" "bar"))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_low_cardinality_array"
+                                              ["test-data-low-cardinality-array"
+                                               [{:field-name "my_low_card_array"
+                                                 :base-type {:native "Array(LowCardinality(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-low-cardinality-array {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[foo, bar]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-nullables
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "foo" nil "bar"))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_nullables"
+                                              ["test-data-array-of-nullables"
+                                               [{:field-name "my_array_of_nullables"
+                                                 :base-type {:native "Array(Nullable(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-nullables {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[foo, null, bar]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-booleans
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list true false true))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_booleans"
+                                              ["test-data-array-of-booleans"
+                                               [{:field-name "my_array_of_booleans"
+                                                 :base-type {:native "Array(Boolean)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-booleans {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[true, false, true]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-floats
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list 1.2 3.4))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_floats"
+                                              ["test-data-array-of-floats"
+                                               [{:field-name "my_array_of_floats"
+                                                 :base-type {:native "Array(Float64)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-floats {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-dates
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date/parse "2022-12-06")
+                (local-date/parse "2021-10-19")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_dates"
+                                              ["test-data-array-of-dates"
+                                               [{:field-name "my_array_of_dates"
+                                                 :base-type {:native "Array(Date)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-dates {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2022-12-06, 2021-10-19]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-date32
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date/parse "2122-12-06")
+                (local-date/parse "2099-10-19")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_date32"
+                                              ["test-data-array-of-date32"
+                                               [{:field-name "my_array_of_date32"
+                                                 :base-type {:native "Array(Date32)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-date32 {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2122-12-06, 2099-10-19]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-datetime
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (offset-date-time/parse "2022-12-06T18:28:31Z")
+                (offset-date-time/parse "2021-10-19T13:12:44Z")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_datetime"
+                                              ["test-data-array-of-datetime"
+                                               [{:field-name "my_array_of_datetime"
+                                                 :base-type {:native "Array(DateTime)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-datetime {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2022-12-06T18:28:31, 2021-10-19T13:12:44]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-datetime64
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (offset-date-time/parse "2022-12-06T18:28:31.123Z")
+                (offset-date-time/parse "2021-10-19T13:12:44.456Z")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_datetime64"
+                                              ["test-data-array-of-datetime64"
+                                               [{:field-name "my_array_of_datetime64"
+                                                 :base-type {:native "Array(DateTime64(3))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-datetime64 {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2022-12-06T18:28:31.123, 2021-10-19T13:12:44.456]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-decimals
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "12345123.123456789" "78.245"))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_decimals"
+                                              ["test-data-array-of-decimals"
+                                               [{:field-name "my_array_of_decimals"
+                                                 :base-type {:native "Array(Decimal(18, 9))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-decimals {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-tuples
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list (list "foobar" 1234) (list "qaz" 0)))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_tuples"
+                                              ["test-data-array-of-tuples"
+                                               [{:field-name "my_array_of_tuples"
+                                                 :base-type {:native "Array(Tuple(String, UInt32))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-tuples {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[[foobar, 1234], [qaz, 0]]"], ["[]"]] result)))))
+
+(deftest clickhouse-array-of-uuids
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
+                                "2eac44f4-7596-11ed-a1eb-0242ac120002"))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_uuids"
+                                              ["test-data-array-of-uuids"
+                                               [{:field-name "my_array_of_uuids"
+                                                 :base-type {:native "Array(UUID)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-uuids {}))
+         result (ctu/rows-without-index query-result)]
+     (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
 
 (deftest clickhouse-nullable-strings
   (mt/test-driver
@@ -166,86 +395,74 @@
                                  {:filter [:contains $mystring "Я"
                                            {:case-sensitive false}]})))))))
 
+(deftest clickhouse-booleans
+  (mt/test-driver
+   :clickhouse
+   (let [[row1 row2 row3 row4] [["#1" true] ["#2" false] ["#3" false] ["#4" true]]
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_booleans"
+                                              ["test-data-booleans"
+                                               [{:field-name "name"
+                                                 :base-type :type/Text}
+                                                {:field-name "is_active"
+                                                 :base-type :type/Boolean}]
+                                               [row1 row2 row3 row4]])
+                       (data/run-mbql-query test-data-booleans {:filter [:= $is_active false]}))
+         rows (qp.test/rows query-result)
+         result (map #(drop 1 %) rows)] ; remove db "index" which is the first column in the result set
+     (is (= [row2 row3] result)))))
 
-(defn drop-if-exists-and-create-db!
-  "Drop a ClickHouse database named `db-name` if it already exists; 
-   then create a new empty one with that name."
-  [db-name]
-  (let [spec (sql-jdbc.conn/connection-details->spec
-              :clickhouse
-              (tx/dbdef->connection-details :clickhouse :server nil))]
-    (jdbc/execute! spec [(format "DROP DATABASE IF EXISTS \"%s\";" db-name)])
-    (jdbc/execute! spec [(format "CREATE DATABASE \"%s\";" db-name)])))
-
-(defn- metabase-test-db-details
-  []
-  (tx/dbdef->connection-details :clickhouse
-                                :db
-                                {:database-name "metabase_test"}))
-
-(defn- create-metabase-test-db!
-  "Create a ClickHouse database called `metabase_test` and initialize some test data"
-  []
-  (drop-if-exists-and-create-db! "metabase_test")
-  (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :clickhouse (metabase-test-db-details))]
-    (doseq [sql [(str "CREATE TABLE `metabase_test`.`enums_test` ("
-                      " enum1 Enum8('foo' = 0, 'bar' = 1, 'foo bar' = 2),"
-                      " enum2 Enum16('click' = 0, 'house' = 1)"
-                      ") ENGINE = Memory")
-                 (str "INSERT INTO `metabase_test`.`enums_test` (\"enum1\", \"enum2\") VALUES"
-                      "  ('foo', 'house'),"
-                      "  ('foo bar', 'click'),"
-                      "  ('bar', 'house');")
-                 (str "CREATE TABLE `metabase_test`.`ipaddress_test` ("
-                      " ipvfour Nullable(IPv4), ipvsix Nullable(IPv6)) Engine = Memory")
-                 (str "INSERT INTO `metabase_test`.`ipaddress_test` (ipvfour, ipvsix) VALUES"
-                      " (toIPv4('127.0.0.1'), toIPv6('127.0.0.1')),"
-                      " (toIPv4('0.0.0.0'), toIPv6('0.0.0.0')),"
-                      " (null, null);")]]
-      (jdbc/execute! conn [sql]))))
-
-(defn- do-with-metabase-test-db
-  {:style/indent 0}
-  [f]
-  (create-metabase-test-db!)
-  (tt/with-temp Database
-    [database
-     {:engine :clickhouse :details (metabase-test-db-details)}]
-    (sync-metadata/sync-db-metadata! database)
-    (f database)))
-
-;; check that describe-table properly describes the database & base types of the enum fields
-(deftest clickhouse-enums-test
+(deftest clickhouse-enums-schema-test
   (mt/test-driver
    :clickhouse
    (is (= {:name "enums_test"
            :fields #{{:name "enum1"
                       :database-type "Enum8"
                       :base-type :type/Text
-                      :database-position 0
-                      :database-required true}
+                      :database-position 0}
                      {:name "enum2"
                       :database-type "Enum16"
                       :base-type :type/Text
-                      :database-position 1
-                      :database-required true}}}
-          (do-with-metabase-test-db
+                      :database-position 1}
+                     {:name "enum3"
+                      :database-type "Enum8"
+                      :base-type :type/Text
+                      :database-position 2}}}
+          (ctu/do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))
 
-(deftest clickhouse-enums-test-filter
+(deftest clickhouse-enums-values-test
   (mt/test-driver
    :clickhouse
-   (is (= [["use"]]
+   (is (= [["foo" "house" "qaz"]
+           ["foo bar" "click" "qux"]
+           ["bar" "house" "qaz"]]
           (qp.test/formatted-rows
-           [str]
+           [str str str]
            :format-nil-values
-           (do-with-metabase-test-db
+           (ctu/do-with-metabase-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
                  enums_test
-                 {:expressions {"test" [:substring $enum2 3 3]}
+                 {})))))))))
+
+(deftest clickhouse-enums-test-filter
+  (mt/test-driver
+   :clickhouse
+   (is (= [["useqa"]]
+          (qp.test/formatted-rows
+           [str]
+           :format-nil-values
+           (ctu/do-with-metabase-test-db
+            (fn [db]
+              (data/with-db db
+                (data/run-mbql-query
+                 enums_test
+                 {:expressions {"test" [:concat
+                                        [:substring $enum2 3 3]
+                                        [:substring $enum3 1 2]]}
                   :fields [[:expression "test"]]
                   :filter [:= $enum1 "foo"]})))))))))
 
@@ -256,7 +473,7 @@
           (qp.test/formatted-rows
            [int]
            :format-nil-values
-           (do-with-metabase-test-db
+           (ctu/do-with-metabase-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
@@ -266,7 +483,7 @@
 
 
 (deftest clickhouse-basic-connection-string
-  (is (= {:classname "ru.yandex.clickhouse.ClickHouseDriver"
+  (is (= {:classname "com.clickhouse.jdbc.ClickHouseDriver"
           :subprotocol "clickhouse"
           :subname "//localhost:8123/foo?sessionTimeout=42"
           :user "default"

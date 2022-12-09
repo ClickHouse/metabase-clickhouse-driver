@@ -17,8 +17,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/metabase
-          ref: v0.45.0-RC2
-          
+          ref: v0.45.1
+
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
         with:
@@ -31,10 +31,11 @@ jobs:
           java-version: "17"
 
       - name: Start ClickHouse in Docker
-        uses: isbang/compose-action@v1.4.0
+        uses: isbang/compose-action@v1.4.1
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
+          services: "clickhouse"
 
       - name: Install Clojure CLI
         run: |
@@ -70,6 +71,7 @@ jobs:
         run: |
           echo "{:deps {metabase/clickhouse {:local/root \"clickhouse\" }}}" > modules/drivers/deps.edn
           bin/build-driver.sh clickhouse
+          ls -lah resources/modules
 
       - name: Archive driver JAR
         uses: actions/upload-artifact@v2

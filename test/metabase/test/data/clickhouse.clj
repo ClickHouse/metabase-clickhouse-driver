@@ -13,8 +13,8 @@
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "UInt8")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Char]       [_ _] "String")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "Date")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]   [_ _] "DateTime64")

@@ -7,6 +7,7 @@
 /.lein-failures
 /.lein-plugins
 /.lein-repl-history
+/.clj-kondo
 .eastwood
 .calva
 .cpcache
