@@ -32,12 +32,12 @@
 6. Make sure you are the in the directory where your `metabase.jar` lives.
 7. Run `MB_PLUGINS_DIR=./plugins; java -jar metabase.jar`.
 
-For example [(using Metabase v0.44.6 and ClickHouse driver 0.8.3)](#choosing-the-right-version):
+For example [(using Metabase v0.45.1 and ClickHouse driver 0.9.1)](#choosing-the-right-version):
 
 ```bash
 mkdir -p mb/plugins && cd mb
-curl -o metabase.jar https://downloads.metabase.com/v0.44.6/metabase.jar
-curl -L -o plugins/ch.jar https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.8.3/clickhouse.metabase-driver.jar
+curl -o metabase.jar https://downloads.metabase.com/v0.45.1/metabase.jar
+curl -L -o plugins/ch.jar https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.9.1/clickhouse.metabase-driver.jar
 MB_PLUGINS_DIR=./plugins; java -jar metabase.jar
 ```
 
@@ -47,10 +47,10 @@ Alternatively, if you don't want to run Metabase Jar, you can use a Docker image
 
 ```bash
 mkdir -p mb/plugins && cd mb
-curl -L -o plugins/ch.jar https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.8.3/clickhouse.metabase-driver.jar
+curl -L -o plugins/ch.jar https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.9.1/clickhouse.metabase-driver.jar
 docker run -d -p 3000:3000 \
   --mount type=bind,source=$PWD/plugins/ch.jar,destination=/plugins/clickhouse.jar \
-  --name metabase metabase/metabase:v0.44.6
+  --name metabase metabase/metabase:v0.45.1
 ```
 
 ## Choosing the Right Version
@@ -66,6 +66,7 @@ Metabase Release | Driver Version
 0.41.3.1         | 0.8.1
 0.42.x           | 0.8.1
 0.44.x           | 0.9.0
+0.45.x           | 0.9.1
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
