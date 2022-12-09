@@ -9,24 +9,11 @@
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-test-utils :as ctu]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-<<<<<<< HEAD
-            [metabase.models [database :refer [Database]]]
-=======
             [metabase.query-processor :as qp]
->>>>>>> origin/master
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
-<<<<<<< HEAD
-            [toucan.util.test :as tt]))
-
-(deftest clickhouse-timezone-is-utc
-  (mt/test-driver :clickhouse
-                  (is (= "UTC"
-                         (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
-                           (metabase.driver/db-default-timezone :clickhouse spec))))))
-=======
             [metabase.test.util :as tu]))
 
 (deftest clickhouse-server-timezone
@@ -46,7 +33,6 @@
                chrono-unit/hours
                (offset-date-time/parse utc-now date-time-formatter/iso-offset-date-time)
                (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
->>>>>>> origin/master
 
 (deftest clickhouse-decimal-division-simple
   (mt/test-driver
@@ -92,11 +78,7 @@
   (mt/test-driver
    :clickhouse
    (is
-<<<<<<< HEAD
-    (= "['foo','bar']"
-=======
     (= "[foo, bar]"
->>>>>>> origin/master
        (-> (data/dataset
             (tx/dataset-definition "metabase_tests_array_string"
                                    ["test-data-array-string"

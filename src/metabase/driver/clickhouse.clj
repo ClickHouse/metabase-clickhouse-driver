@@ -7,10 +7,6 @@
             [java-time :as t]
             [metabase [config :as config] [driver :as driver] [util :as u]]
             [metabase.driver.ddl.interface :as ddl.i]
-<<<<<<< HEAD
-            [metabase.driver.sql :as sql]
-=======
->>>>>>> origin/master
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn] [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
@@ -18,17 +14,11 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-<<<<<<< HEAD
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s])
-  (:import [java.sql
-=======
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
   (:import [com.clickhouse.client.data ClickHouseArrayValue]
            [java.sql
->>>>>>> origin/master
             DatabaseMetaData
             ResultSet
             ResultSetMetaData
@@ -40,13 +30,7 @@
             OffsetDateTime
             OffsetTime
             ZonedDateTime]
-<<<<<<< HEAD
-           [java.util TimeZone]
-           [ru.yandex.clickhouse.util ClickHouseArrayUtil]))
-=======
-           java.lang.Byte
            java.util.Arrays))
->>>>>>> origin/master
 
 (driver/register! :clickhouse :parent :sql-jdbc)
 
