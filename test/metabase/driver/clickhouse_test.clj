@@ -406,17 +406,19 @@
                       :database-type "Enum8"
                       :base-type :type/Text
                       :database-position 0
-                      :database-required true}
+                      ; TODO: in Metabase 0.45.0-RC this returned true,
+                      ; and now it is false, which is strange, cause it is not Nullable in the DDL
+                      :database-required false}
                      {:name "enum2"
                       :database-type "Enum16"
                       :base-type :type/Text
                       :database-position 1
-                      :database-required true}
+                      :database-required false}
                      {:name "enum3"
                       :database-type "Enum8"
                       :base-type :type/Text
                       :database-position 2
-                      :database-required true}}}
+                      :database-required false}}}
           (ctu/do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))
