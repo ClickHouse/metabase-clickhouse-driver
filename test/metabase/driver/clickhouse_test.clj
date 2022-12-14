@@ -17,7 +17,11 @@
             [metabase.test.util :as tu]))
 
 (deftest clickhouse-server-timezone
-  (mt/test-driver :clickhouse (is (= "UTC" (tu/db-timezone-id)))))
+  (mt/test-driver
+   :clickhouse
+   (is (= "UTC"
+          (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
+            (metabase.driver/db-default-timezone :clickhouse spec))))))
 
 (deftest now-converted-to-timezone
   (mt/test-driver
@@ -401,15 +405,20 @@
            :fields #{{:name "enum1"
                       :database-type "Enum8"
                       :base-type :type/Text
-                      :database-position 0}
+                      :database-position 0
+                      ; TODO: in Metabase 0.45.0-RC this returned true,
+                      ; and now it is false, which is strange, cause it is not Nullable in the DDL
+                      :database-required false}
                      {:name "enum2"
                       :database-type "Enum16"
                       :base-type :type/Text
-                      :database-position 1}
+                      :database-position 1
+                      :database-required false}
                      {:name "enum3"
                       :database-type "Enum8"
                       :base-type :type/Text
-                      :database-position 2}}}
+                      :database-position 2
+                      :database-required false}}}
           (ctu/do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))

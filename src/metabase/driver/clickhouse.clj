@@ -30,7 +30,6 @@
             OffsetDateTime
             OffsetTime
             ZonedDateTime]
-           java.lang.Byte
            java.util.Arrays))
 
 (driver/register! :clickhouse :parent :sql-jdbc)
