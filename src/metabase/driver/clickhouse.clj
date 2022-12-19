@@ -71,7 +71,7 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_
-   {:keys [user password dbname host port ssl]
+   {:keys [user password dbname host port ssl use-no-proxy]
     :or
     {user "default" password "" dbname "default" host "localhost" port "8123"}
     :as details}]
@@ -82,6 +82,7 @@
     :password password
     :user user
     :ssl (boolean ssl)
+    :use_no_proxy (boolean use-no-proxy)
     :use_server_time_zone_for_dates true}
    (sql-jdbc.common/handle-additional-options details :separator-style :url)))
 
