@@ -119,9 +119,3 @@ The driver should work fine for many use cases. Please consider the following it
 ## Contributing
 
 Check out our [contributing guide](./CONTRIBUTING.md).
-
-## License
-
-The contents of this repository are made available under the GNU Affero General Public License v3.0 (AGPL), see [LICENSE](https://github.com/enqueue/metabase-clickhouse-driver/blob/master/LICENSE).
-
-Unless explicitly stated differently in the respective file, all files are `Copyright 2018-2022 the metabase-clickhouse-driver contributors`.
