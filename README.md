@@ -12,7 +12,7 @@
 <img src="https://img.shields.io/github/release/enqueue/metabase-clickhouse-driver.svg?label=latest%20release">
 </a>
 <a href="https://raw.githubusercontent.com/enqueue/metabase-clickhouse-driver/master/LICENSE">
-<img src="https://img.shields.io/badge/license-AGPL-05B8CC.svg">
+<img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg">
 </a>
 </p>
 
