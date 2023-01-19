@@ -1,6 +1,6 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 0.9.1
+  version: 0.9.2
   description: Allows Metabase to connect to ClickHouse databases.
 driver:
   name: clickhouse
@@ -20,6 +20,12 @@ driver:
     - ssl
     - ssh-tunnel
     - advanced-options-start
+    - name: use-no-proxy
+      display-name: Disable system wide proxy settings
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
     - merge:
         - additional-options
         - placeholder: "connection_timeout=1000&max_rows_to_group_by=42"

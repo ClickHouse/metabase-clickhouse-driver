@@ -480,10 +480,28 @@
           :user "default"
           :password ""
           :ssl false
+          :use_no_proxy false
           :use_server_time_zone_for_dates true}
          (sql-jdbc.conn/connection-details->spec
           :clickhouse
           {:host "localhost"
            :port "8123"
            :dbname "foo"
+           :additional-options "sessionTimeout=42"}))))
+
+(deftest clickhouse-use-no-proxy-connection-string
+  (is (= {:classname "com.clickhouse.jdbc.ClickHouseDriver"
+          :subprotocol "clickhouse"
+          :subname "//localhost:8123/foo?sessionTimeout=42"
+          :user "default"
+          :password ""
+          :ssl false
+          :use_no_proxy true
+          :use_server_time_zone_for_dates true}
+         (sql-jdbc.conn/connection-details->spec
+          :clickhouse
+          {:host "localhost"
+           :port "8123"
+           :dbname "foo"
+           :use-no-proxy true
            :additional-options "sessionTimeout=42"}))))
