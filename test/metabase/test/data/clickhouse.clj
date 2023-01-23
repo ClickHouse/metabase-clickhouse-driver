@@ -70,3 +70,5 @@
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Nullable(Int32)")
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil) ; TODO - fix me
+
+(defmethod tx/supports-time-type? :clickhouse [_driver] false)

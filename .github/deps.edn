@@ -655,7 +655,7 @@
      metabase.api.table-test/query-metadata-remappings-test
      metabase.api.table-test/related-test
      metabase.api.table-test/get-fks-test
-     ;metabase.api.table-test/datetime-binning-options-test
+     metabase.api.table-test/datetime-binning-options-test
      metabase.api.table-test/sensitive-fields-included-test
      metabase.api.table-test/sensitive-fields-not-included-test
      metabase.api.table-test/fk-target-permissions-test
