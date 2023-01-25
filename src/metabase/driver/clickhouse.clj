@@ -104,7 +104,7 @@
               (to-relative-day-num (to-start-of-year expr)))
         1))
 
-(defn- to-week-of-year [expr] (hsql/call :toWeek (hsql/call :toDate expr)))
+(defn- to-week-of-year-iso [expr] (hsql/call :toISOWeek expr))
 
 (defn- to-month-of-year
   [expr]
@@ -126,7 +126,7 @@
 (defn- to-start-of-week
   [expr]
   ;; ClickHouse weeks usually start on Monday
-  (hx/- (hsql/call :toMonday (hx/+ (hsql/call :toDate expr) 1)) 1))
+  (hsql/call :toMonday expr))
 
 (defn- to-start-of-minute
   [expr]
@@ -173,9 +173,9 @@
 (defmethod sql.qp/date [:clickhouse :day-of-year]
   [_ _ expr]
   (to-day-of-year expr))
-(defmethod sql.qp/date [:clickhouse :week-of-year]
+(defmethod sql.qp/date [:clickhouse :week-of-year-iso]
   [_ _ expr]
-  (to-week-of-year expr))
+  (to-week-of-year-iso expr))
 (defmethod sql.qp/date [:clickhouse :month] [_ _ expr] (to-start-of-month expr))
 (defmethod sql.qp/date [:clickhouse :month-of-year]
   [_ _ expr]
@@ -186,7 +186,9 @@
 (defmethod sql.qp/date [:clickhouse :year] [_ _ expr] (to-start-of-year expr))
 
 (defmethod sql.qp/date [:clickhouse :day] [_ _ expr] (to-day expr))
-(defmethod sql.qp/date [:clickhouse :week] [_ _ expr] (to-start-of-week expr))
+(defmethod sql.qp/date [:clickhouse :week]
+  [driver _ expr]
+  (sql.qp/adjust-start-of-week driver to-start-of-week expr))
 (defmethod sql.qp/date [:clickhouse :quarter]
   [_ _ expr]
   (to-start-of-quarter expr))

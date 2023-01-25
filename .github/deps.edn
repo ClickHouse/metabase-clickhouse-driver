@@ -2078,7 +2078,7 @@
      metabase.query-processor-test.count-where-test/segment-test
      metabase.query-processor-test.count-where-test/metric-test
      metabase.query-processor-test.count-where-test/breakout-test
-     ;metabase.query-processor-test.date-bucketing-test/week-of-year-and-week-count-should-be-consistent-test
+     metabase.query-processor-test.date-bucketing-test/week-of-year-and-week-count-should-be-consistent-test
      ;metabase.query-processor-test.date-bucketing-test/group-by-default-test
      metabase.query-processor-test.date-bucketing-test/legacy-default-datetime-bucketing-test
      metabase.query-processor-test.date-bucketing-test/june-31st-test
@@ -2118,7 +2118,7 @@
      metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-time-zones-test
      metabase.query-processor-test.date-time-zone-functions-test/extraction-function-tests
      metabase.query-processor-test.date-time-zone-functions-test/datetime-math-with-extract-test
-     ;metabase.query-processor-test.date-time-zone-functions-test/extract-week-tests
+     metabase.query-processor-test.date-time-zone-functions-test/extract-week-tests
      metabase.query-processor-test.date-time-zone-functions-test/convert-timezone-test
      metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-type-test
      metabase.query-processor-test.date-time-zone-functions-test/temporal-extraction-with-filter-expresion-tests
@@ -2824,4 +2824,3 @@
      metabase.types-test/coercion-strategies-test
      metabase.types-test/coercion-possibilities-test
      metabase.driver.clickhouse-test]}}}}
-
