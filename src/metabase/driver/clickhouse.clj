@@ -526,6 +526,7 @@
 (defmethod driver/supports? [:clickhouse :standard-deviation-aggregations] [_ _] true)
 (defmethod driver/supports? [:clickhouse :set-timezone] [_ _] false)
 (defmethod driver/supports? [:clickhouse :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:clickhouse :test/jvm-timezone-setting] [_ _] false)
 
 (defmethod sql-jdbc.sync/db-default-timezone :clickhouse
   [_ spec]
