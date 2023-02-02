@@ -17,7 +17,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
-  (:import [com.clickhouse.client.data ClickHouseArrayValue]
+  (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql
             DatabaseMetaData
             ResultSet
@@ -57,7 +57,7 @@
     [#"Tuple" :type/*]
     [#"UInt8" :type/Integer]
     [#"UInt16" :type/Integer]
-    [#"UInt32" :type/Integer]
+    [#"UInt32" :type/BigInteger]
     [#"UInt64" :type/BigInteger]
     [#"UUID" :type/UUID]]))
 
@@ -79,7 +79,7 @@
    {:classname "com.clickhouse.jdbc.ClickHouseDriver"
     :subprotocol "clickhouse"
     :subname (str "//" host ":" port "/" dbname)
-    :password password
+    :password (or password "")
     :user user
     :ssl (boolean ssl)
     :use_no_proxy (boolean use-no-proxy)
