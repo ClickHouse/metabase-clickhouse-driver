@@ -9,6 +9,7 @@
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-test-utils :as ctu]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
@@ -507,3 +508,24 @@
            :dbname "foo"
            :use-no-proxy true
            :additional-options "sessionTimeout=42"}))))
+
+(deftest clickhouse-boolean-result-metadata
+  (mt/test-driver
+   :clickhouse
+   (let [result   (-> {:query "SELECT false, 123, true"} mt/native-query qp/process-query )
+         [[c1 c2 c3]]   (-> result qp.test/rows)]
+     (testing "column should be of type :type/Boolean"
+       (is (= :type/Boolean  (-> result :data :results_metadata :columns first :base_type)))
+       (is (= :type/Boolean  (transduce identity (metabase.driver.common/values->base-type) [c1, c3])))
+       (is (= :type/Boolean  (metabase.driver.common/class->base-type (class c1))))))))
+
+(deftest clickhouse-boolean-tabledef-metadata
+  (mt/test-driver
+   :clickhouse
+   (let [
+      table_md  (ctu/do-with-metabase-test-db   (fn [db]  (metabase.driver/describe-table :clickhouse db {:name "boolean_test"})))
+      colmap (->>  (.get table_md :fields)  (filter #(= (:name %) "b1"))  first)
+      database-type (.get colmap :database-type)
+      base-type   (sql-jdbc.sync/database-type->base-type :clickhouse database-type)]
+     (testing "base-type should be :type/Boolean"
+       (is (= :type/Boolean base-type))))))
