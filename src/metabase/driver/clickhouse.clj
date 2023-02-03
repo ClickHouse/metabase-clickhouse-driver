@@ -37,7 +37,7 @@
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"Array" :type/Array]
-    [#"Boolean" :type/Boolean]
+    [#"Bool" :type/Boolean]
     [#"DateTime" :type/DateTime]
     [#"DateTime64" :type/DateTime]
     [#"Date" :type/Date]
