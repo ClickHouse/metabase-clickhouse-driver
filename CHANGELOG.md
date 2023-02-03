@@ -2,7 +2,7 @@
 
 ### Bug fixes
 
-* Boolean base type inference fix by @s-huk [#134](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/134)
+* Boolean base type inference fix by [@s-huk](https://github.com/s-huk) (see [#134](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/134))
 
 # 1.0.0
 
