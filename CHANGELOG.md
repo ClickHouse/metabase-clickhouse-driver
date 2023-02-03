@@ -1,3 +1,9 @@
+# 1.0.1
+
+### Bug fixes
+
+* Boolean base type inference fix by @s-huk [#134](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/134)
+
 # 1.0.0
 
 Formal stable release milestone.
