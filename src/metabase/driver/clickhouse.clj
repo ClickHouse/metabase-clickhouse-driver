@@ -83,7 +83,9 @@
     :user user
     :ssl (boolean ssl)
     :use_no_proxy (boolean use-no-proxy)
-    :use_server_time_zone_for_dates true}
+    :use_server_time_zone_for_dates true
+    ;; temporary hardcode until we get product_name setting with JDBC driver v0.4.0
+    :client_name "metabase/1.0.0 clickhouse-jdbc/0.3.2-patch-11"}
    (sql-jdbc.common/handle-additional-options details :separator-style :url)))
 
 (defn- to-relative-day-num
