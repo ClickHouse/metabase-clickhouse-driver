@@ -481,7 +481,8 @@
           :password ""
           :ssl false
           :use_no_proxy false
-          :use_server_time_zone_for_dates true}
+          :use_server_time_zone_for_dates true
+          :client_name "metabase/1.0.0 clickhouse-jdbc/0.3.2-patch-11"}
          (sql-jdbc.conn/connection-details->spec
           :clickhouse
           {:host "localhost"
@@ -497,7 +498,8 @@
           :password ""
           :ssl false
           :use_no_proxy true
-          :use_server_time_zone_for_dates true}
+          :use_server_time_zone_for_dates true
+          :client_name "metabase/1.0.0 clickhouse-jdbc/0.3.2-patch-11"}
          (sql-jdbc.conn/connection-details->spec
           :clickhouse
           {:host "localhost"
