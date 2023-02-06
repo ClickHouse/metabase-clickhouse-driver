@@ -38,8 +38,8 @@
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"Array" :type/Array]
     [#"Bool" :type/Boolean]
-    [#"DateTime" :type/DateTime]
     [#"DateTime64" :type/DateTime]
+    [#"DateTime" :type/DateTime]
     [#"Date" :type/Date]
     [#"Decimal" :type/Decimal]
     [#"Enum8" :type/Text]
@@ -85,7 +85,7 @@
     :use_no_proxy (boolean use-no-proxy)
     :use_server_time_zone_for_dates true
     ;; temporary hardcode until we get product_name setting with JDBC driver v0.4.0
-    :client_name "metabase/1.0.0 clickhouse-jdbc/0.3.2-patch-11"}
+    :client_name "metabase/1.0.2 clickhouse-jdbc/0.3.2-patch-11"}
    (sql-jdbc.common/handle-additional-options details :separator-style :url)))
 
 (defn- to-relative-day-num
