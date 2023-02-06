@@ -16,7 +16,7 @@
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
-            [metabase.test.data.clickhouse :refer [default-connection-string]]))
+            [metabase.test.data.clickhouse :refer [default-connection-params]]))
 
 (deftest clickhouse-server-timezone
   (mt/test-driver
@@ -439,13 +439,13 @@
 
 (deftest clickhouse-connection-string
   (testing "connection with no additional options"
-    (is (= default-connection-string
+    (is (= default-connection-params
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {}))))
   (testing "custom connection with additional options"
     (is (= (merge
-            default-connection-string
+            default-connection-params
             {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
              :user "bob"
              :password "qaz"
