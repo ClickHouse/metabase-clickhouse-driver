@@ -11,8 +11,25 @@ services:
         soft: 262144
         hard: 262144
     volumes:
-      - './.docker/config.xml:/etc/clickhouse-server/config.xml'
-      - './.docker/users.xml:/etc/clickhouse-server/users.xml'
+      - './.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/single_node/users.xml:/etc/clickhouse-server/users.xml'
+
+  clickhouse_tls:
+    build:
+      context: ./
+      dockerfile: .docker/clickhouse/single_node_tls/Dockerfile
+    container_name: 'metabase-driver-clickhouse-server-tls'
+    ports:
+      - '8443:8443'
+      - '9440:9440'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - './.docker/clickhouse/single_node_tls/config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/single_node_tls/users.xml:/etc/clickhouse-server/users.xml'
+    hostname: server.clickhouseconnect.test
 
   metabase:
     image: metabase/metabase:v0.45.1
@@ -21,3 +38,4 @@ services:
       - '3000:3000'
     volumes:
       - '../../../resources/modules/clickhouse.metabase-driver.jar:/plugins/clickhouse.jar'
+      - './.docker/clickhouse/single_node_tls/certificates/ca.crt:/certs/ca.crt'

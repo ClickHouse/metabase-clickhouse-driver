@@ -483,3 +483,19 @@
          base-type     (sql-jdbc.sync/database-type->base-type :clickhouse database-type)]
      (testing "base-type should be :type/Boolean"
        (is (= :type/Boolean base-type))))))
+
+(deftest clickhouse-simple-tls-connection
+  (mt/test-driver
+   :clickhouse
+   (is (= "UTC"
+          (let [working-dir (System/getProperty "user.dir")
+                cert-path (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
+                additional-options (str "sslrootcert=" cert-path)
+                spec (sql-jdbc.conn/connection-details->spec
+                      :clickhouse
+                      {:ssl true
+                       :host "server.clickhouseconnect.test"
+                       :port 8443
+                       :additional-options additional-options})]
+            (metabase.driver/db-default-timezone :clickhouse spec))))))
+

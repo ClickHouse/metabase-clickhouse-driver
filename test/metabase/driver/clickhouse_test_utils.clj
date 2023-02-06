@@ -59,6 +59,7 @@
       (jdbc/execute! conn [sql]))))
 
 (defn do-with-metabase-test-db
+  "Execute a test function using the test dataset from Metabase itself"
   {:style/indent 0}
   [f]
   (create-metabase-test-db!)

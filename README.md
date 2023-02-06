@@ -66,7 +66,7 @@ Metabase Release | Driver Version
 0.41.3.1         | 0.8.1
 0.42.x           | 0.8.1
 0.44.x           | 0.9.1
-0.45.x           | 1.0.0
+0.45.x           | 1.0.1
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
@@ -105,6 +105,18 @@ services:
     ports:
       - '3000:3000'
 ```
+
+## Using certificates
+
+In the "Advanced options", add the following to the "Additional JDBC connection string options" input:
+
+```
+sslrootcert=/path/to/ca.crt
+```
+
+where `/path/to/ca.crt` is the absolute path to the server CA on the Metabase host or Docker container (depends on your deployment).
+
+Make sure that you tick "Use a secure connection (SSL)" as well.
 
 ## Operations
 
