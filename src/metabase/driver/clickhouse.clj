@@ -90,15 +90,15 @@
 
 (defn- to-relative-day-num
   [expr]
-  (hsql/call :toRelativeDayNum (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
 
 (defn- to-relative-month-num
   [expr]
-  (hsql/call :toRelativeMonthNum (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toRelativeMonthNum (hsql/call :toDateTime expr)))
 
 (defn- to-start-of-year
   [expr]
-  (hsql/call :toStartOfYear (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toStartOfYear (hsql/call :toDateTime expr)))
 
 (defn- to-day-of-year
   [expr]
@@ -132,15 +132,15 @@
 
 (defn- to-start-of-minute
   [expr]
-  (hsql/call :toStartOfMinute (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toStartOfMinute (hsql/call :toDateTime expr)))
 
 (defn- to-start-of-hour
   [expr]
-  (hsql/call :toStartOfHour (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toStartOfHour (hsql/call :toDateTime expr)))
 
-(defn- to-hour [expr] (hsql/call :toHour (hsql/call :toDateTime64 expr 0)))
+(defn- to-hour [expr] (hsql/call :toHour (hsql/call :toDateTime expr)))
 
-(defn- to-minute [expr] (hsql/call :toMinute (hsql/call :toDateTime64 expr 0)))
+(defn- to-minute [expr] (hsql/call :toMinute (hsql/call :toDateTime expr)))
 
 (defn- to-day [expr] (hsql/call :toDate expr))
 
@@ -150,15 +150,15 @@
 
 (defn- to-day-of-month
   [expr]
-  (hsql/call :toDayOfMonth (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toDayOfMonth (hsql/call :toDateTime expr)))
 
 (defn- to-start-of-month
   [expr]
-  (hsql/call :toStartOfMonth (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toStartOfMonth (hsql/call :toDateTime expr)))
 
 (defn- to-start-of-quarter
   [expr]
-  (hsql/call :toStartOfQuarter (hsql/call :toDateTime64 expr 0)))
+  (hsql/call :toStartOfQuarter (hsql/call :toDateTime expr)))
 
 (defmethod sql.qp/date [:clickhouse :default] [_ _ expr] expr)
 (defmethod sql.qp/date [:clickhouse :minute]
@@ -197,7 +197,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :seconds]
   [_ _ expr]
-  (hsql/call :toDateTime64 expr 0))
+  (hsql/call :toDateTime expr))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
