@@ -85,20 +85,20 @@
     :use_no_proxy (boolean use-no-proxy)
     :use_server_time_zone_for_dates true
     ;; temporary hardcode until we get product_name setting with JDBC driver v0.4.0
-    :client_name "metabase/1.0.2 clickhouse-jdbc/0.3.2-patch-11"}
+    :client_name "metabase/1.0.1 clickhouse-jdbc/0.3.2-patch-11"}
    (sql-jdbc.common/handle-additional-options details :separator-style :url)))
 
 (defn- to-relative-day-num
   [expr]
-  (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
+  (hsql/call :toRelativeDayNum (hsql/call :toDateTime64 expr 0)))
 
 (defn- to-relative-month-num
   [expr]
-  (hsql/call :toRelativeMonthNum (hsql/call :toDateTime expr)))
+  (hsql/call :toRelativeMonthNum (hsql/call :toDateTime64 expr 0)))
 
 (defn- to-start-of-year
   [expr]
-  (hsql/call :toStartOfYear (hsql/call :toDateTime expr)))
+  (hsql/call :toStartOfYear (hsql/call :toDateTime64 expr 0)))
 
 (defn- to-day-of-year
   [expr]
@@ -132,15 +132,15 @@
 
 (defn- to-start-of-minute
   [expr]
-  (hsql/call :toStartOfMinute (hsql/call :toDateTime expr)))
+  (hsql/call :toStartOfMinute (hsql/call :toDateTime64 expr 0)))
 
 (defn- to-start-of-hour
   [expr]
-  (hsql/call :toStartOfHour (hsql/call :toDateTime expr)))
+  (hsql/call :toStartOfHour (hsql/call :toDateTime64 expr 0)))
 
-(defn- to-hour [expr] (hsql/call :toHour (hsql/call :toDateTime expr)))
+(defn- to-hour [expr] (hsql/call :toHour (hsql/call :toDateTime64 expr 0)))
 
-(defn- to-minute [expr] (hsql/call :toMinute (hsql/call :toDateTime expr)))
+(defn- to-minute [expr] (hsql/call :toMinute (hsql/call :toDateTime64 expr 0)))
 
 (defn- to-day [expr] (hsql/call :toDate expr))
 
@@ -150,15 +150,15 @@
 
 (defn- to-day-of-month
   [expr]
-  (hsql/call :toDayOfMonth (hsql/call :toDateTime expr)))
+  (hsql/call :toDayOfMonth (hsql/call :toDateTime64 expr 0)))
 
 (defn- to-start-of-month
   [expr]
-  (hsql/call :toStartOfMonth (hsql/call :toDateTime expr)))
+  (hsql/call :toStartOfMonth (hsql/call :toDateTime64 expr 0)))
 
 (defn- to-start-of-quarter
   [expr]
-  (hsql/call :toStartOfQuarter (hsql/call :toDateTime expr)))
+  (hsql/call :toStartOfQuarter (hsql/call :toDateTime64 expr 0)))
 
 (defmethod sql.qp/date [:clickhouse :default] [_ _ expr] expr)
 (defmethod sql.qp/date [:clickhouse :minute]
@@ -197,7 +197,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :seconds]
   [_ _ expr]
-  (hsql/call :toDateTime expr))
+  (hsql/call :toDateTime64 expr 0))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
