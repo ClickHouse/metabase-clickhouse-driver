@@ -30,12 +30,18 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
       - name: Start ClickHouse in Docker
         uses: isbang/compose-action@v1.4.1
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
-          services: "clickhouse"
+          services: |
+            clickhouse
+            clickhouse_tls
 
       - name: Install Clojure CLI
         run: |
