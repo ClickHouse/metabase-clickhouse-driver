@@ -1,3 +1,10 @@
+# 1.0.2
+
+### Bug fixes
+
+* Schema sync failure and/or data browser crash if one of the tables had `(Simple)AggregationFunction` type columns.
+As the underlying driver does not support it at the moment, these columns are excluded from the table metadata and selected result sets for now.
+
 # 1.0.1
 
 ### Bug fixes
