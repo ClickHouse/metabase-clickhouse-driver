@@ -128,6 +128,10 @@ The driver should work fine for many use cases. Please consider the following it
 * Metabase is a good tool for organizing questions, dashboards etc. and to give non-technical users a good way to explore the data and share their results. The driver cannot support all the cool special features of ClickHouse, e.g. array functions. You are free to use native queries, of course.
 
 
+## Known limitations
+
+* As the underlying JDBC driver version does not support columns with `(Simple)AggregationFunction` type, these columns are excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
+
 ## Contributing
 
 Check out our [contributing guide](./CONTRIBUTING.md).

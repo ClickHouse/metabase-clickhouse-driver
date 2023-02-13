@@ -63,9 +63,12 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
-  (database-type->base-type (str/replace (name database-type)
-                                         #"(?:Nullable|LowCardinality)\((\S+)\)"
-                                         "$1")))
+  (let [base-type (database-type->base-type
+                   (str/replace (name database-type)
+                                #"(?:Nullable|LowCardinality)\((\S+)\)"
+                                "$1"))]
+    base-type))
+
 (def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
@@ -85,7 +88,7 @@
     :use_no_proxy (boolean use-no-proxy)
     :use_server_time_zone_for_dates true
     ;; temporary hardcode until we get product_name setting with JDBC driver v0.4.0
-    :client_name "metabase/1.0.1 clickhouse-jdbc/0.3.2-patch-11"}
+    :client_name "metabase/1.0.2 clickhouse-jdbc/0.3.2-patch-11"}
    (sql-jdbc.common/handle-additional-options details :separator-style :url)))
 
 (defn- to-relative-day-num
@@ -518,12 +521,18 @@
 
 (defmethod driver/describe-table :clickhouse
   [_ database table]
-  (let [t (sql-jdbc.sync/describe-table :clickhouse database table)]
-    (merge t
-           {:fields (set (for [f (:fields t)]
-                           (update-in f [:database-type]
-                                      clojure.string/replace
-                                      #"^(Enum.+)\(.+\)" "$1")))})))
+  (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
+        filtered-fields (for [field (:fields table-metadata)
+                              :let [updated-field
+                                    (update-in field [:database-type]
+                                               ;; Enum8(UInt8) -> Enum8
+                                               clojure.string/replace #"^(Enum.+)\(.+\)" "$1")]
+                              ;; Skip all (Simple)AggregateFunction columns
+                              ;; JDBC does not support that and it crashes the data browser
+                              :when (not (re-matches #"^.*AggregateFunction\(.+$"
+                                                     (get field :database-type)))]
+                          updated-field)]
+    (merge table-metadata {:fields (set filtered-fields)})))
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 

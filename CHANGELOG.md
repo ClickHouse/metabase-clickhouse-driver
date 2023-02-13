@@ -1,3 +1,9 @@
+# 1.0.2
+
+### Bug fixes
+
+* As the underlying JDBC driver version does not support columns with `(Simple)AggregationFunction` type, these columns are now excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
+
 # 1.0.1
 
 ### Bug fixes

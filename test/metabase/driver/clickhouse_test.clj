@@ -499,3 +499,30 @@
                        :additional-options additional-options})]
             (metabase.driver/db-default-timezone :clickhouse spec))))))
 
+(deftest clickhouse-filtered-aggregate-functions-test
+  (mt/test-driver
+   :clickhouse
+   (testing "(Simple)AggregateFunction columns are filtered"
+     (testing "from the table metadata"
+       (is (= {:name "aggregate_functions_filter_test"
+               :fields #{{:name "i"
+                          :database-type "UInt8"
+                          :base-type :type/Integer
+                          :database-position 0
+                          ; TODO: in Metabase 0.45.0-RC this returned true,
+                          ; and now it is false, which is strange, cause it is not Nullable in the DDL
+                          :database-required false}}}
+              (ctu/do-with-metabase-test-db
+               (fn [db]
+                 (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
+     (testing "from the result set"
+       (is (= [[42]]
+              (qp.test/formatted-rows
+               [int]
+               :format-nil-values
+               (ctu/do-with-metabase-test-db
+                (fn [db]
+                  (data/with-db db
+                    (data/run-mbql-query
+                     aggregate_functions_filter_test
+                     {})))))))))))
