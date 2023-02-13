@@ -4,7 +4,7 @@ info:
   description: Allows Metabase to connect to ClickHouse databases.
 contact-info:
   name: ClickHouse
-  address: https://clickhouse.com/
+  address: https://github.com/ClickHouse/metabase-clickhouse-driver
 driver:
   name: clickhouse
   display-name: ClickHouse
