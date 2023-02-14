@@ -490,7 +490,7 @@
 
 (defn- post-filtered-active-tables
   [^DatabaseMetaData metadata db-name-or-nil]
-  (let [db-name-snake-case (ddl.i/format-name :clickhouse db-name-or-nil)
+  (let [db-name-snake-case (ddl.i/format-name :clickhouse (or db-name-or-nil "default"))
         tables (get-tables metadata db-name-snake-case)]
     (set
      (for [table (filter is-not-excluded-schema tables)]
