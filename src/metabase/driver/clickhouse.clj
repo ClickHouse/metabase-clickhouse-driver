@@ -72,24 +72,28 @@
 (def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
+(def ^:private default-connection-details
+  {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
-  [_
-   {:keys [user password dbname host port ssl use-no-proxy]
-    :or
-    {user "default" password "" dbname "default" host "localhost" port "8123"}
-    :as details}]
-  (->
-   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-    :subprotocol "clickhouse"
-    :subname (str "//" host ":" port "/" dbname)
-    :password password
-    :user user
-    :ssl (boolean ssl)
-    :use_no_proxy (boolean use-no-proxy)
-    :use_server_time_zone_for_dates true
-    ;; temporary hardcode until we get product_name setting with JDBC driver v0.4.0
-    :client_name "metabase/1.0.2 clickhouse-jdbc/0.3.2-patch-11"}
-   (sql-jdbc.common/handle-additional-options details :separator-style :url)))
+  [_ details]
+  ;; ensure defaults merge on top of nils
+  (let [details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
+                           default-connection-details
+                           details)
+        {:keys [user password dbname host port ssl use-no-proxy]} details]
+    (->
+     {:classname "com.clickhouse.jdbc.ClickHouseDriver"
+      :subprotocol "clickhouse"
+      :subname (str "//" host ":" port "/" dbname)
+      :password password
+      :user user
+      :ssl (boolean ssl)
+      :use_no_proxy (boolean use-no-proxy)
+      :use_server_time_zone_for_dates true
+      ;; temporary hardcode until we get product_name setting with JDBC driver v0.4.0
+      :client_name "metabase/1.0.3 clickhouse-jdbc/0.3.2-patch-11"}
+     (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defn- to-relative-day-num
   [expr]

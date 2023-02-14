@@ -439,7 +439,7 @@
      metabase.api.native-query-snippet-test/create-snippet-api-test
      metabase.api.native-query-snippet-test/update-snippet-api-test
      metabase.api.native-query-snippet-test/read-snippet-api-test
-     metabase.api.notify-test/unauthenticated-test
+     metabase.api.notify-test/authentication-test
      metabase.api.notify-test/not-found-test
      metabase.api.notify-test/post-db-id-test
      metabase.api.permissions-test/groups-list-limit-test
@@ -821,7 +821,9 @@
      metabase.dashboard-subscription-test/mrkdwn-length-limit-test
      metabase.dashboard-subscription-test/use-default-values-test
      metabase.dashboard-subscription-test/dashboard-filter-test
+     metabase.db.connection-pool-setup-test/DbActivityTracker-test
      metabase.db.connection-pool-setup-test/connection-pool-spec-test
+     metabase.db.connection-pool-setup-test/recent-activity-test
      metabase.db.data-migrations-test/fix-click-through-test
      metabase.db.data-migrations-test/migrate-click-through-test
      metabase.db.data-migrations-test/migrate-remove-admin-from-group-mapping-if-needed-test
@@ -1582,6 +1584,7 @@
      metabase.pulse.render.color-test/convert-keywords-test
      metabase.pulse.render.common-test/number-formatting-test
      metabase.pulse.render.datetime-test/format-temporal-string-pair-test
+     metabase.pulse.render.datetime-test/format-temporal-str-column-viz-settings-test
      metabase.pulse.render.datetime-test/format-temporal-str-test
      metabase.pulse.render.js-engine-test/make-context-test
      metabase.pulse.render.js-svg-test/progress-test
@@ -1713,6 +1716,7 @@
      metabase.query-processor.middleware.annotate-test/col-info-combine-parent-field-names-test
      metabase.query-processor.middleware.annotate-test/mbql-cols-nested-queries-test
      metabase.query-processor.middleware.annotate-test/col-info-field-literals-test
+     metabase.query-processor.middleware.annotate-test/preserve-original-join-alias-test
      metabase.query-processor.middleware.auto-bucket-datetimes-test/auto-bucket-in-compound-filter-clause-test
      metabase.query-processor.middleware.auto-bucket-datetimes-test/auto-bucket-by-semantic-type-test
      metabase.query-processor.middleware.auto-bucket-datetimes-test/auto-bucket-unix-timestamp-fields-test
@@ -2079,7 +2083,7 @@
      metabase.query-processor-test.count-where-test/metric-test
      metabase.query-processor-test.count-where-test/breakout-test
      metabase.query-processor-test.date-bucketing-test/week-of-year-and-week-count-should-be-consistent-test
-     ;metabase.query-processor-test.date-bucketing-test/group-by-default-test
+     ;;metabase.query-processor-test.date-bucketing-test/group-by-default-test
      metabase.query-processor-test.date-bucketing-test/legacy-default-datetime-bucketing-test
      metabase.query-processor-test.date-bucketing-test/june-31st-test
      metabase.query-processor-test.date-bucketing-test/sanity-check-test
@@ -2087,7 +2091,7 @@
      metabase.query-processor-test.date-bucketing-test/filter-by-current-quarter-test
      metabase.query-processor-test.date-bucketing-test/default-bucketing-test
      metabase.query-processor-test.date-bucketing-test/group-by-day-of-month-test
-     ;metabase.query-processor-test.date-bucketing-test/group-by-day-test
+     ;;metabase.query-processor-test.date-bucketing-test/group-by-day-test
      metabase.query-processor-test.date-bucketing-test/group-by-month-test
      metabase.query-processor-test.date-bucketing-test/group-by-quarter-test
      metabase.query-processor-test.date-bucketing-test/group-by-week-test
