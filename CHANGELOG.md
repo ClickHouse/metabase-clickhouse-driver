@@ -2,7 +2,7 @@
 
 ### Bug fixes
 
-* Fix NPE that could've been thrown by the driver if the database name input was left empty on the UI despite having a default value.
+* Fixed NPE thrown by the driver in case of empty database name input.
 
 # 1.0.2
 
