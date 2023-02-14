@@ -32,7 +32,7 @@ services:
     hostname: server.clickhouseconnect.test
 
   metabase:
-    image: metabase/metabase:v0.45.2
+    image: metabase/metabase:v0.45.1
     container_name: metabase-with-clickhouse-driver
     ports:
       - '3000:3000'

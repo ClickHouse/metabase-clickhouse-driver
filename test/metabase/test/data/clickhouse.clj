@@ -13,7 +13,7 @@
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
-(def product-name "metabase/1.0.3 clickhouse-jdbc/0.3.2-patch-11")
+(def product-name "metabase/1.0.2 clickhouse-jdbc/0.3.2-patch-11")
 (def default-connection-params {:classname "com.clickhouse.jdbc.ClickHouseDriver"
                                 :subprotocol "clickhouse"
                                 :subname "//localhost:8123/default"

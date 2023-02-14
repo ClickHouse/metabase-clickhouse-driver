@@ -460,12 +460,7 @@
              :dbname "foo"
              :use-no-proxy true
              :additional-options "sessionTimeout=42"
-             :ssl true}))))
-  (testing "nil dbname handling"
-    (is (= default-connection-params
-           (sql-jdbc.conn/connection-details->spec
-            :clickhouse
-            {:dbname nil})))))
+             :ssl true})))))
 
 (deftest clickhouse-boolean-result-metadata
   (mt/test-driver
