@@ -1,3 +1,9 @@
+# 1.0.3
+
+### Bug fixes
+
+* Fixed NPE that could be thrown by the driver in case of empty database name input.
+
 # 1.0.2
 
 ### Bug fixes
