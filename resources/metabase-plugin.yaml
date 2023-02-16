@@ -11,15 +11,19 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - name: dbname
-      display-name: Database Name
-      placeholder: default
     - host
     - merge:
         - port
         - default: 8123
     - user
     - password
+    - name: dbname
+      display-name: Database Name
+      placeholder: default
+    - name: scan-all-databases
+      display-name: Scan all databases
+      type: boolean
+      default: false
     - ssl
     - ssh-tunnel
     - advanced-options-start

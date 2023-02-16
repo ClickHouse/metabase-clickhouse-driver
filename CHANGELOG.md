@@ -1,3 +1,10 @@
+# 1.0.4
+
+### New features
+
+* Adds a new "Scan all databases" UI toggle (disabled by default), which tells the driver to scan all available databases (excluding `system` and `information_schema`) instead of only the database it is connected to.
+* Database input moved below host/port/username/password in the UI.
+
 # 1.0.3
 
 ### Bug fixes

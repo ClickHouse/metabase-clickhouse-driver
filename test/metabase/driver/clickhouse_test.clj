@@ -11,6 +11,7 @@
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
@@ -25,7 +26,7 @@
           (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
             (metabase.driver/db-default-timezone :clickhouse spec))))))
 
-(deftest now-converted-to-timezone
+(deftest clickhouse-now-converted-to-timezone
   (mt/test-driver
    :clickhouse
    (let [[[utc-now shanghai-now]]
@@ -531,3 +532,50 @@
                     (data/run-mbql-query
                      aggregate_functions_filter_test
                      {})))))))))))
+
+(deftest clickhouse-describe-database
+  (let [[agg-fn-table boolean-table enum-table ipaddress-table]
+        [{:description nil,
+          :name "aggregate_functions_filter_test",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "boolean_test",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "enums_test",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "ipaddress_test",
+          :schema "metabase_test"}]]
+    (testing "scanning a single database"
+      (mt/with-temp Database
+        [db {:engine :clickhouse
+             :details {:dbname "metabase_test"
+                       :scan-all-databases nil}}]
+        (let [describe-result (driver/describe-database :clickhouse db)]
+          (is (=
+               {:tables
+                #{agg-fn-table boolean-table enum-table ipaddress-table}}
+               describe-result))))
+      (testing "scanning all databases"
+        (mt/with-temp Database
+          [db {:engine :clickhouse
+               :details {:dbname "default"
+                         :scan-all-databases true}}]
+          (let [describe-result (driver/describe-database :clickhouse db)]
+            ;; check the existence of at least some test tables here
+            (is (contains? (:tables describe-result)
+                           agg-fn-table))
+            (is (contains? (:tables describe-result)
+                           boolean-table))
+            (is (contains? (:tables describe-result)
+                           enum-table))
+            (is (contains? (:tables describe-result)
+                           ipaddress-table))
+            ;; should not contain any ClickHouse system tables
+            (is (not (some #(= (get % :schema) "system")
+                           (:tables describe-result))))
+            (is (not (some #(= (get % :schema) "information_schema")
+                           (:tables describe-result))))
+            (is (not (some #(= (get % :schema) "INFORMATION_SCHEMA")
+                           (:tables describe-result))))))))))

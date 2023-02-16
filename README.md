@@ -66,7 +66,7 @@ Metabase Release | Driver Version
 0.41.3.1         | 0.8.1
 0.42.x           | 0.8.1
 0.44.x           | 0.9.1
-0.45.x           | 1.0.3
+0.45.x           | 1.0.4
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
