@@ -1,3 +1,9 @@
+# 1.0.4
+
+### New features
+
+* Added "Scan all databases" toggle on the UI. Enabling it brings legacy driver behaviour where it scans all available databases, excluding `system` and `information_schema`.
+
 # 1.0.3
 
 ### Bug fixes
