@@ -24,6 +24,7 @@ assignees: ''
 * metabase-clickhouse-driver version:
 * metabase-clickhouse-driver configuration:
 * Metabase version:
+* OS:
 
 #### ClickHouse server
 * ClickHouse Server version:
