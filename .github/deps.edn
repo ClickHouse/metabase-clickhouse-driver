@@ -1397,7 +1397,6 @@
      metabase.models.pulse-channel-test/update-pulse-channel!-test
      metabase.models.pulse-channel-test/retrieve-scheduled-channels-test
      metabase.models.pulse-test/update-pulse-test
-     metabase.models.pulse-test/no-permissions-test
      metabase.models.pulse-test/create-dashboard-subscription-test
      metabase.models.pulse-test/no-archived-cards-test
      metabase.models.pulse-test/validate-collection-namespace-test
@@ -1408,7 +1407,6 @@
      metabase.models.pulse-test/retrieve-pulse-test
      metabase.models.pulse-test/dashboard-subscription-update-test
      metabase.models.pulse-test/update-notification-channels-test
-     metabase.models.pulse-test/has-permissions-test
      metabase.models.pulse-test/create-pulse-test
      metabase.models.query.permissions-test/nested-query-test
      metabase.models.query.permissions-test/invalid-queries-test

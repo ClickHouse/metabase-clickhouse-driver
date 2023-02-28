@@ -13,7 +13,6 @@
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
-(def product-name "metabase/1.0.4 clickhouse-jdbc/0.3.2-patch-11")
 (def default-connection-params {:classname "com.clickhouse.jdbc.ClickHouseDriver"
                                 :subprotocol "clickhouse"
                                 :subname "//localhost:8123/default"
@@ -22,7 +21,7 @@
                                 :ssl false
                                 :use_no_proxy false
                                 :use_server_time_zone_for_dates true
-                                :client_name product-name})
+                                :product_name "metabase/1.1.0"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
