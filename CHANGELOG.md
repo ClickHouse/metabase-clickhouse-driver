@@ -1,3 +1,15 @@
+# 1.1.0
+
+### New features
+
+* Update JDBC driver to v0.4.1.
+* Use new `product_name` additional option instead of `client_name`
+* Replace `sql-jdbc.execute/read-column [:clickhouse Types/ARRAY]` with `sql-jdbc.execute/read-column-thunk [:clickhouse Types/ARRAY]` to be compatible with Metabase 0.46 breaking changes once it is released.
+
+### Bug fixes
+
+* Fix `sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]` return type.
+
 # 1.0.4
 
 ### New features
