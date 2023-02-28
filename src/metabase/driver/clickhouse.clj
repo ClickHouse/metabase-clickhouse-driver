@@ -439,7 +439,7 @@
        [:= (hsql/call :notEmpty (sql.qp/->honeysql driver field)) 1]]
       ((get-method sql.qp/->honeysql [:sql :!=]) driver [_ field value]))))
 
-;; I do not know why :countthe tests expect nil counts for empty results
+;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)
 ;;
 ;; It would even be better if we could use countIf and sumIf directly
@@ -454,10 +454,6 @@
              (hsql/call :sum
                         (hsql/call :case (sql.qp/->honeysql driver pred) 1.0 :else 0.0))
              :else nil))
-
-;; (defmethod sql.qp/->honeysql [:clickhouse :count]
-;;   [driver [_ field]]
-;;   (hsql/call :toUInt64 (hsql/call :count (sql.qp/->honeysql driver field))))
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
