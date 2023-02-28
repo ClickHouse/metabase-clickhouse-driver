@@ -17,7 +17,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
-  (:import [com.clickhouse.client.data ClickHouseArrayValue]
+  (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql
             DatabaseMetaData
             ResultSet
@@ -74,6 +74,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
+(def ^:private product-name "metabase/1.0.5")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -86,13 +87,12 @@
      {:classname "com.clickhouse.jdbc.ClickHouseDriver"
       :subprotocol "clickhouse"
       :subname (str "//" host ":" port "/" dbname)
-      :password password
+      :password (or password "")
       :user user
       :ssl (boolean ssl)
       :use_no_proxy (boolean use-no-proxy)
       :use_server_time_zone_for_dates true
-      ;; temporary hardcode until we get product_name setting with JDBC driver v0.4.0
-      :client_name "metabase/1.0.4 clickhouse-jdbc/0.3.2-patch-11"}
+      :product_name product-name}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (def ^:private allowed-table-types
@@ -439,7 +439,7 @@
        [:= (hsql/call :notEmpty (sql.qp/->honeysql driver field)) 1]]
       ((get-method sql.qp/->honeysql [:sql :!=]) driver [_ field value]))))
 
-;; I do not know why the tests expect nil counts for empty results
+;; I do not know why :countthe tests expect nil counts for empty results
 ;; but that's how it is :-)
 ;;
 ;; It would even be better if we could use countIf and sumIf directly
@@ -454,6 +454,10 @@
              (hsql/call :sum
                         (hsql/call :case (sql.qp/->honeysql driver pred) 1.0 :else 0.0))
              :else nil))
+
+;; (defmethod sql.qp/->honeysql [:clickhouse :count]
+;;   [driver [_ field]]
+;;   (hsql/call :toUInt64 (hsql/call :count (sql.qp/->honeysql driver field))))
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
@@ -514,29 +518,40 @@
             :else r))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
-  [_ ^ResultSet rs _ ^Integer i]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
     (when-let [s (.getString rs i)]
       (u.date/parse s))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
-  (.getObject rs i OffsetTime))
+  (fn []
+    (.getObject rs i OffsetTime)))
 
-(defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY]
-  [_ _ resultset _ i]
-  (when-let [arr (.getArray resultset i)]
-    (let [inner (.getArray arr)]
-      (cond
-        ;; Booleans are returned as just bytes
-        (bytes? inner)
-        (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
-        ;; All other primitives
-        (.isPrimitive (.getComponentType (.getClass inner)))
-        (Arrays/toString inner)
-        ;; Complex types
-        :else
-        (.asString (ClickHouseArrayValue/of inner))))))
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/NUMERIC]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (fn []
+    ; For some reason "count" is labeled as NUMERIC in the JDBC driver
+    ; despite being just an UInt64, and it may break some Metabase tests
+    (if (= (.getColumnLabel rsmeta i) "count")
+      (.getLong rs i)
+      (.getBigDecimal rs i))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/ARRAY]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  (fn []
+    (when-let [arr (.getArray rs i)]
+      (let [inner (.getArray arr)]
+        (cond
+          ;; Booleans are returned as just bytes
+          (bytes? inner)
+          (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
+          ;; All other primitives
+          (.isPrimitive (.getComponentType (.getClass inner)))
+          (Arrays/toString inner)
+          ;; Complex types
+          :else
+          (.asString (ClickHouseArrayValue/of inner)))))))
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 

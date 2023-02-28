@@ -3,6 +3,6 @@
 
  :deps
  {com.clickhouse/clickhouse-jdbc$http
-  {:mvn/version "0.3.2-patch11"
+  {:mvn/version "0.4.1"
    :exclusions [com.clickhouse/clickhouse-cli-client$shaded
                 com.clickhouse/clickhouse-grpc-client$shaded]}}}
