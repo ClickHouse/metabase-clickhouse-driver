@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/metabase
-          ref: v0.45.3
+          ref: v0.46.0-RC2
 
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
@@ -65,13 +65,12 @@ jobs:
       - name: Prepare stuff for pulses
         run: yarn build-static-viz
 
-      # Use custom deps.edn containing "user/clickhouse" and "user/test" aliases
-      # to include driver sources and exclude unwanted tests
+      # Use custom deps.edn containing "user/clickhouse" alias to include driver sources
       - name: Run tests
         run: |
-          mkdir /home/runner/.config/clojure
+          mkdir -p /home/runner/.config/clojure
           cat modules/drivers/clickhouse/.github/deps.edn | sed -e "s|PWD|$PWD|g" > /home/runner/.config/clojure/deps.edn
-          DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test:user/clickhouse:user/test
+          DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test:user/clickhouse
 
       - name: Build ClickHouse driver
         run: |

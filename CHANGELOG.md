@@ -1,3 +1,10 @@
+# 1.1.1
+
+### New features
+
+* Metabase 0.46.x compatibility.
+* Added [cljc.java-time](https://clojars.org/com.widdindustries/cljc.java-time) to dependencies, as it is no longer loaded by Metabase.
+
 # 1.1.0
 
 ### New features

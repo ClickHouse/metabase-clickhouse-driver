@@ -74,7 +74,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.0")
+(def ^:private product-name "metabase/1.1.1")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -554,6 +554,7 @@
 (defmethod driver/supports? [:clickhouse :standard-deviation-aggregations] [_ _] true)
 (defmethod driver/supports? [:clickhouse :set-timezone] [_ _] false)
 (defmethod driver/supports? [:clickhouse :foreign-keys] [_ _] (not config/is-test?))
+(defmethod driver/supports? [:clickhouse :test/jvm-timezone-setting] [_ _] false)
 
 (defmethod sql-jdbc.sync/db-default-timezone :clickhouse
   [_ spec]
