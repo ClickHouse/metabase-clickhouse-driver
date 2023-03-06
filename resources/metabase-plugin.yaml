@@ -1,22 +1,29 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 0.9.2
+  version: 1.1.0
   description: Allows Metabase to connect to ClickHouse databases.
+contact-info:
+  name: ClickHouse
+  address: https://github.com/ClickHouse/metabase-clickhouse-driver
 driver:
   name: clickhouse
   display-name: ClickHouse
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - name: dbname
-      display-name: Database Name
-      placeholder: default
     - host
     - merge:
         - port
         - default: 8123
     - user
     - password
+    - name: dbname
+      display-name: Database Name
+      placeholder: default
+    - name: scan-all-databases
+      display-name: Scan all databases
+      type: boolean
+      default: false
     - ssl
     - ssh-tunnel
     - advanced-options-start

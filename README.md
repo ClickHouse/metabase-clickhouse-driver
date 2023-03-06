@@ -65,8 +65,8 @@ Metabase Release | Driver Version
 0.41.2           | 0.8.0
 0.41.3.1         | 0.8.1
 0.42.x           | 0.8.1
-0.44.x           | 0.9.2
-0.45.x           | 0.9.2
+0.44.x           | 0.9.1
+0.45.x           | 1.0.4
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
@@ -106,6 +106,18 @@ services:
       - '3000:3000'
 ```
 
+## Using certificates
+
+In the "Advanced options", add the following to the "Additional JDBC connection string options" input:
+
+```
+sslrootcert=/path/to/ca.crt
+```
+
+where `/path/to/ca.crt` is the absolute path to the server CA on the Metabase host or Docker container (depends on your deployment).
+
+Make sure that you tick "Use a secure connection (SSL)" as well.
+
 ## Operations
 
 The driver should work fine for many use cases. Please consider the following items when running a Metabase instance with this driver:
@@ -115,6 +127,10 @@ The driver should work fine for many use cases. Please consider the following it
 * Compare the results of the queries with the results returned by `clickhouse-client`.
 * Metabase is a good tool for organizing questions, dashboards etc. and to give non-technical users a good way to explore the data and share their results. The driver cannot support all the cool special features of ClickHouse, e.g. array functions. You are free to use native queries, of course.
 
+
+## Known limitations
+
+* As the underlying JDBC driver version does not support columns with `(Simple)AggregationFunction` type, these columns are excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
 
 ## Contributing
 

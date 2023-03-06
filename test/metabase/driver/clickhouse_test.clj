@@ -2,19 +2,22 @@
   "Tests for specific behavior of the ClickHouse driver."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [cljc.java-time.format.date-time-formatter :as date-time-formatter]
+            [cljc.java-time.local-date :as local-date]
             [cljc.java-time.offset-date-time :as offset-date-time]
             [cljc.java-time.temporal.chrono-unit :as chrono-unit]
-            [cljc.java-time.local-date :as local-date]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-test-utils :as ctu]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
-            [metabase.test.util :as tu]))
+            [metabase.test.data.clickhouse :refer [default-connection-params]]))
 
 (deftest clickhouse-server-timezone
   (mt/test-driver
@@ -23,7 +26,7 @@
           (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
             (metabase.driver/db-default-timezone :clickhouse spec))))))
 
-(deftest now-converted-to-timezone
+(deftest clickhouse-now-converted-to-timezone
   (mt/test-driver
    :clickhouse
    (let [[[utc-now shanghai-now]]
@@ -38,45 +41,33 @@
                (offset-date-time/parse utc-now date-time-formatter/iso-offset-date-time)
                (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
 
-(deftest clickhouse-decimal-division-simple
+(deftest clickhouse-decimals
   (mt/test-driver
    :clickhouse
-   (is
-    (= 21.0
-       (-> (data/dataset
-            (tx/dataset-definition "metabase_tests_decimal"
-                                   ["test-data-decimal"
-                                    [{:field-name "my_money"
-                                      :base-type {:native "Decimal(12,4)"}}]
-                                    [[1.0] [23.1337] [42.0] [42.0]]])
-            (data/run-mbql-query test-data-decimal
-                                 {:expressions {:divided [:/ $my_money 2]}
-                                  :filter [:> [:expression :divided] 1.0]
-                                  :breakout [[:expression :divided]]
-                                  :order-by [[:desc [:expression :divided]]]
-                                  :limit 1}))
-           qp.test/first-row
-           last
-           float)))))
-
-(deftest clickhouse-decimal-even-more-fun
-  (mt/test-driver
-   :clickhouse
-   (is
-    (= 1.8155331831916208
-       (-> (data/dataset
-            (tx/dataset-definition "metabase_tests_decimal"
-                                   ["test-data-decimal"
-                                    [{:field-name "my_money"
-                                      :base-type {:native "Decimal(12,4)"}}]
-                                    [[1.0] [23.1337] [42.0] [42.0]]])
-            (data/run-mbql-query test-data-decimal
-                                 {:expressions {:divided [:/ 42 $my_money]}
-                                  :filter [:= $id 2]
-                                  :limit 1}))
-           qp.test/first-row
-           last
-           double)))))
+   (data/dataset
+    (tx/dataset-definition "metabase_tests_decimal"
+                           ["test-data-decimal"
+                            [{:field-name "my_money"
+                              :base-type {:native "Decimal(12,4)"}}]
+                            [[1.0] [23.1337] [42.0] [42.0]]])
+    (testing "simple division"
+      (is
+       (= 21.0
+          (-> (data/run-mbql-query test-data-decimal
+                                   {:expressions {:divided [:/ $my_money 2]}
+                                    :filter [:> [:expression :divided] 1.0]
+                                    :breakout [[:expression :divided]]
+                                    :order-by [[:desc [:expression :divided]]]
+                                    :limit 1})
+              qp.test/first-row last float))))
+    (testing "divided decimal precision"
+      (is
+       (= 1.8155331831916208
+          (-> (data/run-mbql-query test-data-decimal
+                                   {:expressions {:divided [:/ 42 $my_money]}
+                                    :filter [:= $id 2]
+                                    :limit 1})
+              qp.test/first-row last double)))))))
 
 (deftest clickhouse-array-string
   (mt/test-driver
@@ -306,80 +297,57 @@
 (deftest clickhouse-nullable-strings
   (mt/test-driver
    :clickhouse
-   (is (= 2
-          (-> (data/dataset (tx/dataset-definition
-                             "metabase_tests_nullable_strings"
-                             ["test-data-nullable-strings"
-                              [{:field-name "mystring" :base-type :type/Text}]
-                              [["foo"] ["bar"] ["   "] [""] [nil]]])
-                            (data/run-mbql-query test-data-nullable-strings
-                                                 {:filter [:is-null $mystring]
-                                                  :aggregation [:count]}))
-              qp.test/first-row
-              last)))))
+   (data/dataset
+    (tx/dataset-definition
+     "metabase_tests_nullable_strings"
+     ["test-data-nullable-strings"
+      [{:field-name "mystring" :base-type :type/Text}]
+      [["foo"] ["bar"] ["   "] [""] [nil]]])
+    (testing "null strings count"
+      (is (= 2
+             (-> (data/run-mbql-query test-data-nullable-strings
+                                      {:filter [:is-null $mystring]
+                                       :aggregation [:count]})
+                 qp.test/first-row last))))
+    (testing "nullable strings not null filter"
+      (is (= 3
+             (-> (data/run-mbql-query test-data-nullable-strings
+                                      {:filter [:not-null $mystring]
+                                       :aggregation [:count]})
+                 qp.test/first-row last))))
+    (testing "filter nullable string by value"
+      (is (= 1
+             (-> (data/run-mbql-query test-data-nullable-strings
+                                      {:filter [:= $mystring "foo"]
+                                       :aggregation [:count]})
+                 qp.test/first-row last)))))))
 
-(deftest clickhouse-nullable-strings-filter-not-null
+(deftest clickhouse-non-latin-strings
   (mt/test-driver
    :clickhouse
-   (is (= 3
-          (-> (data/dataset (tx/dataset-definition
-                             "metabase_tests_nullable_strings"
-                             ["test-data-nullable-strings"
-                              [{:field-name "mystring" :base-type :type/Text}]
-                              [["foo"] ["bar"] ["   "] [""] [nil]]])
-                            (data/run-mbql-query test-data-nullable-strings
-                                                 {:filter [:not-null $mystring]
-                                                  :aggregation [:count]}))
-              qp.test/first-row
-              last)))))
-
-(deftest clickhouse-nullable-strings-filter-value
-  (mt/test-driver
-   :clickhouse
-   (is (= 1
-          (-> (data/dataset (tx/dataset-definition
-                             "metabase_tests_nullable_strings"
-                             ["test-data-nullable-strings"
-                              [{:field-name "mystring" :base-type :type/Text}]
-                              [["foo"] ["bar"] ["   "] [""] [nil]]])
-                            (data/run-mbql-query test-data-nullable-strings
-                                                 {:filter [:= $mystring "foo"]
-                                                  :aggregation [:count]}))
-              qp.test/first-row
-              last)))))
-
-(deftest clickhouse-tolowercase-nonlatin-filter-general
-  (mt/test-driver
-   :clickhouse
-   (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"]]
-          (qp.test/formatted-rows
-           [int str]
-           :format-nil-values
-           (data/dataset
-            (tx/dataset-definition
-             "metabase_test_lowercases"
-             ["test-data-lowercase"
-              [{:field-name "mystring" :base-type :type/Text}]
-              [["Я_1"] ["R"] ["Я_2"] ["Я"] ["я"] [nil]]])
-            (data/run-mbql-query test-data-lowercase
-                                 {:filter [:contains $mystring "Я"]})))))))
-
-(deftest clickhouse-tolowercase-filter-case-insensitive
-  (mt/test-driver
-   :clickhouse
-   (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
-          (qp.test/formatted-rows
-           [int str]
-           :format-nil-values
-           (data/dataset
-            (tx/dataset-definition
-             "metabase_tests_lowercase"
-             ["test-data-lowercase"
-              [{:field-name "mystring" :base-type :type/Text}]
-              [["Я_1"] ["R"] ["Я_2"] ["Я"] ["я"] [nil]]])
-            (data/run-mbql-query test-data-lowercase
-                                 {:filter [:contains $mystring "Я"
-                                           {:case-sensitive false}]})))))))
+   (data/dataset
+    (tx/dataset-definition
+     "metabase_test_lowercases"
+     ["test-data-lowercase"
+      [{:field-name "mystring" :base-type :type/Text}]
+      [["Я_1"] ["R"] ["Я_2"] ["Я"] ["я"] [nil]]])
+    (data/run-mbql-query test-data-lowercase
+                         {:filter [:contains $mystring "Я"]})
+    (testing "basic filtering"
+      (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"]]
+             (qp.test/formatted-rows
+              [int str]
+              :format-nil-values
+              (data/run-mbql-query test-data-lowercase
+                                   {:filter [:contains $mystring "Я"]})))))
+    (testing "case-insensitive non-latin filtering"
+      (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
+             (qp.test/formatted-rows
+              [int str]
+              :format-nil-values
+              (data/run-mbql-query test-data-lowercase
+                                   {:filter [:contains $mystring "Я"
+                                             {:case-sensitive false}]}))))))))
 
 (deftest clickhouse-booleans
   (mt/test-driver
@@ -426,36 +394,34 @@
 (deftest clickhouse-enums-values-test
   (mt/test-driver
    :clickhouse
-   (is (= [["foo" "house" "qaz"]
-           ["foo bar" "click" "qux"]
-           ["bar" "house" "qaz"]]
-          (qp.test/formatted-rows
-           [str str str]
-           :format-nil-values
-           (ctu/do-with-metabase-test-db
-            (fn [db]
-              (data/with-db db
-                (data/run-mbql-query
-                 enums_test
-                 {})))))))))
-
-(deftest clickhouse-enums-test-filter
-  (mt/test-driver
-   :clickhouse
-   (is (= [["useqa"]]
-          (qp.test/formatted-rows
-           [str]
-           :format-nil-values
-           (ctu/do-with-metabase-test-db
-            (fn [db]
-              (data/with-db db
-                (data/run-mbql-query
-                 enums_test
-                 {:expressions {"test" [:concat
-                                        [:substring $enum2 3 3]
-                                        [:substring $enum3 1 2]]}
-                  :fields [[:expression "test"]]
-                  :filter [:= $enum1 "foo"]})))))))))
+   (testing "select enums values as strings"
+     (is (= [["foo" "house" "qaz"]
+             ["foo bar" "click" "qux"]
+             ["bar" "house" "qaz"]]
+            (qp.test/formatted-rows
+             [str str str]
+             :format-nil-values
+             (ctu/do-with-metabase-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   enums_test
+                   {}))))))))
+   (testing "filtering enum values"
+     (is (= [["useqa"]]
+            (qp.test/formatted-rows
+             [str]
+             :format-nil-values
+             (ctu/do-with-metabase-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   enums_test
+                   {:expressions {"test" [:concat
+                                          [:substring $enum2 3 3]
+                                          [:substring $enum3 1 2]]}
+                    :fields [[:expression "test"]]
+                    :filter [:= $enum1 "foo"]}))))))))))
 
 (deftest clickhouse-ipv4query-test
   (mt/test-driver
@@ -472,36 +438,144 @@
                  {:filter [:= $ipvfour "127.0.0.1"]
                   :aggregation [:count]})))))))))
 
+(deftest clickhouse-connection-string
+  (testing "connection with no additional options"
+    (is (= default-connection-params
+           (sql-jdbc.conn/connection-details->spec
+            :clickhouse
+            {}))))
+  (testing "custom connection with additional options"
+    (is (= (merge
+            default-connection-params
+            {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
+             :user "bob"
+             :password "qaz"
+             :use_no_proxy true
+             :ssl true})
+           (sql-jdbc.conn/connection-details->spec
+            :clickhouse
+            {:host "myclickhouse"
+             :port 9999
+             :user "bob"
+             :password "qaz"
+             :dbname "foo"
+             :use-no-proxy true
+             :additional-options "sessionTimeout=42"
+             :ssl true}))))
+  (testing "nil dbname handling"
+    (is (= default-connection-params
+           (sql-jdbc.conn/connection-details->spec
+            :clickhouse
+            {:dbname nil})))))
 
-(deftest clickhouse-basic-connection-string
-  (is (= {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-          :subprotocol "clickhouse"
-          :subname "//localhost:8123/foo?sessionTimeout=42"
-          :user "default"
-          :password ""
-          :ssl false
-          :use_no_proxy false
-          :use_server_time_zone_for_dates true}
-         (sql-jdbc.conn/connection-details->spec
-          :clickhouse
-          {:host "localhost"
-           :port "8123"
-           :dbname "foo"
-           :additional-options "sessionTimeout=42"}))))
+(deftest clickhouse-boolean-result-metadata
+  (mt/test-driver
+   :clickhouse
+   (let [result      (-> {:query "SELECT false, 123, true"} mt/native-query qp/process-query)
+         [[c1 _ c3]] (-> result qp.test/rows)]
+     (testing "column should be of type :type/Boolean"
+       (is (= :type/Boolean (-> result :data :results_metadata :columns first :base_type)))
+       (is (= :type/Boolean (transduce identity (driver.common/values->base-type) [c1, c3])))
+       (is (= :type/Boolean (driver.common/class->base-type (class c1))))))))
 
-(deftest clickhouse-use-no-proxy-connection-string
-  (is (= {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-          :subprotocol "clickhouse"
-          :subname "//localhost:8123/foo?sessionTimeout=42"
-          :user "default"
-          :password ""
-          :ssl false
-          :use_no_proxy true
-          :use_server_time_zone_for_dates true}
-         (sql-jdbc.conn/connection-details->spec
-          :clickhouse
-          {:host "localhost"
-           :port "8123"
-           :dbname "foo"
-           :use-no-proxy true
-           :additional-options "sessionTimeout=42"}))))
+(deftest clickhouse-boolean-tabledef-metadata
+  (mt/test-driver
+   :clickhouse
+   (let [table_md      (ctu/do-with-metabase-test-db
+                        (fn [db] (metabase.driver/describe-table :clickhouse db {:name "boolean_test"})))
+         colmap        (->> (.get table_md :fields)
+                            (filter #(= (:name %) "b1")) first)
+         database-type (.get colmap :database-type)
+         base-type     (sql-jdbc.sync/database-type->base-type :clickhouse database-type)]
+     (testing "base-type should be :type/Boolean"
+       (is (= :type/Boolean base-type))))))
+
+(deftest clickhouse-simple-tls-connection
+  (mt/test-driver
+   :clickhouse
+   (is (= "UTC"
+          (let [working-dir (System/getProperty "user.dir")
+                cert-path (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
+                additional-options (str "sslrootcert=" cert-path)
+                spec (sql-jdbc.conn/connection-details->spec
+                      :clickhouse
+                      {:ssl true
+                       :host "server.clickhouseconnect.test"
+                       :port 8443
+                       :additional-options additional-options})]
+            (metabase.driver/db-default-timezone :clickhouse spec))))))
+
+(deftest clickhouse-filtered-aggregate-functions-test
+  (mt/test-driver
+   :clickhouse
+   (testing "(Simple)AggregateFunction columns are filtered"
+     (testing "from the table metadata"
+       (is (= {:name "aggregate_functions_filter_test"
+               :fields #{{:name "i"
+                          :database-type "UInt8"
+                          :base-type :type/Integer
+                          :database-position 0
+                          ; TODO: in Metabase 0.45.0-RC this returned true,
+                          ; and now it is false, which is strange, cause it is not Nullable in the DDL
+                          :database-required false}}}
+              (ctu/do-with-metabase-test-db
+               (fn [db]
+                 (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
+     (testing "from the result set"
+       (is (= [[42]]
+              (qp.test/formatted-rows
+               [int]
+               :format-nil-values
+               (ctu/do-with-metabase-test-db
+                (fn [db]
+                  (data/with-db db
+                    (data/run-mbql-query
+                     aggregate_functions_filter_test
+                     {})))))))))))
+
+(deftest clickhouse-describe-database
+  (let [[agg-fn-table boolean-table enum-table ipaddress-table]
+        [{:description nil,
+          :name "aggregate_functions_filter_test",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "boolean_test",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "enums_test",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "ipaddress_test",
+          :schema "metabase_test"}]]
+    (testing "scanning a single database"
+      (mt/with-temp Database
+        [db {:engine :clickhouse
+             :details {:dbname "metabase_test"
+                       :scan-all-databases nil}}]
+        (let [describe-result (driver/describe-database :clickhouse db)]
+          (is (=
+               {:tables
+                #{agg-fn-table boolean-table enum-table ipaddress-table}}
+               describe-result))))
+      (testing "scanning all databases"
+        (mt/with-temp Database
+          [db {:engine :clickhouse
+               :details {:dbname "default"
+                         :scan-all-databases true}}]
+          (let [describe-result (driver/describe-database :clickhouse db)]
+            ;; check the existence of at least some test tables here
+            (is (contains? (:tables describe-result)
+                           agg-fn-table))
+            (is (contains? (:tables describe-result)
+                           boolean-table))
+            (is (contains? (:tables describe-result)
+                           enum-table))
+            (is (contains? (:tables describe-result)
+                           ipaddress-table))
+            ;; should not contain any ClickHouse system tables
+            (is (not (some #(= (get % :schema) "system")
+                           (:tables describe-result))))
+            (is (not (some #(= (get % :schema) "information_schema")
+                           (:tables describe-result))))
+            (is (not (some #(= (get % :schema) "INFORMATION_SCHEMA")
+                           (:tables describe-result))))))))))

@@ -17,7 +17,7 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
-  (:import [com.clickhouse.client.data ClickHouseArrayValue]
+  (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql
             DatabaseMetaData
             ResultSet
@@ -37,9 +37,9 @@
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"Array" :type/Array]
-    [#"Boolean" :type/Boolean]
-    [#"DateTime" :type/DateTime]
+    [#"Bool" :type/Boolean]
     [#"DateTime64" :type/DateTime]
+    [#"DateTime" :type/DateTime]
     [#"Date" :type/Date]
     [#"Decimal" :type/Decimal]
     [#"Enum8" :type/Text]
@@ -63,28 +63,110 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
-  (database-type->base-type (str/replace (name database-type)
-                                         #"(?:Nullable|LowCardinality)\((\S+)\)"
-                                         "$1")))
+  (let [base-type (database-type->base-type
+                   (str/replace (name database-type)
+                                #"(?:Nullable|LowCardinality)\((\S+)\)"
+                                "$1"))]
+    base-type))
+
 (def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_] excluded-schemas)
 
+(def ^:private default-connection-details
+  {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
+(def ^:private product-name "metabase/1.1.0")
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
-  [_
-   {:keys [user password dbname host port ssl use-no-proxy]
-    :or
-    {user "default" password "" dbname "default" host "localhost" port "8123"}
-    :as details}]
-  (->
-   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-    :subprotocol "clickhouse"
-    :subname (str "//" host ":" port "/" dbname)
-    :password password
-    :user user
-    :ssl (boolean ssl)
-    :use_no_proxy (boolean use-no-proxy)
-    :use_server_time_zone_for_dates true}
-   (sql-jdbc.common/handle-additional-options details :separator-style :url)))
+  [_ details]
+  ;; ensure defaults merge on top of nils
+  (let [details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
+                           default-connection-details
+                           details)
+        {:keys [user password dbname host port ssl use-no-proxy]} details]
+    (->
+     {:classname "com.clickhouse.jdbc.ClickHouseDriver"
+      :subprotocol "clickhouse"
+      :subname (str "//" host ":" port "/" dbname)
+      :password (or password "")
+      :user user
+      :ssl (boolean ssl)
+      :use_no_proxy (boolean use-no-proxy)
+      :use_server_time_zone_for_dates true
+      :product_name product-name}
+     (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+
+(def ^:private allowed-table-types
+  (into-array String
+              ["TABLE" "VIEW" "FOREIGN TABLE" "REMOTE TABLE" "DICTIONARY"
+               "MATERIALIZED VIEW" "MEMORY TABLE" "LOG TABLE"]))
+
+(defn- tables-set
+  [tables]
+  (set
+   (for [table tables]
+     (let [remarks (:remarks table)]
+       {:name (:table_name table)
+        :schema (:table_schem table)
+        :description (when-not (str/blank? remarks) remarks)}))))
+
+(defn- get-tables-from-metadata
+  [metadata schema-pattern]
+  (.getTables metadata       ; com.clickhouse.jdbc.ClickHouseDatabaseMetaData#getTables
+              nil            ; catalog - unused in the source code there
+              schema-pattern
+              "%"            ; tablePattern "%" = match all tables
+              allowed-table-types))
+
+(defn- get-tables-in-db
+  [^DatabaseMetaData metadata db-name]
+  ;; maybe snake-case is unnecessary here
+  (let [db-name-snake-case (ddl.i/format-name :clickhouse (or db-name "default"))]
+    (tables-set
+     (vec (jdbc/metadata-result
+           (get-tables-from-metadata metadata db-name-snake-case))))))
+
+(defn- get-all-tables
+  [metadata]
+  (tables-set
+   (filter
+    #(not (contains? excluded-schemas (get % :table_schem)))
+    (vec (jdbc/metadata-result
+          (get-tables-from-metadata metadata "%"))))))
+
+(defn- ->spec
+  [db]
+  (if (u/id db)
+    (sql-jdbc.conn/db->pooled-connection-spec db) db))
+
+;; Strangely enough, the tests only work with :db keyword,
+;; but the actual sync from the UI uses :dbname
+(defn- get-db-name
+  [db]
+  (or (get-in db [:details :dbname])
+      (get-in db [:details :db])))
+
+(defmethod driver/describe-database :clickhouse
+  [_ db]
+  (jdbc/with-db-metadata [metadata (->spec db)]
+    (let [tables (if (get-in db [:details :scan-all-databases])
+                   (get-all-tables metadata)
+                   (get-tables-in-db metadata (get-db-name db)))]
+      {:tables tables})))
+
+(defmethod driver/describe-table :clickhouse
+  [_ database table]
+  (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
+        filtered-fields (for [field (:fields table-metadata)
+                              :let [updated-field
+                                    (update-in field [:database-type]
+                                               ;; Enum8(UInt8) -> Enum8
+                                               clojure.string/replace #"^(Enum.+)\(.+\)" "$1")]
+                              ;; Skip all (Simple)AggregateFunction columns
+                              ;; JDBC does not support that and it crashes the data browser
+                              :when (not (re-matches #"^.*AggregateFunction\(.+$"
+                                                     (get field :database-type)))]
+                          updated-field)]
+    (merge table-metadata {:fields (set filtered-fields)})))
 
 (defn- to-relative-day-num
   [expr]
@@ -367,12 +449,11 @@
 (defmethod sql.qp/->honeysql [:clickhouse :count-where]
   [driver [_ pred]]
   (hsql/call :case
-             (hsql/call :> (hsql/call :count) 0)
-             (hsql/call
-              :sum
-              (hsql/call :case (sql.qp/->honeysql driver pred) 1.0 :else 0.0))
-             :else
-             nil))
+             (hsql/call :>
+                        (hsql/call :count) 0)
+             (hsql/call :sum
+                        (hsql/call :case (sql.qp/->honeysql driver pred) 1.0 :else 0.0))
+             :else nil))
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
@@ -389,9 +470,7 @@
     [:like (hsql/call :lowerUTF8 field)
      (sql.qp/->honeysql driver (update value 1 str/lower-case))]))
 
-(s/defn ^:private update-string-value
-  :-
-  mbql.s/value
+(s/defn ^:private update-string-value :- mbql.s/value
   [value :- (s/constrained mbql.s/value #(string? (second %)) "string value") f]
   (update value 1 f))
 
@@ -435,93 +514,40 @@
             :else r))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
-  [_ ^ResultSet rs _ ^Integer i]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
     (when-let [s (.getString rs i)]
       (u.date/parse s))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
-  (.getObject rs i OffsetTime))
+  (fn []
+    (.getObject rs i OffsetTime)))
 
-(defmethod sql-jdbc.execute/read-column [:clickhouse Types/ARRAY]
-  [_ _ resultset _ i]
-  (when-let [arr (.getArray resultset i)]
-    (let [inner (.getArray arr)]
-      (cond
-        ;; Booleans are returned as just bytes
-        (bytes? inner)
-        (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
-        ;; All other primitives
-        (.isPrimitive (.getComponentType (.getClass inner)))
-        (Arrays/toString inner)
-        ;; Complex types
-        :else
-        (.asString (ClickHouseArrayValue/of inner))))))
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/NUMERIC]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (fn []
+    ; For some reason "count" is labeled as NUMERIC in the JDBC driver
+    ; despite being just an UInt64, and it may break some Metabase tests
+    (if (= (.getColumnLabel rsmeta i) "count")
+      (.getLong rs i)
+      (.getBigDecimal rs i))))
 
-(def ^:private allowed-table-types
-  (into-array String
-              ["TABLE" "VIEW" "FOREIGN TABLE" "REMOTE TABLE" "DICTIONARY"
-               "MATERIALIZED VIEW" "MEMORY TABLE" "LOG TABLE"]))
-
-(defn- get-tables
-  "Fetch a JDBC Metadata ResultSet of tables in the DB,
-   optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata ^String schema-or-nil]
-  (vec (jdbc/metadata-result
-        (.getTables metadata      ; com.clickhouse.jdbc.ClickHouseDatabaseMetaData#getTables
-                    nil           ; catalog - unused in the source code there
-                    schema-or-nil
-                    "%"           ; tablePattern "%" = match all tables
-                    allowed-table-types))))
-
-(defn- is-not-excluded-schema
-  [table-schem]
-  (not (contains? excluded-schemas (:table_schem table-schem))))
-
-(defn- post-filtered-active-tables
-  [^DatabaseMetaData metadata db-name-or-nil]
-  (let [db-name-snake-case (ddl.i/format-name :clickhouse db-name-or-nil)
-        tables (get-tables metadata db-name-snake-case)]
-    (set
-     (for [table (filter is-not-excluded-schema tables)]
-       (let [remarks (:remarks table)]
-         {:name (:table_name table)
-          :schema (:table_schem table)
-          :description (when-not (str/blank? remarks) remarks)})))))
-
-(defn- ->spec
-  [db-or-id-or-spec]
-  (if (u/id db-or-id-or-spec)
-    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-    db-or-id-or-spec))
-
-;; Strangely enough, the tests only work with :db keyword,
-;; but the actual sync from the UI uses :dbname
-(defn- get-db-name
-  [db-or-id-or-spec]
-  (or (get-in db-or-id-or-spec [:details :dbname])
-      (get-in db-or-id-or-spec [:details :db])))
-
-;; ClickHouse exposes databases as schemas, but MetaBase sees
-;; schemas as sub-entities of a database, at least the fast-active-tables
-;; implementation would lead to duplicate tables because it iterates
-;; over all schemas of the current dbs and then retrieves all tables of a schema
-(defmethod driver/describe-database :clickhouse
-  [_ db-or-id-or-spec]
-  (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    (let [db-name (get-db-name db-or-id-or-spec)]
-      ;; TODO: this only covers the db case, not id or spec
-      {:tables (post-filtered-active-tables metadata db-name)})))
-
-(defmethod driver/describe-table :clickhouse
-  [_ database table]
-  (let [t (sql-jdbc.sync/describe-table :clickhouse database table)]
-    (merge t
-           {:fields (set (for [f (:fields t)]
-                           (update-in f [:database-type]
-                                      clojure.string/replace
-                                      #"^(Enum.+)\(.+\)" "$1")))})))
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/ARRAY]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  (fn []
+    (when-let [arr (.getArray rs i)]
+      (let [inner (.getArray arr)]
+        (cond
+          ;; Booleans are returned as just bytes
+          (bytes? inner)
+          (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
+          ;; All other primitives
+          (.isPrimitive (.getComponentType (.getClass inner)))
+          (Arrays/toString inner)
+          ;; Complex types
+          :else
+          (.asString (ClickHouseArrayValue/of inner)))))))
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 

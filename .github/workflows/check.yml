@@ -17,8 +17,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/metabase
-          # the latest commit to the main branch as of the 27th Jan 2023
-          ref: 58e88ed5bbd400cc05e77a333cd05c8293ec6cef
+          ref: v0.46.0-RC2
 
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
@@ -31,12 +30,18 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
       - name: Start ClickHouse in Docker
         uses: isbang/compose-action@v1.4.1
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
-          services: "clickhouse"
+          services: |
+            clickhouse
+            clickhouse_tls
 
       - name: Install Clojure CLI
         run: |

@@ -55,6 +55,14 @@ clojure -X:deps:drivers prep
 yarn && yarn build-static-viz
 ```
 
+* Add /etc/hosts entry
+
+Required for TLS tests.
+
+```bash
+sudo -- sh -c "echo 127.0.0.1 server.clickhouseconnect.test >> /etc/hosts"
+```
+
 * Start ClickHouse as a Docker container
 
 ```bash

@@ -49,10 +49,21 @@
                  (str "INSERT INTO `metabase_test`.`ipaddress_test` (ipvfour, ipvsix) VALUES"
                       " (toIPv4('127.0.0.1'), toIPv6('127.0.0.1')),"
                       " (toIPv4('0.0.0.0'), toIPv6('0.0.0.0')),"
-                      " (null, null);")]]
+                      " (null, null);")
+                 (str "CREATE TABLE `metabase_test`.`boolean_test` ("
+                      " ID Int32, b1 Bool, b2 Nullable(Bool)) ENGINE = Memory")
+                 (str "INSERT INTO `metabase_test`.`boolean_test` (ID, b1, b2) VALUES"
+                      " (1, true, true),"
+                      " (2, false, true),"
+                      " (3, true, false);")
+                 (str "CREATE TABLE `metabase_test`.`aggregate_functions_filter_test` ("
+                      " i UInt8, a AggregateFunction(uniq, String), b SimpleAggregateFunction(min, UInt8)"
+                      ") ENGINE Memory;")
+                 (str "INSERT INTO `metabase_test`.`aggregate_functions_filter_test` (i) VALUES (42);")]]
       (jdbc/execute! conn [sql]))))
 
 (defn do-with-metabase-test-db
+  "Execute a test function using the test dataset from Metabase itself"
   {:style/indent 0}
   [f]
   (create-metabase-test-db!)
