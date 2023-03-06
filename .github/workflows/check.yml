@@ -68,7 +68,7 @@ jobs:
       # Use custom deps.edn containing "user/clickhouse" alias to include driver sources
       - name: Run tests
         run: |
-          mkdir /home/runner/.config/clojure
+          mkdir -p /home/runner/.config/clojure
           cat modules/drivers/clickhouse/.github/deps.edn | sed -e "s|PWD|$PWD|g" > /home/runner/.config/clojure/deps.edn
           DRIVERS=clickhouse clojure -X:dev:drivers:drivers-dev:test:user/clickhouse
 
