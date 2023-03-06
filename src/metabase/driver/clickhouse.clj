@@ -74,7 +74,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.0")
+(def ^:private product-name "metabase/1.1.1")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]

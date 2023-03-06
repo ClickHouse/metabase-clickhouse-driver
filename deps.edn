@@ -5,4 +5,5 @@
  {com.clickhouse/clickhouse-jdbc$http
   {:mvn/version "0.4.1"
    :exclusions [com.clickhouse/clickhouse-cli-client$shaded
-                com.clickhouse/clickhouse-grpc-client$shaded]}}}
+                com.clickhouse/clickhouse-grpc-client$shaded]}
+  com.widdindustries/cljc.java-time {:mvn/version "0.1.21"}}}
