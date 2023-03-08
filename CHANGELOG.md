@@ -1,3 +1,10 @@
+# 1.1.2
+
+### Bug fixes
+
+* Now the driver is able to scan and work with `SimpleAggregateFunction` columns: those were excluded by mistake in 1.0.2.
+
+
 # 1.1.1
 
 ### New features

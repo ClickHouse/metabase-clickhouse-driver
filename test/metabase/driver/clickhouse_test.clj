@@ -511,20 +511,30 @@
    (testing "(Simple)AggregateFunction columns are filtered"
      (testing "from the table metadata"
        (is (= {:name "aggregate_functions_filter_test"
-               :fields #{{:name "i"
+               :fields #{{:name "idx"
                           :database-type "UInt8"
                           :base-type :type/Integer
                           :database-position 0
                           ; TODO: in Metabase 0.45.0-RC this returned true,
                           ; and now it is false, which is strange, cause it is not Nullable in the DDL
+                          :database-required false}
+                         {:name "lowest_value"
+                          :database-type "SimpleAggregateFunction(min, UInt8)",
+                          :base-type :type/Integer,
+                          :database-position 2,
+                          :database-required false}
+                         {:name "count"
+                          :database-type "SimpleAggregateFunction(sum, Int64)",
+                          :base-type :type/BigInteger,
+                          :database-position 3,
                           :database-required false}}}
               (ctu/do-with-metabase-test-db
                (fn [db]
                  (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
      (testing "from the result set"
-       (is (= [[42]]
+       (is (= [[42 144 255255]]
               (qp.test/formatted-rows
-               [int]
+               [int int int]
                :format-nil-values
                (ctu/do-with-metabase-test-db
                 (fn [db]
