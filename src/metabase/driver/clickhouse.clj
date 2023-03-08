@@ -74,7 +74,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.1")
+(def ^:private product-name "metabase/1.1.2")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -161,9 +161,9 @@
                                     (update-in field [:database-type]
                                                ;; Enum8(UInt8) -> Enum8
                                                clojure.string/replace #"^(Enum.+)\(.+\)" "$1")]
-                              ;; Skip all (Simple)AggregateFunction columns
+                              ;; Skip all AggregateFunction (but keeping SimpleAggregateFunction) columns
                               ;; JDBC does not support that and it crashes the data browser
-                              :when (not (re-matches #"^.*AggregateFunction\(.+$"
+                              :when (not (re-matches #"^AggregateFunction\(.+$"
                                                      (get field :database-type)))]
                           updated-field)]
     (merge table-metadata {:fields (set filtered-fields)})))

@@ -57,9 +57,11 @@
                       " (2, false, true),"
                       " (3, true, false);")
                  (str "CREATE TABLE `metabase_test`.`aggregate_functions_filter_test` ("
-                      " i UInt8, a AggregateFunction(uniq, String), b SimpleAggregateFunction(min, UInt8)"
+                      " idx UInt8, a AggregateFunction(uniq, String), lowest_value SimpleAggregateFunction(min, UInt8),"
+                      " count SimpleAggregateFunction(sum, Int64)"
                       ") ENGINE Memory;")
-                 (str "INSERT INTO `metabase_test`.`aggregate_functions_filter_test` (i) VALUES (42);")]]
+                 (str "INSERT INTO `metabase_test`.`aggregate_functions_filter_test`"
+                      " (idx, lowest_value, count) VALUES (42, 144, 255255);")]]
       (jdbc/execute! conn [sql]))))
 
 (defn do-with-metabase-test-db
