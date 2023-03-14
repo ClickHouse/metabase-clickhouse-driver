@@ -32,12 +32,15 @@
 6. Make sure you are the in the directory where your `metabase.jar` lives.
 7. Run `MB_PLUGINS_DIR=./plugins; java -jar metabase.jar`.
 
-For example [(using Metabase v0.45.1 and ClickHouse driver 0.9.1)](#choosing-the-right-version):
+For example [(using Metabase v0.45.3 and ClickHouse driver 1.1.2)](#choosing-the-right-version):
 
 ```bash
+export METABASE_VERSION=0.45.3
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.1.2
+
 mkdir -p mb/plugins && cd mb
-curl -o metabase.jar https://downloads.metabase.com/v0.45.1/metabase.jar
-curl -L -o plugins/ch.jar https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.9.1/clickhouse.metabase-driver.jar
+curl -o metabase.jar https://downloads.metabase.com/$METABASE_VERSION/metabase.jar
+curl -L -o plugins/ch.jar https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$METABASE_CLICKHOUSE_DRIVER_VERSION/clickhouse.metabase-driver.jar
 MB_PLUGINS_DIR=./plugins; java -jar metabase.jar
 ```
 
@@ -46,11 +49,14 @@ MB_PLUGINS_DIR=./plugins; java -jar metabase.jar
 Alternatively, if you don't want to run Metabase Jar, you can use a Docker image:
 
 ```bash
+export METABASE_DOCKER_VERSION=v0.45.3
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.1.2
+
 mkdir -p mb/plugins && cd mb
-curl -L -o plugins/ch.jar https://github.com/enqueue/metabase-clickhouse-driver/releases/download/0.9.1/clickhouse.metabase-driver.jar
+curl -L -o plugins/ch.jar https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$METABASE_VERSION/clickhouse.metabase-driver.jar
 docker run -d -p 3000:3000 \
   --mount type=bind,source=$PWD/plugins/ch.jar,destination=/plugins/clickhouse.jar \
-  --name metabase metabase/metabase:v0.45.1
+  metabase/metabase:$METABASE_DOCKER_VERSION
 ```
 
 ## Choosing the Right Version
@@ -67,7 +73,7 @@ Metabase Release | Driver Version
 0.42.x           | 0.8.1
 0.44.x           | 0.9.1
 0.45.x           | 1.1.0
-0.46.x           | 1.1.1
+0.46.x           | 1.1.2
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
