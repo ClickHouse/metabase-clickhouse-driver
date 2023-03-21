@@ -1,3 +1,10 @@
+
+# 1.1.3
+
+### New features
+
+* Hide `.inner` tables of Materialized Views.
+
 # 1.1.2
 
 ### Bug fixes
