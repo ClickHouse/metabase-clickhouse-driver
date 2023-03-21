@@ -5,6 +5,7 @@
             [cljc.java-time.local-date :as local-date]
             [cljc.java-time.offset-date-time :as offset-date-time]
             [cljc.java-time.temporal.chrono-unit :as chrono-unit]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-test-utils :as ctu]
@@ -544,7 +545,8 @@
                      {})))))))))))
 
 (deftest clickhouse-describe-database
-  (let [[agg-fn-table boolean-table enum-table ipaddress-table]
+  (let [[agg-fn-table boolean-table enum-table
+         ipaddress-table wikistat-table wikistat-mv]
         [{:description nil,
           :name "aggregate_functions_filter_test",
           :schema "metabase_test"}
@@ -556,6 +558,12 @@
           :schema "metabase_test"}
          {:description nil,
           :name "ipaddress_test",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "wikistat",
+          :schema "metabase_test"}
+         {:description nil,
+          :name "wikistat_mv",
           :schema "metabase_test"}]]
     (testing "scanning a single database"
       (mt/with-temp Database
@@ -565,7 +573,7 @@
         (let [describe-result (driver/describe-database :clickhouse db)]
           (is (=
                {:tables
-                #{agg-fn-table boolean-table enum-table ipaddress-table}}
+                #{agg-fn-table boolean-table enum-table ipaddress-table wikistat-table wikistat-mv}}
                describe-result))))
       (testing "scanning all databases"
         (mt/with-temp Database
@@ -582,10 +590,17 @@
                            enum-table))
             (is (contains? (:tables describe-result)
                            ipaddress-table))
+            (is (contains? (:tables describe-result)
+                           wikistat-table))
+            (is (contains? (:tables describe-result)
+                           wikistat-mv))
             ;; should not contain any ClickHouse system tables
-            (is (not (some #(= (get % :schema) "system")
+            (is (not (some #(= (:schema %) "system")
                            (:tables describe-result))))
-            (is (not (some #(= (get % :schema) "information_schema")
+            (is (not (some #(= (:schema %) "information_schema")
                            (:tables describe-result))))
-            (is (not (some #(= (get % :schema) "INFORMATION_SCHEMA")
+            (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
+                           (:tables describe-result))))
+            ;; should not contain any inner MV tables
+            (is (not (some #(str/starts-with? (:name %) ".inner")
                            (:tables describe-result))))))))))

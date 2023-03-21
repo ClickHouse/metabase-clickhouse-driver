@@ -61,7 +61,19 @@
                       " count SimpleAggregateFunction(sum, Int64)"
                       ") ENGINE Memory;")
                  (str "INSERT INTO `metabase_test`.`aggregate_functions_filter_test`"
-                      " (idx, lowest_value, count) VALUES (42, 144, 255255);")]]
+                      " (idx, lowest_value, count) VALUES (42, 144, 255255);")
+                 (str "CREATE TABLE `metabase_test`.`wikistat` ("
+                      " `date` Date,"
+                      " `project` LowCardinality(String),"
+                      " `hits` UInt32"
+                      ") ENGINE = Memory;")
+                 (str "CREATE MATERIALIZED VIEW `metabase_test`.`wikistat_mv` ENGINE=Memory AS"
+                      " SELECT date, project, sum(hits) AS hits FROM `metabase_test`.`wikistat`"
+                      " GROUP BY date, project;")
+                 (str "INSERT INTO `metabase_test`.`wikistat` VALUES"
+                      " (now(), 'foo', 10),"
+                      " (now(), 'bar', 10),"
+                      " (now(), 'bar', 20);")]]
       (jdbc/execute! conn [sql]))))
 
 (defn do-with-metabase-test-db

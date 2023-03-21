@@ -74,7 +74,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.2")
+(def ^:private product-name "metabase/1.1.3")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -117,19 +117,27 @@
               "%"            ; tablePattern "%" = match all tables
               allowed-table-types))
 
+(defn ^:private not-inner-mv-table?
+  [table]
+  (not (str/starts-with? (:table_name table) ".inner")))
+
 (defn- get-tables-in-db
   [^DatabaseMetaData metadata db-name]
-  ;; maybe snake-case is unnecessary here
+  ;; maybe snake-case call is unnecessary here
   (let [db-name-snake-case (ddl.i/format-name :clickhouse (or db-name "default"))]
     (tables-set
-     (vec (jdbc/metadata-result
-           (get-tables-from-metadata metadata db-name-snake-case))))))
+     (filter
+      not-inner-mv-table?
+      (vec (jdbc/metadata-result
+            (get-tables-from-metadata metadata db-name-snake-case)))))))
 
 (defn- get-all-tables
   [metadata]
   (tables-set
    (filter
-    #(not (contains? excluded-schemas (get % :table_schem)))
+    #(and
+      (not (contains? excluded-schemas (:table_schem %)))
+      (not-inner-mv-table? %))
     (vec (jdbc/metadata-result
           (get-tables-from-metadata metadata "%"))))))
 
