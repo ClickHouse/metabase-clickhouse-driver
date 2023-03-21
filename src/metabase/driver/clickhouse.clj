@@ -53,6 +53,7 @@
     [#"Int64" :type/BigInteger]
     [#"IPv4" :type/IPAddress]
     [#"IPv6" :type/IPAddress]
+    [#"Map" :type/Dictionary]
     [#"String" :type/Text]
     [#"Tuple" :type/*]
     [#"UInt8" :type/Integer]
@@ -64,9 +65,14 @@
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
   (let [base-type (database-type->base-type
-                   (str/replace (name database-type)
-                                #"(?:Nullable|LowCardinality)\((\S+)\)"
-                                "$1"))]
+                   (let [normalized ;; extract the type from Nullable or LowCardinality first
+                         (str/replace (name database-type)
+                                      #"(?:Nullable|LowCardinality)\((\S+)\)"
+                                      "$1")]
+                     (cond
+                       (str/starts-with? normalized "Array(") "Array"
+                       (str/starts-with? normalized "Map(") "Map"
+                       :else normalized)))]
     base-type))
 
 (def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})

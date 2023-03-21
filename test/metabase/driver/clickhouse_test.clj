@@ -439,6 +439,21 @@
                  {:filter [:= $ipvfour "127.0.0.1"]
                   :aggregation [:count]})))))))))
 
+(defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
+(deftest clickhouse-simple-map-test
+  (mt/test-driver
+   :clickhouse
+   (is (= [["{key1=1, key2=10}"] ["{key1=2, key2=20}"] ["{key1=3, key2=30}"]]
+          (qp.test/formatted-rows
+           [map-as-string]
+           :format-nil-values
+           (ctu/do-with-metabase-test-db
+            (fn [db]
+              (data/with-db db
+                (data/run-mbql-query
+                 maps_test
+                 {})))))))))
+
 (deftest clickhouse-connection-string
   (testing "connection with no additional options"
     (is (= default-connection-params
@@ -482,8 +497,9 @@
 (deftest clickhouse-boolean-tabledef-metadata
   (mt/test-driver
    :clickhouse
-   (let [table_md      (ctu/do-with-metabase-test-db
-                        (fn [db] (metabase.driver/describe-table :clickhouse db {:name "boolean_test"})))
+   (let [table_md (ctu/do-with-metabase-test-db
+                   (fn [db]
+                     (metabase.driver/describe-table :clickhouse db {:name "boolean_test"})))
          colmap        (->> (.get table_md :fields)
                             (filter #(= (:name %) "b1")) first)
          database-type (.get colmap :database-type)
@@ -545,26 +561,28 @@
                      {})))))))))))
 
 (deftest clickhouse-describe-database
-  (let [[agg-fn-table boolean-table enum-table
-         ipaddress-table wikistat-table wikistat-mv]
-        [{:description nil,
-          :name "aggregate_functions_filter_test",
-          :schema "metabase_test"}
-         {:description nil,
-          :name "boolean_test",
-          :schema "metabase_test"}
-         {:description nil,
-          :name "enums_test",
-          :schema "metabase_test"}
-         {:description nil,
-          :name "ipaddress_test",
-          :schema "metabase_test"}
-         {:description nil,
-          :name "wikistat",
-          :schema "metabase_test"}
-         {:description nil,
-          :name "wikistat_mv",
-          :schema "metabase_test"}]]
+  (let [test-tables
+        #{{:description nil,
+           :name "aggregate_functions_filter_test",
+           :schema "metabase_test"}
+          {:description nil,
+           :name "boolean_test",
+           :schema "metabase_test"}
+          {:description nil,
+           :name "enums_test",
+           :schema "metabase_test"}
+          {:description nil,
+           :name "ipaddress_test",
+           :schema "metabase_test"}
+          {:description nil,
+           :name "wikistat",
+           :schema "metabase_test"}
+          {:description nil,
+           :name "wikistat_mv",
+           :schema "metabase_test"}
+          {:description nil,
+           :name "maps_test",
+           :schema "metabase_test"}}]
     (testing "scanning a single database"
       (mt/with-temp Database
         [db {:engine :clickhouse
@@ -572,8 +590,7 @@
                        :scan-all-databases nil}}]
         (let [describe-result (driver/describe-database :clickhouse db)]
           (is (=
-               {:tables
-                #{agg-fn-table boolean-table enum-table ipaddress-table wikistat-table wikistat-mv}}
+               {:tables test-tables}
                describe-result))))
       (testing "scanning all databases"
         (mt/with-temp Database
@@ -582,18 +599,9 @@
                          :scan-all-databases true}}]
           (let [describe-result (driver/describe-database :clickhouse db)]
             ;; check the existence of at least some test tables here
-            (is (contains? (:tables describe-result)
-                           agg-fn-table))
-            (is (contains? (:tables describe-result)
-                           boolean-table))
-            (is (contains? (:tables describe-result)
-                           enum-table))
-            (is (contains? (:tables describe-result)
-                           ipaddress-table))
-            (is (contains? (:tables describe-result)
-                           wikistat-table))
-            (is (contains? (:tables describe-result)
-                           wikistat-mv))
+            (doseq [table test-tables]
+              (is (contains? (:tables describe-result)
+                             table)))
             ;; should not contain any ClickHouse system tables
             (is (not (some #(= (:schema %) "system")
                            (:tables describe-result))))

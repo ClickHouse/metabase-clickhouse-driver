@@ -56,12 +56,19 @@
                       " (1, true, true),"
                       " (2, false, true),"
                       " (3, true, false);")
+                 (str "CREATE TABLE `metabase_test`.`maps_test`"
+                      " (m Map(String, UInt64)) ENGINE = Memory;")
+                 (str "INSERT INTO `metabase_test`.`maps_test` VALUES"
+                      " ({'key1':1, 'key2':10}), ({'key1':2,'key2':20}), ({'key1':3,'key2':30});")
+                 ;; Used for testing that AggregateFunction columns are excluded,
+                 ;; while SimpleAggregateFunction columns are preserved
                  (str "CREATE TABLE `metabase_test`.`aggregate_functions_filter_test` ("
                       " idx UInt8, a AggregateFunction(uniq, String), lowest_value SimpleAggregateFunction(min, UInt8),"
                       " count SimpleAggregateFunction(sum, Int64)"
                       ") ENGINE Memory;")
                  (str "INSERT INTO `metabase_test`.`aggregate_functions_filter_test`"
                       " (idx, lowest_value, count) VALUES (42, 144, 255255);")
+                 ;; Materialized views (testing .inner tables exclusion)
                  (str "CREATE TABLE `metabase_test`.`wikistat` ("
                       " `date` Date,"
                       " `project` LowCardinality(String),"
