@@ -20,6 +20,9 @@ driver:
     - name: dbname
       display-name: Database Name
       placeholder: default
+    - name: multiple-schemas
+      display-name: Multiple schemas
+      placeholder: "schema schema2 schema3"
     - name: scan-all-databases
       display-name: Scan all databases
       type: boolean

@@ -127,11 +127,13 @@
 
 (defn- get-all-tables
   [metadata]
-  (tables-set
-   (filter
-    #(not (contains? excluded-schemas (get % :table_schem)))
-    (vec (jdbc/metadata-result
-          (get-tables-from-metadata metadata "%"))))))
+  (->> (get-tables-from-metadata metadata "%")
+       (jdbc/metadata-result)
+       (vec)
+       (filter #(->> (get % :table_schem)
+                     (contains? excluded-schemas)
+                     (not)))
+       (tables-set)))
 
 (defn- ->spec
   [db]
@@ -145,13 +147,34 @@
   (or (get-in db [:details :dbname])
       (get-in db [:details :db])))
 
+;; NOTE: option for collection tables from many schemas
+(def ^:private SEPARATOR #" ")
+(defn- get-multiple-tables [db]
+  (->> (for [schema (as-> (-> db :details :multiple-schemas) schemas
+                      (str/split schemas SEPARATOR)
+                      (remove empty? schemas)
+                      (map str/trim schemas))]
+         (jdbc/with-db-metadata [metadata (->spec db)]
+           (jdbc/metadata-result
+            (get-tables-from-metadata metadata schema))))
+       (apply concat)
+       (tables-set)))
+
 (defmethod driver/describe-database :clickhouse
-  [_ db]
-  (jdbc/with-db-metadata [metadata (->spec db)]
-    (let [tables (if (get-in db [:details :scan-all-databases])
-                   (get-all-tables metadata)
-                   (get-tables-in-db metadata (get-db-name db)))]
-      {:tables tables})))
+  [_ {{:keys [scan-all-databases
+              multiple-schemas]}
+      :details :as db}]
+  {:tables
+   (jdbc/with-db-metadata [metadata (->spec db)]
+     (cond
+       scan-all-databases
+       (get-all-tables metadata)
+
+       multiple-schemas
+       (get-multiple-tables db)
+
+       :single-schema
+       (get-tables-in-db metadata (get-db-name db))))})
 
 (defmethod driver/describe-table :clickhouse
   [_ database table]

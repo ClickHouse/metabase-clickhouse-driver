@@ -1,3 +1,9 @@
+# 1.1.4
+
+### Bug fixes
+
+* Add a new "Multiple schemas" UI field, which tells the driver to scan selected databases. (separator can be set in `metabase.driver.clickhouse/SEPARATOR`) 
+
 # 1.1.2
 
 ### Bug fixes
