@@ -591,8 +591,8 @@
         (let [describe-result (driver/describe-database :clickhouse db)]
           (is (=
                {:tables test-tables}
-               describe-result))))
-      (testing "scanning all databases"
+               describe-result)))))
+    (testing "scanning all databases"
         (mt/with-temp Database
           [db {:engine :clickhouse
                :details {:dbname "default"
@@ -608,7 +608,24 @@
             (is (not (some #(= (:schema %) "information_schema")
                            (:tables describe-result))))
             (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
-                           (:tables describe-result))))
-            ;; should not contain any inner MV tables
-            (is (not (some #(str/starts-with? (:name %) ".inner")
-                           (:tables describe-result))))))))))
+                           (:tables describe-result)))))))
+    (testing "scanning multiple databases"
+      (mt/with-temp Database
+        [db {:engine :clickhouse
+             :details {:dbname "metabase_test information_schema"}}]
+        (let [{:keys [tables] :as _describe-result}
+              (driver/describe-database :clickhouse db)
+              tables-table  {:name        "tables"
+                             :description nil
+                             :schema      "information_schema"}
+              columns-table {:name        "columns"
+                             :description nil
+                             :schema      "information_schema"}]
+
+          ;; tables from `metabase_test`
+          (doseq [table test-tables]
+            (is (contains? tables table)))
+
+          ;; tables from `information_schema`
+          (is (contains? tables tables-table))
+          (is (contains? tables columns-table)))))))

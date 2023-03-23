@@ -1,9 +1,10 @@
-
 # 1.1.3
 
 ### New features
 
 * Hide `.inner` tables of Materialized Views.
+* Resolve `Map` base type to `type/Dictionary`.
+* Database name can now contain multiple schemas in the UI field (space-separated by default), which tells the driver to scan selected databases. Separator can be set in `metabase.driver.clickhouse/SEPARATOR`. (@veschin)
 
 # 1.1.2
 

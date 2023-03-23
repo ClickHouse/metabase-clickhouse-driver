@@ -127,30 +127,21 @@
   [table]
   (not (str/starts-with? (:table_name table) ".inner")))
 
-(defn- get-tables-in-db
-  [^DatabaseMetaData metadata db-name]
-  ;; maybe snake-case call is unnecessary here
-  (let [db-name-snake-case (ddl.i/format-name :clickhouse (or db-name "default"))]
-    (tables-set
-     (filter
-      not-inner-mv-table?
-      (vec (jdbc/metadata-result
-            (get-tables-from-metadata metadata db-name-snake-case)))))))
-
-(defn- get-all-tables
-  [metadata]
-  (tables-set
-   (filter
-    #(and
-      (not (contains? excluded-schemas (:table_schem %)))
-      (not-inner-mv-table? %))
-    (vec (jdbc/metadata-result
-          (get-tables-from-metadata metadata "%"))))))
-
 (defn- ->spec
   [db]
   (if (u/id db)
     (sql-jdbc.conn/db->pooled-connection-spec db) db))
+
+(defn- get-all-tables
+  [db]
+  (jdbc/with-db-metadata [metadata (->spec db)]
+    (->> (get-tables-from-metadata metadata "%")
+         (jdbc/metadata-result)
+         (vec)
+         (filter #(and
+                   (not (contains? excluded-schemas (:table_schem %)))
+                   (not-inner-mv-table? %)))
+         (tables-set))))
 
 ;; Strangely enough, the tests only work with :db keyword,
 ;; but the actual sync from the UI uses :dbname
@@ -159,13 +150,26 @@
   (or (get-in db [:details :dbname])
       (get-in db [:details :db])))
 
+(def ^:private db-names-separator #" ")
+(defn- get-tables-in-dbs [db-or-dbs]
+  (->> (for [db (as-> (or (get-db-name db-or-dbs) "default") dbs
+                  (str/split dbs db-names-separator)
+                  (remove empty? dbs)
+                  (map (comp #(ddl.i/format-name :clickhouse %) str/trim) dbs))]
+         (jdbc/with-db-metadata [metadata (->spec db-or-dbs)]
+           (jdbc/metadata-result
+            (get-tables-from-metadata metadata db))))
+       (apply concat)
+       (tables-set)))
+
 (defmethod driver/describe-database :clickhouse
-  [_ db]
-  (jdbc/with-db-metadata [metadata (->spec db)]
-    (let [tables (if (get-in db [:details :scan-all-databases])
-                   (get-all-tables metadata)
-                   (get-tables-in-db metadata (get-db-name db)))]
-      {:tables tables})))
+  [_ {{:keys [scan-all-databases]}
+      :details :as db}]
+  {:tables
+   (if
+    (scan-all-databases)
+     (get-all-tables db)
+     (get-tables-in-dbs db))})
 
 (defmethod driver/describe-table :clickhouse
   [_ database table]

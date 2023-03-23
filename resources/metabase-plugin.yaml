@@ -18,7 +18,7 @@ driver:
     - user
     - password
     - name: dbname
-      display-name: Database Name
+      display-name: Databases Names
       placeholder: default
     - name: scan-all-databases
       display-name: Scan all databases
