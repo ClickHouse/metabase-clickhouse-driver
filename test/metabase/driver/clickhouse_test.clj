@@ -566,8 +566,8 @@
           (is (=
                {:tables
                 #{agg-fn-table boolean-table enum-table ipaddress-table}}
-               describe-result))))
-      (testing "scanning all databases"
+               describe-result)))))
+    (testing "scanning all databases"
         (mt/with-temp Database
           [db {:engine :clickhouse
                :details {:dbname "default"
@@ -588,4 +588,26 @@
             (is (not (some #(= (get % :schema) "information_schema")
                            (:tables describe-result))))
             (is (not (some #(= (get % :schema) "INFORMATION_SCHEMA")
-                           (:tables describe-result))))))))))
+                           (:tables describe-result)))))))
+    (testing "scanning multiple databases"
+      (mt/with-temp Database
+        [db {:engine :clickhouse
+             :details {:dbname "metabase_test information_schema"}}]
+        (let [{:keys [tables] :as _describe-result}
+              (driver/describe-database :clickhouse db)
+              tables-table  {:name        "tables"
+                             :description nil
+                             :schema      "information_schema"}
+              columns-table {:name        "columns"
+                             :description nil
+                             :schema      "information_schema"}]
+
+          ;; NOTE: tables from `metabase_test`
+          (is (contains? tables agg-fn-table))
+          (is (contains? tables boolean-table))
+          (is (contains? tables enum-table))
+          (is (contains? tables ipaddress-table))
+
+          ;; NOTE: tables from `information_schema`
+          (is (contains? tables tables-table))
+          (is (contains? tables columns-table)))))))

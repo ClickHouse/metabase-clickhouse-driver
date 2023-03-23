@@ -117,26 +117,21 @@
               "%"            ; tablePattern "%" = match all tables
               allowed-table-types))
 
-(defn- get-tables-in-db
-  [^DatabaseMetaData metadata db-name]
-  ;; maybe snake-case is unnecessary here
-  (let [db-name-snake-case (ddl.i/format-name :clickhouse (or db-name "default"))]
-    (tables-set
-     (vec (jdbc/metadata-result
-           (get-tables-from-metadata metadata db-name-snake-case))))))
-
-(defn- get-all-tables
-  [metadata]
-  (tables-set
-   (filter
-    #(not (contains? excluded-schemas (get % :table_schem)))
-    (vec (jdbc/metadata-result
-          (get-tables-from-metadata metadata "%"))))))
-
 (defn- ->spec
   [db]
   (if (u/id db)
     (sql-jdbc.conn/db->pooled-connection-spec db) db))
+
+(defn- get-all-tables
+  [db]
+  (jdbc/with-db-metadata [metadata (->spec db)]
+    (->> (get-tables-from-metadata metadata "%")
+         (jdbc/metadata-result)
+         (vec)
+         (filter #(->> (get % :table_schem)
+                       (contains? excluded-schemas)
+                       (not)))
+         (tables-set))))
 
 ;; Strangely enough, the tests only work with :db keyword,
 ;; but the actual sync from the UI uses :dbname
@@ -145,13 +140,29 @@
   (or (get-in db [:details :dbname])
       (get-in db [:details :db])))
 
+;; NOTE: option for collection tables from many schemas
+(def ^:private SEPARATOR #" ")
+(defn- get-multiple-tables [db]
+  (->> (for [schema (as-> (or (get-db-name db) "default") schemas
+                      (str/split schemas SEPARATOR)
+                      (remove empty? schemas)
+                      (map (comp #(ddl.i/format-name :clickhouse %) str/trim) schemas))]
+         (jdbc/with-db-metadata [metadata (->spec db)]
+           (jdbc/metadata-result
+            (get-tables-from-metadata metadata schema))))
+       (apply concat)
+       (tables-set)))
+
 (defmethod driver/describe-database :clickhouse
-  [_ db]
-  (jdbc/with-db-metadata [metadata (->spec db)]
-    (let [tables (if (get-in db [:details :scan-all-databases])
-                   (get-all-tables metadata)
-                   (get-tables-in-db metadata (get-db-name db)))]
-      {:tables tables})))
+  [_ {{:keys [scan-all-databases]}
+      :details :as db}]
+  {:tables
+   (cond
+     scan-all-databases
+     (get-all-tables db)
+
+     :selected-schemas
+     (get-multiple-tables db))})
 
 (defmethod driver/describe-table :clickhouse
   [_ database table]
