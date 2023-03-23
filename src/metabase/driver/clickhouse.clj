@@ -53,6 +53,7 @@
     [#"Int64" :type/BigInteger]
     [#"IPv4" :type/IPAddress]
     [#"IPv6" :type/IPAddress]
+    [#"Map" :type/Dictionary]
     [#"String" :type/Text]
     [#"Tuple" :type/*]
     [#"UInt8" :type/Integer]
@@ -64,9 +65,14 @@
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
   (let [base-type (database-type->base-type
-                   (str/replace (name database-type)
-                                #"(?:Nullable|LowCardinality)\((\S+)\)"
-                                "$1"))]
+                   (let [normalized ;; extract the type from Nullable or LowCardinality first
+                         (str/replace (name database-type)
+                                      #"(?:Nullable|LowCardinality)\((\S+)\)"
+                                      "$1")]
+                     (cond
+                       (str/starts-with? normalized "Array(") "Array"
+                       (str/starts-with? normalized "Map(") "Map"
+                       :else normalized)))]
     base-type))
 
 (def ^:private excluded-schemas #{"system" "information_schema" "INFORMATION_SCHEMA"})
@@ -74,7 +80,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.2")
+(def ^:private product-name "metabase/1.1.3")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -117,6 +123,10 @@
               "%"            ; tablePattern "%" = match all tables
               allowed-table-types))
 
+(defn ^:private not-inner-mv-table?
+  [table]
+  (not (str/starts-with? (:table_name table) ".inner")))
+
 (defn- ->spec
   [db]
   (if (u/id db)
@@ -128,9 +138,9 @@
     (->> (get-tables-from-metadata metadata "%")
          (jdbc/metadata-result)
          (vec)
-         (filter #(->> (get % :table_schem)
-                       (contains? excluded-schemas)
-                       (not)))
+         (filter #(and
+                   (not (contains? excluded-schemas (:table_schem %)))
+                   (not-inner-mv-table? %)))
          (tables-set))))
 
 ;; Strangely enough, the tests only work with :db keyword,
@@ -140,29 +150,27 @@
   (or (get-in db [:details :dbname])
       (get-in db [:details :db])))
 
-;; NOTE: option for collection tables from many schemas
-(def ^:private SEPARATOR #" ")
-(defn- get-multiple-tables [db]
-  (->> (for [schema (as-> (or (get-db-name db) "default") schemas
-                      (str/split schemas SEPARATOR)
-                      (remove empty? schemas)
-                      (map (comp #(ddl.i/format-name :clickhouse %) str/trim) schemas))]
-         (jdbc/with-db-metadata [metadata (->spec db)]
+(def ^:private db-names-separator #" ")
+(defn- get-tables-in-dbs [db-or-dbs]
+  (->> (for [db (as-> (or (get-db-name db-or-dbs) "default") dbs
+                  (str/split dbs db-names-separator)
+                  (remove empty? dbs)
+                  (map (comp #(ddl.i/format-name :clickhouse %) str/trim) dbs))]
+         (jdbc/with-db-metadata [metadata (->spec db-or-dbs)]
            (jdbc/metadata-result
-            (get-tables-from-metadata metadata schema))))
+            (get-tables-from-metadata metadata db))))
        (apply concat)
+       (filter not-inner-mv-table?)
        (tables-set)))
 
 (defmethod driver/describe-database :clickhouse
   [_ {{:keys [scan-all-databases]}
       :details :as db}]
   {:tables
-   (cond
-     scan-all-databases
+   (if
+    (boolean scan-all-databases)
      (get-all-tables db)
-
-     :selected-schemas
-     (get-multiple-tables db))})
+     (get-tables-in-dbs db))})
 
 (defmethod driver/describe-table :clickhouse
   [_ database table]
