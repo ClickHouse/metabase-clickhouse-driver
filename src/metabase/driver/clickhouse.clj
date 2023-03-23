@@ -160,6 +160,7 @@
            (jdbc/metadata-result
             (get-tables-from-metadata metadata db))))
        (apply concat)
+       (filter not-inner-mv-table?)
        (tables-set)))
 
 (defmethod driver/describe-database :clickhouse
@@ -167,7 +168,7 @@
       :details :as db}]
   {:tables
    (if
-    (scan-all-databases)
+    (boolean scan-all-databases)
      (get-all-tables db)
      (get-tables-in-dbs db))})
 

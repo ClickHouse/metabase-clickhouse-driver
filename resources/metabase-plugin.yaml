@@ -18,12 +18,15 @@ driver:
     - user
     - password
     - name: dbname
-      display-name: Databases Names
+      display-name: Databases
       placeholder: default
+      helper-text: "To specify multiple databases, separate them by the space symbol. For example: default data logs"
     - name: scan-all-databases
       display-name: Scan all databases
       type: boolean
       default: false
+      description: Scan all tables from all available ClickHouse databases except the system ones.
+
     - ssl
     - ssh-tunnel
     - advanced-options-start
