@@ -592,8 +592,7 @@
     (testing "scanning multiple databases"
       (mt/with-temp Database
         [db {:engine :clickhouse
-             :details {:dbname "default"
-                       :multiple-schemas "metabase_test information_schema"}}]
+             :details {:dbname "metabase_test information_schema"}}]
         (let [{:keys [tables] :as _describe-result}
               (driver/describe-database :clickhouse db)
               tables-table  {:name        "tables"
