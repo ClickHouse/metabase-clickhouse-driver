@@ -178,8 +178,8 @@
         filtered-fields (for [field (:fields table-metadata)
                               :let [updated-field
                                     (update-in field [:database-type]
-                                               ;; Enum8(UInt8) -> Enum8
-                                               clojure.string/replace #"^(Enum.+)\(.+\)" "$1")]
+                                               ;; Enum8(UInt8) -> Enum8, DateTime(String) -> DateTime
+                                               clojure.string/replace #"((?:Enum|DateTime)\d*)(?:(.+))?" "$1")]
                               ;; Skip all AggregateFunction (but keeping SimpleAggregateFunction) columns
                               ;; JDBC does not support that and it crashes the data browser
                               :when (not (re-matches #"^AggregateFunction\(.+$"
