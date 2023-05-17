@@ -80,7 +80,16 @@
                  (str "INSERT INTO `metabase_test`.`wikistat` VALUES"
                       " (now(), 'foo', 10),"
                       " (now(), 'bar', 10),"
-                      " (now(), 'bar', 20);")]]
+                      " (now(), 'bar', 20);")
+                 ;; Used in sum-where tests
+                 (str "CREATE TABLE `metabase_test`.`sum_if_test_int`"
+                      "(id Int64, int_value Int64, discriminator String) ENGINE = Memory;")
+                 (str "INSERT INTO `metabase_test`.`sum_if_test_int` VALUES"
+                      "(1, 1, 'foo'), (2, 1, 'foo'), (3, 3, 'bar'), (4, 5, 'bar');")
+                 (str "CREATE TABLE `metabase_test`.`sum_if_test_float`"
+                      "(id Int64, float_value Float64, discriminator String) ENGINE = Memory;")
+                 (str "INSERT INTO `metabase_test`.`sum_if_test_float` VALUES"
+                      "(1, 1.1, 'foo'), (2, 1.44, 'foo'), (3, 3.5, 'bar'), (4, 5.77, 'bar');")]]
       (jdbc/execute! conn [sql]))))
 
 (defn do-with-metabase-test-db
