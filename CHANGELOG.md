@@ -2,7 +2,7 @@
 
 ### Bug fixes
 
-* Fix `sum-where` where previously it could not be applied to Int columns (see [#156](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/156))
+* Fixed `sum-where` behavior where previously it could not be applied to Int columns (see [#156](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/156))
 
 # 1.1.3
 
