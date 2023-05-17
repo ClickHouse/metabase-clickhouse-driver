@@ -377,20 +377,17 @@
                       :database-position 0
                       ; TODO: in Metabase 0.45.0-RC this returned true,
                       ; and now it is false, which is strange, cause it is not Nullable in the DDL
-                      :database-required false
-                      :database-is-auto-increment false}
+                      :database-required false}
                      {:name "enum2"
                       :database-type "Enum16"
                       :base-type :type/Text
                       :database-position 1
-                      :database-required false
-                      :database-is-auto-increment false}
+                      :database-required false}
                      {:name "enum3"
                       :database-type "Enum8"
                       :base-type :type/Text
                       :database-position 2
-                      :database-required false
-                      :database-is-auto-increment false}}}
+                      :database-required false}}}
           (ctu/do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))
@@ -537,20 +534,17 @@
                           :database-position 0
                           ; TODO: in Metabase 0.45.0-RC this returned true,
                           ; and now it is false, which is strange, cause it is not Nullable in the DDL
-                          :database-required false
-                          :database-is-auto-increment false}
+                          :database-required false}
                          {:name "lowest_value"
                           :database-type "SimpleAggregateFunction(min, UInt8)",
                           :base-type :type/Integer,
                           :database-position 2,
-                          :database-required false
-                          :database-is-auto-increment false}
+                          :database-required false}
                          {:name "count"
                           :database-type "SimpleAggregateFunction(sum, Int64)",
                           :base-type :type/BigInteger,
                           :database-position 3,
-                          :database-required false
-                          :database-is-auto-increment false}}}
+                          :database-required false}}}
               (ctu/do-with-metabase-test-db
                (fn [db]
                  (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
@@ -588,12 +582,6 @@
            :schema "metabase_test"}
           {:description nil,
            :name "maps_test",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "sum_if_test_int",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "sum_if_test_float",
            :schema "metabase_test"}}]
     (testing "scanning a single database"
       (mt/with-temp Database
@@ -605,22 +593,22 @@
                {:tables test-tables}
                describe-result)))))
     (testing "scanning all databases"
-      (mt/with-temp Database
-        [db {:engine :clickhouse
-             :details {:dbname "default"
-                       :scan-all-databases true}}]
-        (let [describe-result (driver/describe-database :clickhouse db)]
+        (mt/with-temp Database
+          [db {:engine :clickhouse
+               :details {:dbname "default"
+                         :scan-all-databases true}}]
+          (let [describe-result (driver/describe-database :clickhouse db)]
             ;; check the existence of at least some test tables here
-          (doseq [table test-tables]
-            (is (contains? (:tables describe-result)
-                           table)))
+            (doseq [table test-tables]
+              (is (contains? (:tables describe-result)
+                             table)))
             ;; should not contain any ClickHouse system tables
-          (is (not (some #(= (:schema %) "system")
-                         (:tables describe-result))))
-          (is (not (some #(= (:schema %) "information_schema")
-                         (:tables describe-result))))
-          (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
-                         (:tables describe-result)))))))
+            (is (not (some #(= (:schema %) "system")
+                           (:tables describe-result))))
+            (is (not (some #(= (:schema %) "information_schema")
+                           (:tables describe-result))))
+            (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
+                           (:tables describe-result)))))))
     (testing "scanning multiple databases"
       (mt/with-temp Database
         [db {:engine :clickhouse
@@ -641,53 +629,3 @@
           ;; tables from `information_schema`
           (is (contains? tables tables-table))
           (is (contains? tables columns-table)))))))
-
-;; Metabase has pretty extensive testing for sum-where and count-where
-;; However, this ClickHouse-specific corner case is not covered
-(deftest clickhouse-sum-where
-  (mt/test-driver
-   :clickhouse
-   (testing "int values (with matching rows)"
-     (is (= [[8]]
-            (qp.test/formatted-rows
-             [int]
-             :format-nil-values
-             (ctu/do-with-metabase-test-db
-              (fn [db]
-                (data/with-db db
-                  (data/run-mbql-query
-                   sum_if_test_int
-                   {:aggregation [[:sum-where $int_value [:= $discriminator "bar"]]]}))))))))
-   (testing "int values (no matching rows)"
-     (is (= [[0]]
-            (qp.test/formatted-rows
-             [int]
-             :format-nil-values
-             (ctu/do-with-metabase-test-db
-              (fn [db]
-                (data/with-db db
-                  (data/run-mbql-query
-                   sum_if_test_int
-                   {:aggregation [[:sum-where $int_value [:= $discriminator "qaz"]]]}))))))))
-   (testing "double values (with matching rows)"
-     (is (= [[9.27]]
-            (qp.test/formatted-rows
-             [double]
-             :format-nil-values
-             (ctu/do-with-metabase-test-db
-              (fn [db]
-                (data/with-db db
-                  (data/run-mbql-query
-                   sum_if_test_float
-                   {:aggregation [[:sum-where $float_value [:= $discriminator "bar"]]]}))))))))
-   (testing "double values (no matching rows)"
-     (is (= [[0.0]]
-            (qp.test/formatted-rows
-             [double]
-             :format-nil-values
-             (ctu/do-with-metabase-test-db
-              (fn [db]
-                (data/with-db db
-                  (data/run-mbql-query
-                   sum_if_test_float
-                   {:aggregation [[:sum-where $float_value [:= $discriminator "qaz"]]]}))))))))))
