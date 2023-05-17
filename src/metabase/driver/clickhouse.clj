@@ -80,7 +80,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.3")
+(def ^:private product-name "metabase/1.1.4")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -467,12 +467,17 @@
 ;; metabase.query-processor-test.share-test
 (defmethod sql.qp/->honeysql [:clickhouse :count-where]
   [driver [_ pred]]
-  (hsql/call :case
-             (hsql/call :>
-                        (hsql/call :count) 0)
+  (hsql/call :case (hsql/call :> (hsql/call :count) 0)
              (hsql/call :sum
-                        (hsql/call :case (sql.qp/->honeysql driver pred) 1.0 :else 0.0))
+                        (hsql/call :case (sql.qp/->honeysql driver pred) 1
+                                   :else 0))
              :else nil))
+
+(defmethod sql.qp/->honeysql [:clickhouse :sum-where]
+  [driver [_ field pred]]
+  (hsql/call :sum (hsql/call
+                   :case (sql.qp/->honeysql driver pred) (sql.qp/->honeysql driver field)
+                   :else 0)))
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
