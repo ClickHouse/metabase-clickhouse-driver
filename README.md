@@ -137,7 +137,7 @@ The driver should work fine for many use cases. Please consider the following it
 
 ## Known limitations
 
-* As the underlying JDBC driver version does not support columns with `(Simple)AggregationFunction` type, these columns are excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
+* As the underlying JDBC driver version does not support columns with `AggregateFunction` type, these columns are excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
 
 ## Contributing
 
