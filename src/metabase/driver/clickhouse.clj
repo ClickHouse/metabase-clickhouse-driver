@@ -1,7 +1,8 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [metabase.driver.clickhouse-nippy]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql [core :as hsql] [format :as hformat]]
             [java-time :as t]
@@ -19,7 +20,6 @@
             [schema.core :as s])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql
-            DatabaseMetaData
             ResultSet
             ResultSetMetaData
             Types]
@@ -80,7 +80,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.4")
+(def ^:private product-name "metabase/1.1.5")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]

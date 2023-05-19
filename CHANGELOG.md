@@ -1,3 +1,9 @@
+# 1.1.5
+
+### Bug fixes
+
+* Fixed Nippy error on cached questions (see [#147](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/147))
+
 # 1.1.4
 
 ### Bug fixes
