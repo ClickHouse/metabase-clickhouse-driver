@@ -5,7 +5,6 @@
             [cljc.java-time.local-date :as local-date]
             [cljc.java-time.offset-date-time :as offset-date-time]
             [cljc.java-time.temporal.chrono-unit :as chrono-unit]
-            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-test-utils :as ctu]
@@ -18,7 +17,8 @@
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
-            [metabase.test.data.clickhouse :refer [default-connection-params]]))
+            [metabase.test.data.clickhouse :refer [default-connection-params]]
+            [taoensso.nippy :as nippy]))
 
 (deftest clickhouse-server-timezone
   (mt/test-driver
@@ -691,3 +691,19 @@
                   (data/run-mbql-query
                    sum_if_test_float
                    {:aggregation [[:sum-where $float_value [:= $discriminator "qaz"]]]}))))))))))
+
+(deftest clickhouse-nippy
+  (mt/test-driver
+   :clickhouse
+   (testing "UnsignedByte"
+     (let [value (com.clickhouse.data.value.UnsignedByte/valueOf "214")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))
+   (testing "UnsignedShort"
+     (let [value (com.clickhouse.data.value.UnsignedShort/valueOf "62055")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))
+   (testing "UnsignedInteger"
+     (let [value (com.clickhouse.data.value.UnsignedInteger/valueOf "4748364")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))
+   (testing "UnsignedLong"
+     (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))))
