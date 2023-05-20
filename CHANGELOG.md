@@ -1,3 +1,9 @@
+# 1.1.6
+
+### Bug fixes
+
+* Fixed date time bucketing issues (see [#155](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/155))
+
 # 1.1.5
 
 ### Bug fixes

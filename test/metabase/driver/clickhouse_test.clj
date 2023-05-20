@@ -569,36 +569,21 @@
 (deftest clickhouse-describe-database
   (let [test-tables
         #{{:description nil,
-           :name "aggregate_functions_filter_test",
-           :schema "metabase_test"}
+           :name "orders",
+           :schema "sample_dataset"}
           {:description nil,
-           :name "boolean_test",
-           :schema "metabase_test"}
+           :name "people",
+           :schema "sample_dataset"}
           {:description nil,
-           :name "enums_test",
-           :schema "metabase_test"}
+           :name "products",
+           :schema "sample_dataset"}
           {:description nil,
-           :name "ipaddress_test",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "wikistat",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "wikistat_mv",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "maps_test",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "sum_if_test_int",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "sum_if_test_float",
-           :schema "metabase_test"}}]
+           :name "reviews",
+           :schema "sample_dataset"}}]
     (testing "scanning a single database"
       (mt/with-temp Database
         [db {:engine :clickhouse
-             :details {:dbname "metabase_test"
+             :details {:dbname "sample_dataset"
                        :scan-all-databases nil}}]
         (let [describe-result (driver/describe-database :clickhouse db)]
           (is (=
@@ -624,7 +609,7 @@
     (testing "scanning multiple databases"
       (mt/with-temp Database
         [db {:engine :clickhouse
-             :details {:dbname "metabase_test information_schema"}}]
+             :details {:dbname "sample_dataset information_schema"}}]
         (let [{:keys [tables] :as _describe-result}
               (driver/describe-database :clickhouse db)
               tables-table  {:name        "tables"
@@ -634,7 +619,7 @@
                              :description nil
                              :schema      "information_schema"}]
 
-          ;; tables from `metabase_test`
+          ;; tables from `sample_dataset`
           (doseq [table test-tables]
             (is (contains? tables table)))
 
@@ -707,3 +692,114 @@
    (testing "UnsignedLong"
      (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
        (is (= value (nippy/thaw (nippy/freeze value))))))))
+
+(defn- temporal-bucketing-query-field1
+  [unit]
+  (qp.test/rows
+   (ctu/do-with-metabase-test-db
+    (fn [db]
+      (data/with-db db
+        (data/run-mbql-query
+         temporal_bucketing
+         {:breakout [[:field %start_of_year {:temporal-unit unit}]]}))))))
+
+(defn- temporal-bucketing-query-field2
+  [unit]
+  (qp.test/rows
+   (ctu/do-with-metabase-test-db
+    (fn [db]
+      (data/with-db db
+        (data/run-mbql-query
+         temporal_bucketing
+         {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}))))))
+
+(defn- temporal-bucketing-query-field3
+  [unit]
+  (qp.test/rows
+   (ctu/do-with-metabase-test-db
+    (fn [db]
+      (data/with-db db
+        (data/run-mbql-query
+         temporal_bucketing
+         {:breakout [[:field %end_of_year {:temporal-unit unit}]]}))))))
+
+;; See temporal_bucketing table definition
+;; Fields values are:
+;; #1 == '2022-01-01 00:00:00'
+;; #2 == '2022-06-20 06:32:54'
+;; #3 == '2022-12-31 23:59:59'
+(deftest clickhouse-temporal-bucketing
+  (mt/test-driver
+   :clickhouse
+   (testing "minute"
+     (is (= [["2022-06-20T06:32:00Z"]]
+            (temporal-bucketing-query-field2 :minute))))
+   (testing "hour"
+     (is (= [["2022-06-20T06:00:00Z"]]
+            (temporal-bucketing-query-field2 :hour))))
+   (testing "day"
+     (is (= [["2022-06-20T00:00:00Z"]]
+            (temporal-bucketing-query-field2 :day))))
+   (testing "month"
+     (is (= [["2022-06-01T00:00:00Z"]]
+            (temporal-bucketing-query-field2 :month))))
+   (testing "quarter"
+     (is (= [["2022-04-01T00:00:00Z"]]
+            (temporal-bucketing-query-field2 :quarter))))
+   (testing "year"
+     (is (= [["2022-01-01T00:00:00Z"]]
+            (temporal-bucketing-query-field2 :year))))
+   (testing "minute of hour #1"
+     (is (= [[0]]
+            (temporal-bucketing-query-field1 :minute-of-hour))))
+   (testing "minute of hour #2"
+     (is (= [[32]]
+            (temporal-bucketing-query-field2 :minute-of-hour))))
+   (testing "minute of hour #3"
+     (is (= [[59]]
+            (temporal-bucketing-query-field3 :minute-of-hour))))
+   (testing "hour of day #1"
+     (is (= [[0]]
+            (temporal-bucketing-query-field1 :hour-of-day))))
+   (testing "hour of day #2"
+     (is (= [[6]]
+            (temporal-bucketing-query-field2 :hour-of-day))))
+   (testing "hour of day #3"
+     (is (= [[23]]
+            (temporal-bucketing-query-field3 :hour-of-day))))
+   (testing "day of month #1"
+     (is (= [[1]]
+            (temporal-bucketing-query-field1 :day-of-month))))
+   (testing "day of month #2"
+     (is (= [[20]]
+            (temporal-bucketing-query-field2 :day-of-month))))
+   (testing "day of month #3"
+     (is (= [[31]]
+            (temporal-bucketing-query-field3 :day-of-month))))
+   (testing "day of year #1"
+     (is (= [[1]]
+            (temporal-bucketing-query-field1 :day-of-year))))
+   (testing "day of year #2"
+     (is (= [[171]]
+            (temporal-bucketing-query-field2 :day-of-year))))
+   (testing "day of year #3"
+     (is (= [[365]]
+            (temporal-bucketing-query-field3 :day-of-year))))
+   (testing "month of year #1"
+     (is (= [[1]]
+            (temporal-bucketing-query-field1 :month-of-year))))
+   (testing "month of year #2"
+     (is (= [[6]]
+            (temporal-bucketing-query-field2 :month-of-year))))
+   (testing "month of year #3"
+     (is (= [[12]]
+            (temporal-bucketing-query-field3 :month-of-year))))
+   (testing "quarter of year #1"
+     (is (= [[1]]
+            (temporal-bucketing-query-field1 :quarter-of-year))))
+   (testing "quarter of year #2"
+     (is (= [[2]]
+            (temporal-bucketing-query-field2 :quarter-of-year))))
+   (testing "quarter of year #3"
+     (is (= [[4]]
+            (temporal-bucketing-query-field3 :quarter-of-year))))))

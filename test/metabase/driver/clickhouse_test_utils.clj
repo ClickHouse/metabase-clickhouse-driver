@@ -89,7 +89,12 @@
                  (str "CREATE TABLE `metabase_test`.`sum_if_test_float`"
                       "(id Int64, float_value Float64, discriminator String) ENGINE = Memory;")
                  (str "INSERT INTO `metabase_test`.`sum_if_test_float` VALUES"
-                      "(1, 1.1, 'foo'), (2, 1.44, 'foo'), (3, 3.5, 'bar'), (4, 5.77, 'bar');")]]
+                      "(1, 1.1, 'foo'), (2, 1.44, 'foo'), (3, 3.5, 'bar'), (4, 5.77, 'bar');")
+                 ;; Temporal bucketing tests
+                 (str "CREATE TABLE `metabase_test`.`temporal_bucketing`"
+                      "(start_of_year DateTime, mid_of_year DateTime, end_of_year DateTime) ENGINE = Memory;")
+                 (str "INSERT INTO `metabase_test`.`temporal_bucketing` VALUES"
+                      "('2022-01-01 00:00:00', '2022-06-20 06:32:54', '2022-12-31 23:59:59');")]]
       (jdbc/execute! conn [sql]))))
 
 (defn do-with-metabase-test-db

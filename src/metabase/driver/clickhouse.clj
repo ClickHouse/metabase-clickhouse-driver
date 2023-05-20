@@ -1,12 +1,13 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [metabase.driver.clickhouse-nippy]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql [core :as hsql] [format :as hformat]]
             [java-time :as t]
             [metabase [config :as config] [driver :as driver] [util :as u]]
+            [metabase.driver.clickhouse-nippy]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn] [execute :as sql-jdbc.execute]
@@ -19,10 +20,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
-           [java.sql
-            ResultSet
-            ResultSetMetaData
-            Types]
+           [java.sql ResultSet ResultSetMetaData Types]
            [java.time
             LocalDate
             LocalDateTime
@@ -80,7 +78,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.5")
+(def ^:private product-name "metabase/1.1.6")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -187,17 +185,42 @@
                           updated-field)]
     (merge table-metadata {:fields (set filtered-fields)})))
 
-(defn- to-relative-day-num
-  [expr]
-  (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
+(defmethod sql.qp/date [:clickhouse :day-of-week]
+  [_ _ expr]
+  (sql.qp/adjust-day-of-week :clickhouse (hsql/call :dayOfWeek expr)))
 
-(defn- to-relative-month-num
+(defmethod sql.qp/date [:clickhouse :default] [_ _ expr] expr)
+
+(defmethod sql.qp/date [:clickhouse :minute]
+  [_ _ expr]
+  (hsql/call :toStartOfMinute (hsql/call :toDateTime expr)))
+
+(defmethod sql.qp/date [:clickhouse :minute-of-hour]
+  [_ _ expr]
+  (hsql/call :toMinute (hsql/call :toDateTime expr)))
+
+(defmethod sql.qp/date [:clickhouse :hour] [_ _ expr]
+  (hsql/call :toStartOfHour (hsql/call :toDateTime expr)))
+
+(defmethod sql.qp/date [:clickhouse :hour-of-day] [_ _ expr]
+  (hsql/call :toHour (hsql/call :toDateTime expr)))
+
+(defmethod sql.qp/date [:clickhouse :day-of-month]
+  [_ _ expr]
+  (hsql/call :toDayOfMonth (hsql/call :toDateTime expr)))
+
+(defn- to-start-of-week
   [expr]
-  (hsql/call :toRelativeMonthNum (hsql/call :toDateTime expr)))
+  ;; ClickHouse weeks usually start on Monday
+  (hsql/call :toMonday expr))
 
 (defn- to-start-of-year
   [expr]
   (hsql/call :toStartOfYear (hsql/call :toDateTime expr)))
+
+(defn- to-relative-day-num
+  [expr]
+  (hsql/call :toRelativeDayNum (hsql/call :toDateTime expr)))
 
 (defn- to-day-of-year
   [expr]
@@ -205,94 +228,37 @@
               (to-relative-day-num (to-start-of-year expr)))
         1))
 
-(defn- to-week-of-year-iso [expr] (hsql/call :toISOWeek expr))
-
-(defn- to-month-of-year
-  [expr]
-  (hx/+ (hx/- (to-relative-month-num expr)
-              (to-relative-month-num (to-start-of-year expr)))
-        1))
-
-(defn- to-quarter-of-year
-  [expr]
-  (hsql/call
-   :ceil
-   (hx//
-    (hx/+
-     (hx/- (to-relative-month-num expr)
-           (to-relative-month-num (to-start-of-year expr)))
-     1)
-    3)))
-
-(defn- to-start-of-week
-  [expr]
-  ;; ClickHouse weeks usually start on Monday
-  (hsql/call :toMonday expr))
-
-(defn- to-start-of-minute
-  [expr]
-  (hsql/call :toStartOfMinute (hsql/call :toDateTime expr)))
-
-(defn- to-start-of-hour
-  [expr]
-  (hsql/call :toStartOfHour (hsql/call :toDateTime expr)))
-
-(defn- to-hour [expr] (hsql/call :toHour (hsql/call :toDateTime expr)))
-
-(defn- to-minute [expr] (hsql/call :toMinute (hsql/call :toDateTime expr)))
-
-(defn- to-day [expr] (hsql/call :toDate expr))
-
-(defmethod sql.qp/date [:clickhouse :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :clickhouse (hsql/call :dayOfWeek expr)))
-
-(defn- to-day-of-month
-  [expr]
-  (hsql/call :toDayOfMonth (hsql/call :toDateTime expr)))
-
-(defn- to-start-of-month
-  [expr]
-  (hsql/call :toStartOfMonth (hsql/call :toDateTime expr)))
-
-(defn- to-start-of-quarter
-  [expr]
-  (hsql/call :toStartOfQuarter (hsql/call :toDateTime expr)))
-
-(defmethod sql.qp/date [:clickhouse :default] [_ _ expr] expr)
-(defmethod sql.qp/date [:clickhouse :minute]
-  [_ _ expr]
-  (to-start-of-minute expr))
-(defmethod sql.qp/date [:clickhouse :minute-of-hour]
-  [_ _ expr]
-  (to-minute expr))
-(defmethod sql.qp/date [:clickhouse :hour] [_ _ expr] (to-start-of-hour expr))
-(defmethod sql.qp/date [:clickhouse :hour-of-day] [_ _ expr] (to-hour expr))
-(defmethod sql.qp/date [:clickhouse :day-of-month]
-  [_ _ expr]
-  (to-day-of-month expr))
 (defmethod sql.qp/date [:clickhouse :day-of-year]
   [_ _ expr]
   (to-day-of-year expr))
+
 (defmethod sql.qp/date [:clickhouse :week-of-year-iso]
   [_ _ expr]
-  (to-week-of-year-iso expr))
-(defmethod sql.qp/date [:clickhouse :month] [_ _ expr] (to-start-of-month expr))
+  (hsql/call :toISOWeek expr))
+
+(defmethod sql.qp/date [:clickhouse :month] [_ _ expr]
+  (hsql/call :toStartOfMonth (hsql/call :toDateTime expr)))
+
 (defmethod sql.qp/date [:clickhouse :month-of-year]
   [_ _ expr]
-  (to-month-of-year expr))
+  (hsql/call :toMonth (hsql/call :toDateTime expr)))
+
 (defmethod sql.qp/date [:clickhouse :quarter-of-year]
   [_ _ expr]
-  (to-quarter-of-year expr))
-(defmethod sql.qp/date [:clickhouse :year] [_ _ expr] (to-start-of-year expr))
+  (hsql/call :toQuarter expr))
 
-(defmethod sql.qp/date [:clickhouse :day] [_ _ expr] (to-day expr))
+(defmethod sql.qp/date [:clickhouse :year] [_ _ expr]
+  (hsql/call :toStartOfYear (hsql/call :toDateTime expr)))
+
+(defmethod sql.qp/date [:clickhouse :day] [_ _ expr]
+  (hsql/call :toDate expr))
+
 (defmethod sql.qp/date [:clickhouse :week]
   [driver _ expr]
   (sql.qp/adjust-start-of-week driver to-start-of-week expr))
 (defmethod sql.qp/date [:clickhouse :quarter]
   [_ _ expr]
-  (to-start-of-quarter expr))
+  (hsql/call :toStartOfQuarter (hsql/call :toDateTime expr)))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :seconds]
   [_ _ expr]
@@ -528,6 +494,34 @@
 (defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
   (hx/->timestamp expr))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TINYINT]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  (fn []
+    (.getByte rs i)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/SMALLINT]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  (fn []
+    (.getShort rs i)))
+
+;; This is for tests only - some of them expect nil values
+;; getInt/getLong return 0 in case of a NULL value in the result set
+;; the only way to check if it was actually NULL - call ResultSet.wasNull afterwards
+(defn ^:private with-null-check
+  [rs get-value-fn]
+  (let [value (get-value-fn)]
+    (if (.wasNull rs) nil value)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/BIGINT]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  (fn []
+    (with-null-check rs #(.getLong rs i))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/INTEGER]
+  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  (fn []
+    (with-null-check rs #(.getInt rs i))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
