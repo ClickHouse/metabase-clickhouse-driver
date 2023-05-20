@@ -98,9 +98,11 @@
 
 (defn- metabase-test-db-details
   []
-  (tx/dbdef->connection-details
-   :clickhouse :db {:database-name "metabase_test"}))
+  {:engine :clickhouse
+   :details (tx/dbdef->connection-details
+             :clickhouse :db {:database-name "metabase_test"})})
 
+(def db-initialized? (atom false))
 (defn- create-metabase-test-db!
   "Create a ClickHouse database called `metabase_test` and initialize some test data"
   []
@@ -110,15 +112,15 @@
                        (str/split s #";")
                        (map str/trim s)
                        (filter seq s))]
-      (jdbc/db-do-commands conn statements))))
+      (jdbc/db-do-commands conn statements)
+      (reset! db-initialized? true))))
 
 (defn do-with-metabase-test-db
   "Execute a test function using the test dataset from Metabase itself"
   {:style/indent 0}
   [f]
-  (create-metabase-test-db!)
+  (when (not @db-initialized?) (create-metabase-test-db!))
   (tt/with-temp Database
-    [database
-     {:engine :clickhouse :details (metabase-test-db-details)}]
+    [database (metabase-test-db-details)]
     (sync-metadata/sync-db-metadata! database)
     (f database)))
