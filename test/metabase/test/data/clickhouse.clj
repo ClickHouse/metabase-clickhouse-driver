@@ -1,27 +1,25 @@
 (ns metabase.test.data.clickhouse
   "Code for creating / destroying a ClickHouse database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
+   [clojure.test :refer :all]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.models [database :refer [Database]]]
+   [metabase.query-processor-test :as qp.test]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test.data
     [interface :as tx]
     [sql-jdbc :as sql-jdbc.tx]]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc
     [execute :as execute]
-    [load-data :as load-data]]))
+    [load-data :as load-data]]
+   [toucan.util.test :as tt]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
-
-(def default-connection-params {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-                                :subprotocol "clickhouse"
-                                :subname "//localhost:8123/default"
-                                :user "default"
-                                :password ""
-                                :ssl false
-                                :use_no_proxy false
-                                :use_server_time_zone_for_dates true
-                                :product_name "metabase/1.1.5"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
@@ -82,3 +80,47 @@
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil) ; TODO - fix me
 
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
+
+(def default-connection-params {:classname "com.clickhouse.jdbc.ClickHouseDriver"
+                                :subprotocol "clickhouse"
+                                :subname "//localhost:8123/default"
+                                :user "default"
+                                :password ""
+                                :ssl false
+                                :use_no_proxy false
+                                :use_server_time_zone_for_dates true
+                                :product_name "metabase/1.1.6"})
+
+(defn rows-without-index
+  "Remove the Metabase index which is the first column in the result set"
+  [query-result]
+  (map #(drop 1 %) (qp.test/rows query-result)))
+
+(defn- metabase-test-db-details
+  []
+  {:engine :clickhouse
+   :details (tx/dbdef->connection-details
+             :clickhouse :db {:database-name "metabase_test"})})
+
+(def db-initialized? (atom false))
+(defn- create-metabase-test-db!
+  "Create a ClickHouse database called `metabase_test` and initialize some test data"
+  []
+  (jdbc/with-db-connection
+    [conn (sql-jdbc.conn/connection-details->spec :clickhouse (metabase-test-db-details))]
+    (let [statements (as-> (slurp "modules/drivers/clickhouse/test/metabase/test/data/datasets.sql") s
+                       (str/split s #";")
+                       (map str/trim s)
+                       (filter seq s))]
+      (jdbc/db-do-commands conn statements)
+      (reset! db-initialized? true))))
+
+(defn do-with-metabase-test-db
+  "Execute a test function using the test dataset from Metabase itself"
+  {:style/indent 0}
+  [f]
+  (when (not @db-initialized?) (create-metabase-test-db!))
+  (tt/with-temp Database
+    [database (metabase-test-db-details)]
+    (sync-metadata/sync-db-metadata! database)
+    (f database)))
