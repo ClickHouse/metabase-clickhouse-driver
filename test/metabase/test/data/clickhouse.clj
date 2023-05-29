@@ -89,7 +89,7 @@
                                 :ssl false
                                 :use_no_proxy false
                                 :use_server_time_zone_for_dates true
-                                :product_name "metabase/1.1.6"})
+                                :product_name "metabase/1.1.7"})
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
