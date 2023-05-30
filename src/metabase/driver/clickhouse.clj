@@ -266,7 +266,7 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :milliseconds]
   [_ _ expr]
-  (hsql/call :toDateTime64 expr))
+  (hsql/call :toDateTime64 (hx// expr 1000), 3))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
