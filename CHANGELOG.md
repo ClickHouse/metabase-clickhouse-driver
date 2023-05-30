@@ -1,3 +1,9 @@
+# 1.1.7
+
+### New features
+
+* JDBC driver upgrade (v0.4.1 -> [v0.4.6](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.4.6))
+
 # 1.1.6
 
 ### Bug fixes
