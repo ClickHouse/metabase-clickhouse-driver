@@ -350,6 +350,22 @@
                                    {:filter [:contains $mystring "Я"
                                              {:case-sensitive false}]}))))))))
 
+(deftest clickhouse-datetime64
+  (mt/test-driver
+    :clickhouse
+    (let [row1 "2022-03-03 03:03:03.333"
+          row2 "2022-03-03 03:03:03.444"
+          row3 "2022-03-03 03:03:03"
+          query-result (data/dataset
+                         (tx/dataset-definition "metabase_tests_datetime64"
+                                                ["test-data-datetime64"
+                                                 [{:field-name "milli_sec"
+                                                   :base-type {:native "DateTime64(3)"}}]
+                                                 [[row1] [row2] [row3]]])
+                         (data/run-mbql-query test-data-datetime64 {:filter [:= $milli_sec "2022-03-03T03:03:03.333Z"]}))
+          result (ctd/rows-without-index query-result)]
+      (is (= [["2022-03-03T03:03:03.333Z"]] result)))))
+
 (deftest clickhouse-booleans
   (mt/test-driver
    :clickhouse
