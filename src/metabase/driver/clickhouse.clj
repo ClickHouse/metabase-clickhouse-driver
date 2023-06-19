@@ -264,6 +264,10 @@
   [_ _ expr]
   (hsql/call :toDateTime expr))
 
+(defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :milliseconds]
+  [_ _ expr]
+  (hsql/call :toDateTime64 (hx// expr 1000), 3))
+
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
   (format "toDate('%s')" (t/format "yyyy-MM-dd" t)))
@@ -282,7 +286,8 @@
 
 (defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
   [_ t]
-  (format "parseDateTimeBestEffort('%s')"
+  (format "%s('%s')"
+          (if (zero? (.getNano t)) "parseDateTimeBestEffort" "parseDateTime64BestEffort")
           (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
@@ -294,15 +299,18 @@
 ;; because it eats some performance, but I do not know a better solution
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [_ t]
-  (hsql/call :parseDateTimeBestEffort t))
+  (hsql/call (if (zero? (.getNano t)) :parseDateTimeBestEffort :parseDateTime64BestEffort)
+             (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ t]
-  (hsql/call :parseDateTimeBestEffort t))
+  (hsql/call (if (zero? (.getNano t)) :parseDateTimeBestEffort :parseDateTime64BestEffort)
+             (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod sql.qp/->honeysql [:clickhouse OffsetDateTime]
   [_ t]
-  (hsql/call :parseDateTimeBestEffort t))
+  (hsql/call (if (zero? (.getNano t)) :parseDateTimeBestEffort :parseDateTime64BestEffort)
+             (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDate]
   [_ t]
