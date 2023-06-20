@@ -464,13 +464,6 @@
   [value :- (s/constrained mbql.s/value #(string? (second %)) "string value") f]
   (update value 1 f))
 
-(defmethod sql.qp/->honeysql [:clickhouse :starts-with]
-  [driver [_ field value options]]
-  (ch-like-clause driver
-                  (sql.qp/->honeysql driver field)
-                  (update-string-value value #(str % \%))
-                  options))
-
 (defmethod sql.qp/->honeysql [:clickhouse :contains]
   [driver [_ field value options]]
   (ch-like-clause driver
@@ -478,12 +471,21 @@
                   (update-string-value value #(str \% % \%))
                   options))
 
+(defn- clickhouse-string-fn
+  [fn-name field value options]
+  (let [field (sql.qp/->honeysql :clickhouse field)
+        value (sql.qp/->honeysql :clickhouse value)]
+    (if (get options :case-sensitive true)
+      (hsql/call fn-name field value)
+      (hsql/call fn-name (hsql/call :lowerUTF8 field) (str/lower-case value)))))
+
+(defmethod sql.qp/->honeysql [:clickhouse :starts-with]
+  [_ [_ field value options]]
+  (clickhouse-string-fn :startsWith field value options))
+
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with]
-  [driver [_ field value options]]
-  (ch-like-clause driver
-                  (sql.qp/->honeysql driver field)
-                  (update-string-value value #(str \% %))
-                  options))
+  [_ [_ field value options]]
+  (clickhouse-string-fn :endsWith field value options))
 
 ;; We do not have Time data types, so we cheat a little bit
 (defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/ISO8601->Time]
