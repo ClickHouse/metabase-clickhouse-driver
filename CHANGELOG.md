@@ -3,6 +3,7 @@
 ### New features
 
 * JDBC driver upgrade (v0.4.1 -> [v0.4.6](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.4.6))
+* Support DateTime64 by [@lucas-tubi](https://github.com/lucas-tubi) ([#165](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/165))
 
 # 1.1.6
 

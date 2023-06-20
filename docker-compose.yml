@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-23.4-alpine}'
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-23.5-alpine}'
     container_name: 'metabase-driver-clickhouse-server'
     ports:
       - '8123:8123'
@@ -32,7 +32,7 @@ services:
     hostname: server.clickhouseconnect.test
 
   metabase:
-    image: metabase/metabase:v0.46.3
+    image: metabase/metabase:v0.46.5
     container_name: metabase-with-clickhouse-driver
     environment:
       'MB_HTTP_TIMEOUT': '5000'
