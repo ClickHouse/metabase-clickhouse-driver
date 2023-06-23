@@ -5,10 +5,8 @@
             [cljc.java-time.local-date :as local-date]
             [cljc.java-time.offset-date-time :as offset-date-time]
             [cljc.java-time.temporal.chrono-unit :as chrono-unit]
-            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.clickhouse-test-utils :as ctu]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -18,7 +16,9 @@
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
-            [metabase.test.data.clickhouse :refer [default-connection-params]]))
+            [metabase.test.data.clickhouse :as ctd]
+
+            [taoensso.nippy :as nippy]))
 
 (deftest clickhouse-server-timezone
   (mt/test-driver
@@ -114,7 +114,7 @@
                                                  :base-type {:native "Array(Array(String))"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-arrays {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[[foo, bar], [qaz, qux]]"], ["[]"]] result)))))
 
 (deftest clickhouse-low-cardinality-array
@@ -129,7 +129,7 @@
                                                  :base-type {:native "Array(LowCardinality(String))"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-low-cardinality-array {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[foo, bar]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-nullables
@@ -144,7 +144,7 @@
                                                  :base-type {:native "Array(Nullable(String))"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-nullables {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[foo, null, bar]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-booleans
@@ -159,7 +159,7 @@
                                                  :base-type {:native "Array(Boolean)"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-booleans {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[true, false, true]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-floats
@@ -174,7 +174,7 @@
                                                  :base-type {:native "Array(Float64)"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-floats {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-dates
@@ -192,7 +192,7 @@
                                                  :base-type {:native "Array(Date)"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-dates {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[2022-12-06, 2021-10-19]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-date32
@@ -210,7 +210,7 @@
                                                  :base-type {:native "Array(Date32)"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-date32 {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[2122-12-06, 2099-10-19]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-datetime
@@ -228,7 +228,7 @@
                                                  :base-type {:native "Array(DateTime)"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-datetime {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[2022-12-06T18:28:31, 2021-10-19T13:12:44]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-datetime64
@@ -246,7 +246,7 @@
                                                  :base-type {:native "Array(DateTime64(3))"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-datetime64 {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[2022-12-06T18:28:31.123, 2021-10-19T13:12:44.456]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-decimals
@@ -261,7 +261,7 @@
                                                  :base-type {:native "Array(Decimal(18, 9))"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-decimals {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-tuples
@@ -276,7 +276,7 @@
                                                  :base-type {:native "Array(Tuple(String, UInt32))"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-tuples {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[[foobar, 1234], [qaz, 0]]"], ["[]"]] result)))))
 
 (deftest clickhouse-array-of-uuids
@@ -292,7 +292,7 @@
                                                  :base-type {:native "Array(UUID)"}}]
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-uuids {}))
-         result (ctu/rows-without-index query-result)]
+         result (ctd/rows-without-index query-result)]
      (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
 
 (deftest clickhouse-nullable-strings
@@ -350,6 +350,38 @@
                                    {:filter [:contains $mystring "Я"
                                              {:case-sensitive false}]}))))))))
 
+(deftest clickhouse-datetime64-filter
+  (mt/test-driver
+    :clickhouse
+    (let [row1 "2022-03-03 03:03:03.333"
+          row2 "2022-03-03 03:03:03.444"
+          row3 "2022-03-03 03:03:03"
+          query-result (data/dataset
+                         (tx/dataset-definition "metabase_tests_datetime64"
+                                                ["test-data-datetime64"
+                                                 [{:field-name "milli_sec"
+                                                   :base-type {:native "DateTime64(3)"}}]
+                                                 [[row1] [row2] [row3]]])
+                         (data/run-mbql-query test-data-datetime64 {:filter [:= $milli_sec "2022-03-03T03:03:03.333Z"]}))
+          result (ctd/rows-without-index query-result)]
+      (is (= [["2022-03-03T03:03:03.333Z"]] result)))))
+
+(deftest clickhouse-datetime-filter
+  (mt/test-driver
+    :clickhouse
+    (let [row1 "2022-03-03 03:03:03"
+          row2 "2022-03-03 03:03:04"
+          row3 "2022-03-03 03:03:05"
+          query-result (data/dataset
+                         (tx/dataset-definition "metabase_tests_datetime"
+                                                ["test-data-datetime"
+                                                 [{:field-name "second"
+                                                   :base-type {:native "DateTime"}}]
+                                                 [[row1] [row2] [row3]]])
+                         (data/run-mbql-query test-data-datetime {:filter [:= $second "2022-03-03T03:03:04Z"]}))
+          result (ctd/rows-without-index query-result)]
+      (is (= [["2022-03-03T03:03:04Z"]] result)))))
+
 (deftest clickhouse-booleans
   (mt/test-driver
    :clickhouse
@@ -391,7 +423,7 @@
                       :database-position 2
                       :database-required false
                       :database-is-auto-increment false}}}
-          (ctu/do-with-metabase-test-db
+          (ctd/do-with-metabase-test-db
            (fn [db]
              (driver/describe-table :clickhouse db {:name "enums_test"})))))))
 
@@ -405,7 +437,7 @@
             (qp.test/formatted-rows
              [str str str]
              :format-nil-values
-             (ctu/do-with-metabase-test-db
+             (ctd/do-with-metabase-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -416,7 +448,7 @@
             (qp.test/formatted-rows
              [str]
              :format-nil-values
-             (ctu/do-with-metabase-test-db
+             (ctd/do-with-metabase-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -434,7 +466,7 @@
           (qp.test/formatted-rows
            [int]
            :format-nil-values
-           (ctu/do-with-metabase-test-db
+           (ctd/do-with-metabase-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
@@ -450,7 +482,7 @@
           (qp.test/formatted-rows
            [map-as-string]
            :format-nil-values
-           (ctu/do-with-metabase-test-db
+           (ctd/do-with-metabase-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
@@ -459,13 +491,13 @@
 
 (deftest clickhouse-connection-string
   (testing "connection with no additional options"
-    (is (= default-connection-params
+    (is (= ctd/default-connection-params
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {}))))
   (testing "custom connection with additional options"
     (is (= (merge
-            default-connection-params
+            ctd/default-connection-params
             {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
              :user "bob"
              :password "qaz"
@@ -482,7 +514,7 @@
              :additional-options "sessionTimeout=42"
              :ssl true}))))
   (testing "nil dbname handling"
-    (is (= default-connection-params
+    (is (= ctd/default-connection-params
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:dbname nil})))))
@@ -500,7 +532,7 @@
 (deftest clickhouse-boolean-tabledef-metadata
   (mt/test-driver
    :clickhouse
-   (let [table_md (ctu/do-with-metabase-test-db
+   (let [table_md (ctd/do-with-metabase-test-db
                    (fn [db]
                      (metabase.driver/describe-table :clickhouse db {:name "boolean_test"})))
          colmap        (->> (.get table_md :fields)
@@ -551,7 +583,7 @@
                           :database-position 3,
                           :database-required false
                           :database-is-auto-increment false}}}
-              (ctu/do-with-metabase-test-db
+              (ctd/do-with-metabase-test-db
                (fn [db]
                  (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
      (testing "from the result set"
@@ -559,7 +591,7 @@
               (qp.test/formatted-rows
                [int int int]
                :format-nil-values
-               (ctu/do-with-metabase-test-db
+               (ctd/do-with-metabase-test-db
                 (fn [db]
                   (data/with-db db
                     (data/run-mbql-query
@@ -569,36 +601,15 @@
 (deftest clickhouse-describe-database
   (let [test-tables
         #{{:description nil,
-           :name "aggregate_functions_filter_test",
-           :schema "metabase_test"}
+           :name "table1",
+           :schema "metabase_db_scan_test"}
           {:description nil,
-           :name "boolean_test",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "enums_test",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "ipaddress_test",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "wikistat",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "wikistat_mv",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "maps_test",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "sum_if_test_int",
-           :schema "metabase_test"}
-          {:description nil,
-           :name "sum_if_test_float",
-           :schema "metabase_test"}}]
+           :name "table2",
+           :schema "metabase_db_scan_test"}}]
     (testing "scanning a single database"
       (mt/with-temp Database
         [db {:engine :clickhouse
-             :details {:dbname "metabase_test"
+             :details {:dbname "metabase_db_scan_test"
                        :scan-all-databases nil}}]
         (let [describe-result (driver/describe-database :clickhouse db)]
           (is (=
@@ -624,7 +635,7 @@
     (testing "scanning multiple databases"
       (mt/with-temp Database
         [db {:engine :clickhouse
-             :details {:dbname "metabase_test information_schema"}}]
+             :details {:dbname "metabase_db_scan_test information_schema"}}]
         (let [{:keys [tables] :as _describe-result}
               (driver/describe-database :clickhouse db)
               tables-table  {:name        "tables"
@@ -634,7 +645,7 @@
                              :description nil
                              :schema      "information_schema"}]
 
-          ;; tables from `metabase_test`
+          ;; tables from `metabase_db_scan_test`
           (doseq [table test-tables]
             (is (contains? tables table)))
 
@@ -652,7 +663,7 @@
             (qp.test/formatted-rows
              [int]
              :format-nil-values
-             (ctu/do-with-metabase-test-db
+             (ctd/do-with-metabase-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -663,7 +674,7 @@
             (qp.test/formatted-rows
              [int]
              :format-nil-values
-             (ctu/do-with-metabase-test-db
+             (ctd/do-with-metabase-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -674,7 +685,7 @@
             (qp.test/formatted-rows
              [double]
              :format-nil-values
-             (ctu/do-with-metabase-test-db
+             (ctd/do-with-metabase-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -685,9 +696,126 @@
             (qp.test/formatted-rows
              [double]
              :format-nil-values
-             (ctu/do-with-metabase-test-db
+             (ctd/do-with-metabase-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
                    sum_if_test_float
                    {:aggregation [[:sum-where $float_value [:= $discriminator "qaz"]]]}))))))))))
+
+(deftest clickhouse-nippy
+  (mt/test-driver
+   :clickhouse
+   (testing "UnsignedByte"
+     (let [value (com.clickhouse.data.value.UnsignedByte/valueOf "214")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))
+   (testing "UnsignedShort"
+     (let [value (com.clickhouse.data.value.UnsignedShort/valueOf "62055")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))
+   (testing "UnsignedInteger"
+     (let [value (com.clickhouse.data.value.UnsignedInteger/valueOf "4748364")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))
+   (testing "UnsignedLong"
+     (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
+       (is (= value (nippy/thaw (nippy/freeze value))))))))
+
+(defn- temporal-bucketing-query-start-of-year-field
+  [unit]
+  (qp.test/rows
+   (ctd/do-with-metabase-test-db
+    (fn [db]
+      (data/with-db db
+        (data/run-mbql-query
+         temporal_bucketing
+         {:breakout [[:field %start_of_year {:temporal-unit unit}]]}))))))
+
+(defn- temporal-bucketing-query-mid-year-field
+  [unit]
+  (qp.test/rows
+   (ctd/do-with-metabase-test-db
+    (fn [db]
+      (data/with-db db
+        (data/run-mbql-query
+         temporal_bucketing
+         {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}))))))
+
+(defn- temporal-bucketing-query-end-of-year-field
+  [unit]
+  (qp.test/rows
+   (ctd/do-with-metabase-test-db
+    (fn [db]
+      (data/with-db db
+        (data/run-mbql-query
+         temporal_bucketing
+         {:breakout [[:field %end_of_year {:temporal-unit unit}]]}))))))
+
+;; See temporal_bucketing table definition
+;; Fields values are:
+;; start_of_year == '2022-01-01 00:00:00'
+;; mid_of_year   == '2022-06-20 06:32:54'
+;; end_of_year   == '2022-12-31 23:59:59'
+(deftest clickhouse-temporal-bucketing
+  (mt/test-driver
+   :clickhouse
+   (testing "truncate to"
+     (testing "minute"
+       (is (= [["2022-06-20T06:32:00Z"]]
+              (temporal-bucketing-query-mid-year-field :minute))))
+     (testing "hour"
+       (is (= [["2022-06-20T06:00:00Z"]]
+              (temporal-bucketing-query-mid-year-field :hour))))
+     (testing "day"
+       (is (= [["2022-06-20T00:00:00Z"]]
+              (temporal-bucketing-query-mid-year-field :day))))
+     (testing "month"
+       (is (= [["2022-06-01T00:00:00Z"]]
+              (temporal-bucketing-query-mid-year-field :month))))
+     (testing "quarter"
+       (is (= [["2022-04-01T00:00:00Z"]]
+              (temporal-bucketing-query-mid-year-field :quarter))))
+     (testing "year"
+       (is (= [["2022-01-01T00:00:00Z"]]
+              (temporal-bucketing-query-mid-year-field :year)))))
+   (testing "extract"
+     (testing "minute of hour"
+       (is (= [[0]]
+              (temporal-bucketing-query-start-of-year-field :minute-of-hour)))
+       (is (= [[32]]
+              (temporal-bucketing-query-mid-year-field :minute-of-hour)))
+       (is (= [[59]]
+              (temporal-bucketing-query-end-of-year-field :minute-of-hour))))
+     (testing "hour of day"
+       (is (= [[0]]
+              (temporal-bucketing-query-start-of-year-field :hour-of-day)))
+       (is (= [[6]]
+              (temporal-bucketing-query-mid-year-field :hour-of-day)))
+       (is (= [[23]]
+              (temporal-bucketing-query-end-of-year-field :hour-of-day))))
+     (testing "day of month"
+       (is (= [[1]]
+              (temporal-bucketing-query-start-of-year-field :day-of-month)))
+       (is (= [[20]]
+              (temporal-bucketing-query-mid-year-field :day-of-month)))
+       (is (= [[31]]
+              (temporal-bucketing-query-end-of-year-field :day-of-month))))
+     (testing "day of year"
+       (is (= [[1]]
+              (temporal-bucketing-query-start-of-year-field :day-of-year)))
+       (is (= [[171]]
+              (temporal-bucketing-query-mid-year-field :day-of-year)))
+       (is (= [[365]]
+              (temporal-bucketing-query-end-of-year-field :day-of-year))))
+     (testing "month of year"
+       (is (= [[1]]
+              (temporal-bucketing-query-start-of-year-field :month-of-year)))
+       (is (= [[6]]
+              (temporal-bucketing-query-mid-year-field :month-of-year)))
+       (is (= [[12]]
+              (temporal-bucketing-query-end-of-year-field :month-of-year))))
+     (testing "quarter of year"
+       (is (= [[1]]
+              (temporal-bucketing-query-start-of-year-field :quarter-of-year)))
+       (is (= [[2]]
+              (temporal-bucketing-query-mid-year-field :quarter-of-year)))
+       (is (= [[4]]
+              (temporal-bucketing-query-end-of-year-field :quarter-of-year)))))))

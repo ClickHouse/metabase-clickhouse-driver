@@ -138,6 +138,7 @@ The driver should work fine for many use cases. Please consider the following it
 ## Known limitations
 
 * As the underlying JDBC driver version does not support columns with `AggregateFunction` type, these columns are excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
+* If past month/week/quarter/year filter over a DateTime64 column is not working as intended, this is likely due to a [type conversion issue](https://github.com/ClickHouse/ClickHouse/pull/50280). See [this report](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/164) for more details. This issue was resolved as of ClickHouse 23.5.
 
 ## Contributing
 
