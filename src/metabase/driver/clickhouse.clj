@@ -461,7 +461,7 @@
         (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
 ;; The following lines make sure we call lowerUTF8 instead of lower
-(defn- ch-like-clause
+(defn- clickhouse-like-clause
   [driver field value options]
   (if (get options :case-sensitive true)
     [:like field (sql.qp/->honeysql driver value)]
@@ -484,10 +484,10 @@
   [driver [_ field value options]]
   (if (boolean (get-in (qp.store/database) [:details :use-has-token-for-contains]))
     (clickhouse-string-fn :hasToken field value options)
-    (ch-like-clause driver
-                    (sql.qp/->honeysql driver field)
-                    (update-string-value value #(str \% % \%))
-                    options)))
+    (clickhouse-like-clause driver
+                            (sql.qp/->honeysql driver field)
+                            (update-string-value value #(str \% % \%))
+                            options)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
