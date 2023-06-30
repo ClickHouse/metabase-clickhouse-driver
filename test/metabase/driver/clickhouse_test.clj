@@ -352,35 +352,35 @@
 
 (deftest clickhouse-datetime64-filter
   (mt/test-driver
-    :clickhouse
-    (let [row1 "2022-03-03 03:03:03.333"
-          row2 "2022-03-03 03:03:03.444"
-          row3 "2022-03-03 03:03:03"
-          query-result (data/dataset
-                         (tx/dataset-definition "metabase_tests_datetime64"
-                                                ["test-data-datetime64"
-                                                 [{:field-name "milli_sec"
-                                                   :base-type {:native "DateTime64(3)"}}]
-                                                 [[row1] [row2] [row3]]])
-                         (data/run-mbql-query test-data-datetime64 {:filter [:= $milli_sec "2022-03-03T03:03:03.333Z"]}))
-          result (ctd/rows-without-index query-result)]
-      (is (= [["2022-03-03T03:03:03.333Z"]] result)))))
+   :clickhouse
+   (let [row1 "2022-03-03 03:03:03.333"
+         row2 "2022-03-03 03:03:03.444"
+         row3 "2022-03-03 03:03:03"
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_datetime64"
+                                              ["test-data-datetime64"
+                                               [{:field-name "milli_sec"
+                                                 :base-type {:native "DateTime64(3)"}}]
+                                               [[row1] [row2] [row3]]])
+                       (data/run-mbql-query test-data-datetime64 {:filter [:= $milli_sec "2022-03-03T03:03:03.333Z"]}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["2022-03-03T03:03:03.333Z"]] result)))))
 
 (deftest clickhouse-datetime-filter
   (mt/test-driver
-    :clickhouse
-    (let [row1 "2022-03-03 03:03:03"
-          row2 "2022-03-03 03:03:04"
-          row3 "2022-03-03 03:03:05"
-          query-result (data/dataset
-                         (tx/dataset-definition "metabase_tests_datetime"
-                                                ["test-data-datetime"
-                                                 [{:field-name "second"
-                                                   :base-type {:native "DateTime"}}]
-                                                 [[row1] [row2] [row3]]])
-                         (data/run-mbql-query test-data-datetime {:filter [:= $second "2022-03-03T03:03:04Z"]}))
-          result (ctd/rows-without-index query-result)]
-      (is (= [["2022-03-03T03:03:04Z"]] result)))))
+   :clickhouse
+   (let [row1 "2022-03-03 03:03:03"
+         row2 "2022-03-03 03:03:04"
+         row3 "2022-03-03 03:03:05"
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_datetime"
+                                              ["test-data-datetime"
+                                               [{:field-name "second"
+                                                 :base-type {:native "DateTime"}}]
+                                               [[row1] [row2] [row3]]])
+                       (data/run-mbql-query test-data-datetime {:filter [:= $second "2022-03-03T03:03:04Z"]}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["2022-03-03T03:03:04Z"]] result)))))
 
 (deftest clickhouse-booleans
   (mt/test-driver
@@ -819,3 +819,26 @@
               (temporal-bucketing-query-mid-year-field :quarter-of-year)))
        (is (= [[4]]
               (temporal-bucketing-query-end-of-year-field :quarter-of-year)))))))
+
+(deftest clickhouse-use-has-token-for-contains-setting
+  (mt/test-driver
+   :clickhouse
+   (defn query [details]
+     (qp.test/formatted-rows
+      [str]
+      (ctd/do-with-metabase-test-db
+       (fn [db]
+         (data/with-db db
+           (data/run-mbql-query
+            use_has_token_for_contains_test
+            {:filter [:contains %str "red"]})))
+       details)))
+   (testing "is not set"
+     (is (= [["Fred"] ["red"]]
+            (query nil))))
+   (testing "explicit true"
+     (is (= [["red"]]
+            (query {:use-has-token-for-contains true}))))
+   (testing "explicit false"
+     (is (= [["Fred"] ["red"]]
+            (query {:use-has-token-for-contains false}))))))

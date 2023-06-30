@@ -121,3 +121,10 @@ CREATE DATABASE `metabase_db_scan_test`;
 
 CREATE TABLE `metabase_db_scan_test`.`table1` (i Int32) ENGINE = Memory;
 CREATE TABLE `metabase_db_scan_test`.`table2` (i Int64) ENGINE = Memory;
+
+-- use-has-token-for-contains setting (LIKE %% vs hasToken) test
+CREATE TABLE `metabase_test`.`use_has_token_for_contains_test`
+(str String) ENGINE = Memory;
+
+INSERT INTO `metabase_test`.`use_has_token_for_contains_test`
+VALUES ('Fred'), ('red');

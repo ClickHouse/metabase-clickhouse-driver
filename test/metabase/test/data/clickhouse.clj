@@ -89,7 +89,7 @@
                                 :ssl false
                                 :use_no_proxy false
                                 :use_server_time_zone_for_dates true
-                                :product_name "metabase/1.1.7"})
+                                :product_name "metabase/1.1.8"})
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
@@ -97,10 +97,13 @@
   (map #(drop 1 %) (qp.test/rows query-result)))
 
 (defn- metabase-test-db-details
-  []
-  {:engine :clickhouse
-   :details (tx/dbdef->connection-details
-             :clickhouse :db {:database-name "metabase_test"})})
+  ([details-override]
+   {:engine :clickhouse
+    :details (merge (tx/dbdef->connection-details
+                     :clickhouse :db {:database-name "metabase_test"})
+                    (or details-override {}))})
+  ([]
+   (metabase-test-db-details nil)))
 
 (def db-initialized? (atom false))
 (defn- create-metabase-test-db!
@@ -118,9 +121,11 @@
 (defn do-with-metabase-test-db
   "Execute a test function using the test dataset from Metabase itself"
   {:style/indent 0}
-  [f]
-  (when (not @db-initialized?) (create-metabase-test-db!))
-  (tt/with-temp Database
-    [database (metabase-test-db-details)]
-    (sync-metadata/sync-db-metadata! database)
-    (f database)))
+  ([f details-override]
+   (when (not @db-initialized?) (create-metabase-test-db!))
+   (tt/with-temp Database
+     [database (metabase-test-db-details details-override)]
+     (sync-metadata/sync-db-metadata! database)
+     (f database)))
+  ([f]
+   (do-with-metabase-test-db f nil)))

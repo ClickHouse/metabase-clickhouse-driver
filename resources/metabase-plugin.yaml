@@ -36,6 +36,19 @@ driver:
       type: boolean
       visible-if:
         advanced-options: true
+    - name: use-has-token-for-contains
+      display-name: Use hasToken instead of LIKE for :contains calls
+      description: "If you call :contains only on columns with tokenbf_v1 indices,
+        you could try enabling this option to improve the performance.
+        Caution: enabling this option will alter ALL :contains calls
+        which can cause false negatives with certain strings.
+        For example, 'red' is not a token in a string 'Fred',
+        and it will yield a negative result with hasToken,
+        but LIKE %% (default behavior) will work as expected"
+      default: false
+      type: boolean
+      visible-if:
+        advanced-options: true
     - merge:
         - additional-options
         - placeholder: "connection_timeout=1000&max_rows_to_group_by=42"

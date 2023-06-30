@@ -1,3 +1,9 @@
+# 1.1.8
+
+### New features
+
+* It is now possible to alter the `:contains` function behavior via driver configuration in Advanced Options. By default, it still uses `LIKE %str%` call (as it was implemented before); however, it can be changed with a toggle to utilize `hasToken(str)` instead. It can be useful for columns where the data is optimized for indices such as `tokenbf_v1`.
+
 # 1.1.7
 
 ### New features

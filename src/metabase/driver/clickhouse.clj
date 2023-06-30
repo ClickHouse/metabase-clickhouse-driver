@@ -7,13 +7,13 @@
             [java-time :as t]
             [metabase [config :as config] [driver :as driver] [util :as u]]
             [metabase.driver.clickhouse-nippy]
-            [metabase.driver.common :as driver.common]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn] [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.query-processor.store :as qp.store]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.date-2 :as u.date]
@@ -78,7 +78,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.1.7")
+(def ^:private product-name "metabase/1.1.8")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -472,13 +472,6 @@
   [value :- (s/constrained mbql.s/value #(string? (second %)) "string value") f]
   (update value 1 f))
 
-(defmethod sql.qp/->honeysql [:clickhouse :contains]
-  [driver [_ field value options]]
-  (ch-like-clause driver
-                  (sql.qp/->honeysql driver field)
-                  (update-string-value value #(str \% % \%))
-                  options))
-
 (defn- clickhouse-string-fn
   [fn-name field value options]
   (let [field (sql.qp/->honeysql :clickhouse field)
@@ -486,6 +479,15 @@
     (if (get options :case-sensitive true)
       (hsql/call fn-name field value)
       (hsql/call fn-name (hsql/call :lowerUTF8 field) (str/lower-case value)))))
+
+(defmethod sql.qp/->honeysql [:clickhouse :contains]
+  [driver [_ field value options]]
+  (if (boolean (get-in (qp.store/database) [:details :use-has-token-for-contains]))
+    (clickhouse-string-fn :hasToken field value options)
+    (ch-like-clause driver
+                    (sql.qp/->honeysql driver field)
+                    (update-string-value value #(str \% % \%))
+                    options)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
