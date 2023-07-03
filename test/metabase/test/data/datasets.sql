@@ -127,4 +127,4 @@ CREATE TABLE `metabase_test`.`use_has_token_for_contains_test`
 (str String) ENGINE = Memory;
 
 INSERT INTO `metabase_test`.`use_has_token_for_contains_test`
-VALUES ('Fred'), ('red');
+VALUES ('Fred'), ('FRED'), ('red'), ('Red');

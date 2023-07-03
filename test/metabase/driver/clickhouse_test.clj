@@ -823,7 +823,7 @@
 (deftest clickhouse-use-has-token-for-contains-setting
   (mt/test-driver
    :clickhouse
-   (defn query [details]
+   (defn query [case-sensitive details]
      (qp.test/formatted-rows
       [str]
       (ctd/do-with-metabase-test-db
@@ -831,14 +831,20 @@
          (data/with-db db
            (data/run-mbql-query
             use_has_token_for_contains_test
-            {:filter [:contains %str "red"]})))
+            {:filter [:contains %str "red" {:case-sensitive case-sensitive}]})))
        details)))
    (testing "is not set"
      (is (= [["Fred"] ["red"]]
-            (query nil))))
+            (query true nil)))
+     (is (= [["Fred"] ["FRED"] ["red"] ["Red"]]
+            (query false nil))))
    (testing "explicit true"
      (is (= [["red"]]
-            (query {:use-has-token-for-contains true}))))
+            (query true {:use-has-token-for-contains true})))
+     (is (= [["red"] ["Red"]]
+            (query false {:use-has-token-for-contains true}))))
    (testing "explicit false"
      (is (= [["Fred"] ["red"]]
-            (query {:use-has-token-for-contains false}))))))
+            (query true {:use-has-token-for-contains false})))
+     (is (= [["Fred"] ["FRED"] ["red"] ["Red"]]
+            (query false {:use-has-token-for-contains false}))))))
