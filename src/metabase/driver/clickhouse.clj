@@ -593,4 +593,4 @@
 (defmethod driver/db-start-of-week :clickhouse [_] :monday)
 
 (defmethod ddl.i/format-name :clickhouse [_ table-or-field-name]
-  (u/snake-key table-or-field-name))
+  (u/->snake_case_en table-or-field-name))
