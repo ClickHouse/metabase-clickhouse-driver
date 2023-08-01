@@ -121,3 +121,86 @@ CREATE DATABASE `metabase_db_scan_test`;
 
 CREATE TABLE `metabase_db_scan_test`.`table1` (i Int32) ENGINE = Memory;
 CREATE TABLE `metabase_db_scan_test`.`table2` (i Int64) ENGINE = Memory;
+
+-- SET ROLE tests
+CREATE ROLE IF NOT EXISTS `metabase_test_role`;
+CREATE USER IF NOT EXISTS `metabase_test_user` NOT IDENTIFIED;
+GRANT `metabase_test_role` TO `metabase_test_user`;
+
+-- Base type matching tests
+CREATE TABLE `metabase_test`.`enums_base_types` (
+    c1 Nullable(Enum8('America/New_York')),
+    c2 Enum8('BASE TABLE' = 1, 'VIEW' = 2, 'FOREIGN TABLE' = 3, 'LOCAL TEMPORARY' = 4, 'SYSTEM VIEW' = 5),
+    c3 Enum8('NO', 'YES'),
+    c4 Enum16('SHOW DATABASES' = 0, 'SHOW TABLES' = 1, 'SHOW COLUMNS' = 2),
+    c5 Nullable(Enum8('GLOBAL' = 0, 'DATABASE' = 1, 'TABLE' = 2)),
+    c6 Nullable(Enum16('SHOW DATABASES' = 0, 'SHOW TABLES' = 1, 'SHOW COLUMNS' = 2))
+) ENGINE Memory;
+CREATE TABLE `metabase_test`.`date_base_types` (
+    c1 Date,
+    c2 Date32,
+    c3 Nullable(Date),
+    c4 Nullable(Date32)
+) ENGINE Memory;
+CREATE TABLE `metabase_test`.`datetime_base_types` (
+    c1 Nullable(DateTime('America/New_York')),
+    c2 DateTime('America/New_York'),
+    c3 DateTime,
+    c4 DateTime64(3),
+    c5 DateTime64(9, 'America/New_York'),
+    c6 Nullable(DateTime64(6, 'America/New_York')),
+    c7 Nullable(DateTime64(0)),
+    c8 Nullable(DateTime)
+) ENGINE Memory;
+CREATE TABLE `metabase_test`.`integer_base_types` (
+    c1  UInt8,
+    c2  UInt16,
+    c3  UInt32,
+    c4  UInt64,
+    c5  UInt128,
+    c6  UInt256,
+    c7  Int8,
+    c8  Int16,
+    c9  Int32,
+    c10 Int64,
+    c11 Int128,
+    c12 Int256,
+    c13 Nullable(Int32)
+) ENGINE Memory;
+CREATE TABLE `metabase_test`.`numeric_base_types` (
+    c1  Float32,
+    c2  Float64,
+    c3  Decimal(4, 2),
+    c4  Decimal32(7),
+    c5  Decimal64(12),
+    c6  Decimal128(24),
+    c7  Decimal256(42),
+    c8  Nullable(Float32),
+    c9  Nullable(Decimal(4, 2)),
+    c10 Nullable(Decimal256(42))
+) ENGINE Memory;
+CREATE TABLE `metabase_test`.`string_base_types` (
+    c1 String,
+    c2 LowCardinality(String),
+    c3 FixedString(32),
+    c4 Nullable(String),
+    c5 LowCardinality(FixedString(4))
+) ENGINE Memory;
+CREATE TABLE `metabase_test`.`misc_base_types` (
+    c1  Boolean,
+    c2  UUID,
+    c3  IPv4,
+    c4  IPv6,
+    c5  Map(Int32, String),
+    c6  Nullable(Boolean),
+    c7  Nullable(UUID),
+    c8  Nullable(IPv4),
+    c9  Nullable(IPv6),
+    c10 Tuple(String, Int32)
+) ENGINE Memory;
+CREATE TABLE `metabase_test`.`array_base_types` (
+    c1 Array(String),
+    c2 Array(Nullable(Int32)),
+    c3 Array(Array(LowCardinality(FixedString(32)))),
+    c4 Array(Array(Array(String)))
+) ENGINE Memory;

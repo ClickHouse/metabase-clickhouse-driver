@@ -8,8 +8,9 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
@@ -17,8 +18,9 @@
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
             [metabase.test.data.clickhouse :as ctd]
-
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy]
+            [toucan2.tools.with-temp :as t2.with-temp]
+            [metabase.driver.clickhouse-base-types-test]))
 
 (deftest clickhouse-server-timezone
   (mt/test-driver
@@ -352,35 +354,35 @@
 
 (deftest clickhouse-datetime64-filter
   (mt/test-driver
-    :clickhouse
-    (let [row1 "2022-03-03 03:03:03.333"
-          row2 "2022-03-03 03:03:03.444"
-          row3 "2022-03-03 03:03:03"
-          query-result (data/dataset
-                         (tx/dataset-definition "metabase_tests_datetime64"
-                                                ["test-data-datetime64"
-                                                 [{:field-name "milli_sec"
-                                                   :base-type {:native "DateTime64(3)"}}]
-                                                 [[row1] [row2] [row3]]])
-                         (data/run-mbql-query test-data-datetime64 {:filter [:= $milli_sec "2022-03-03T03:03:03.333Z"]}))
-          result (ctd/rows-without-index query-result)]
-      (is (= [["2022-03-03T03:03:03.333Z"]] result)))))
+   :clickhouse
+   (let [row1 "2022-03-03 03:03:03.333"
+         row2 "2022-03-03 03:03:03.444"
+         row3 "2022-03-03 03:03:03"
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_datetime64"
+                                              ["test-data-datetime64"
+                                               [{:field-name "milli_sec"
+                                                 :base-type {:native "DateTime64(3)"}}]
+                                               [[row1] [row2] [row3]]])
+                       (data/run-mbql-query test-data-datetime64 {:filter [:= $milli_sec "2022-03-03T03:03:03.333Z"]}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["2022-03-03T03:03:03.333Z"]] result)))))
 
 (deftest clickhouse-datetime-filter
   (mt/test-driver
-    :clickhouse
-    (let [row1 "2022-03-03 03:03:03"
-          row2 "2022-03-03 03:03:04"
-          row3 "2022-03-03 03:03:05"
-          query-result (data/dataset
-                         (tx/dataset-definition "metabase_tests_datetime"
-                                                ["test-data-datetime"
-                                                 [{:field-name "second"
-                                                   :base-type {:native "DateTime"}}]
-                                                 [[row1] [row2] [row3]]])
-                         (data/run-mbql-query test-data-datetime {:filter [:= $second "2022-03-03T03:03:04Z"]}))
-          result (ctd/rows-without-index query-result)]
-      (is (= [["2022-03-03T03:03:04Z"]] result)))))
+   :clickhouse
+   (let [row1 "2022-03-03 03:03:03"
+         row2 "2022-03-03 03:03:04"
+         row3 "2022-03-03 03:03:05"
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_datetime"
+                                              ["test-data-datetime"
+                                               [{:field-name "second"
+                                                 :base-type {:native "DateTime"}}]
+                                               [[row1] [row2] [row3]]])
+                       (data/run-mbql-query test-data-datetime {:filter [:= $second "2022-03-03T03:03:04Z"]}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["2022-03-03T03:03:04Z"]] result)))))
 
 (deftest clickhouse-booleans
   (mt/test-driver
@@ -399,33 +401,10 @@
          result (map #(drop 1 %) rows)] ; remove db "index" which is the first column in the result set
      (is (= [row2 row3] result)))))
 
-(deftest clickhouse-enums-schema-test
-  (mt/test-driver
-   :clickhouse
-   (is (= {:name "enums_test"
-           :fields #{{:name "enum1"
-                      :database-type "Enum8"
-                      :base-type :type/Text
-                      :database-position 0
-                      ; TODO: in Metabase 0.45.0-RC this returned true,
-                      ; and now it is false, which is strange, cause it is not Nullable in the DDL
-                      :database-required false
-                      :database-is-auto-increment false}
-                     {:name "enum2"
-                      :database-type "Enum16"
-                      :base-type :type/Text
-                      :database-position 1
-                      :database-required false
-                      :database-is-auto-increment false}
-                     {:name "enum3"
-                      :database-type "Enum8"
-                      :base-type :type/Text
-                      :database-position 2
-                      :database-required false
-                      :database-is-auto-increment false}}}
-          (ctd/do-with-metabase-test-db
-           (fn [db]
-             (driver/describe-table :clickhouse db {:name "enums_test"})))))))
+(def ^:private base-field
+  {:database-is-auto-increment false
+   :json-unfolding false
+   :database-required true})
 
 (deftest clickhouse-enums-values-test
   (mt/test-driver
@@ -529,19 +508,6 @@
        (is (= :type/Boolean (transduce identity (driver.common/values->base-type) [c1, c3])))
        (is (= :type/Boolean (driver.common/class->base-type (class c1))))))))
 
-(deftest clickhouse-boolean-tabledef-metadata
-  (mt/test-driver
-   :clickhouse
-   (let [table_md (ctd/do-with-metabase-test-db
-                   (fn [db]
-                     (metabase.driver/describe-table :clickhouse db {:name "boolean_test"})))
-         colmap        (->> (.get table_md :fields)
-                            (filter #(= (:name %) "b1")) first)
-         database-type (.get colmap :database-type)
-         base-type     (sql-jdbc.sync/database-type->base-type :clickhouse database-type)]
-     (testing "base-type should be :type/Boolean"
-       (is (= :type/Boolean base-type))))))
-
 (deftest clickhouse-simple-tls-connection
   (mt/test-driver
    :clickhouse
@@ -560,29 +526,24 @@
 (deftest clickhouse-filtered-aggregate-functions-test
   (mt/test-driver
    :clickhouse
-   (testing "(Simple)AggregateFunction columns are filtered"
+   (testing "AggregateFunction columns are filtered"
      (testing "from the table metadata"
        (is (= {:name "aggregate_functions_filter_test"
-               :fields #{{:name "idx"
-                          :database-type "UInt8"
-                          :base-type :type/Integer
-                          :database-position 0
-                          ; TODO: in Metabase 0.45.0-RC this returned true,
-                          ; and now it is false, which is strange, cause it is not Nullable in the DDL
-                          :database-required false
-                          :database-is-auto-increment false}
-                         {:name "lowest_value"
-                          :database-type "SimpleAggregateFunction(min, UInt8)",
-                          :base-type :type/Integer,
-                          :database-position 2,
-                          :database-required false
-                          :database-is-auto-increment false}
-                         {:name "count"
-                          :database-type "SimpleAggregateFunction(sum, Int64)",
-                          :base-type :type/BigInteger,
-                          :database-position 3,
-                          :database-required false
-                          :database-is-auto-increment false}}}
+               :fields #{(merge base-field
+                                {:name "idx"
+                                 :database-type "UInt8"
+                                 :base-type :type/Integer
+                                 :database-position 0})
+                         (merge base-field
+                                {:name "lowest_value"
+                                 :database-type "SimpleAggregateFunction(min, UInt8)"
+                                 :base-type :type/Integer
+                                 :database-position 2})
+                         (merge base-field
+                                {:name "count"
+                                 :database-type "SimpleAggregateFunction(sum, Int64)"
+                                 :base-type :type/BigInteger
+                                 :database-position 3})}}
               (ctd/do-with-metabase-test-db
                (fn [db]
                  (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
@@ -607,19 +568,19 @@
            :name "table2",
            :schema "metabase_db_scan_test"}}]
     (testing "scanning a single database"
-      (mt/with-temp Database
-        [db {:engine :clickhouse
-             :details {:dbname "metabase_db_scan_test"
-                       :scan-all-databases nil}}]
+      (t2.with-temp/with-temp
+        [Database db {:engine :clickhouse
+                      :details {:dbname "metabase_db_scan_test"
+                                :scan-all-databases nil}}]
         (let [describe-result (driver/describe-database :clickhouse db)]
           (is (=
                {:tables test-tables}
                describe-result)))))
     (testing "scanning all databases"
-      (mt/with-temp Database
-        [db {:engine :clickhouse
-             :details {:dbname "default"
-                       :scan-all-databases true}}]
+      (t2.with-temp/with-temp
+        [Database db {:engine :clickhouse
+                      :details {:dbname "default"
+                                :scan-all-databases true}}]
         (let [describe-result (driver/describe-database :clickhouse db)]
             ;; check the existence of at least some test tables here
           (doseq [table test-tables]
@@ -633,9 +594,9 @@
           (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
                          (:tables describe-result)))))))
     (testing "scanning multiple databases"
-      (mt/with-temp Database
-        [db {:engine :clickhouse
-             :details {:dbname "metabase_db_scan_test information_schema"}}]
+      (t2.with-temp/with-temp
+        [Database db {:engine :clickhouse
+                      :details {:dbname "metabase_db_scan_test information_schema"}}]
         (let [{:keys [tables] :as _describe-result}
               (driver/describe-database :clickhouse db)
               tables-table  {:name        "tables"
@@ -819,3 +780,30 @@
               (temporal-bucketing-query-mid-year-field :quarter-of-year)))
        (is (= [[4]]
               (temporal-bucketing-query-end-of-year-field :quarter-of-year)))))))
+
+(deftest clickhouse-set-role
+  (mt/test-driver
+   :clickhouse
+   (let [default-role (driver.sql/default-database-role :clickhouse nil)
+         spec (sql-jdbc.conn/connection-details->spec :clickhouse {:user "metabase_test_user"})]
+     (testing "default role is NONE"
+       (is (= default-role "NONE")))
+     (testing "does not throw with an existing role"
+       (sql-jdbc.execute/do-with-connection-with-options
+        :clickhouse spec nil
+        (fn [^java.sql.Connection conn]
+          (driver/set-role! :clickhouse conn "metabase_test_role")))
+       (is true))
+     (testing "does not throw with the default role"
+       (sql-jdbc.execute/do-with-connection-with-options
+        :clickhouse spec nil
+        (fn [^java.sql.Connection conn]
+          (driver/set-role! :clickhouse conn default-role)))
+       (is true))
+     (testing "throws when assigning a non-existent role"
+       (is (thrown? Exception
+                    (sql-jdbc.execute/do-with-connection-with-options
+                     :clickhouse spec nil
+                     (fn [^java.sql.Connection conn]
+                       (driver/set-role! :clickhouse conn "asdf")))))))))
+

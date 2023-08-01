@@ -1,3 +1,12 @@
+# 1.2.0
+
+### New features
+* Metabase 0.47 support
+* Connection impersonation support (0.47 feature)
+
+### Bug fixes
+* `DateTime64` is now correctly mapped to `:type/DateTime`
+
 # 1.1.7
 
 ### New features
