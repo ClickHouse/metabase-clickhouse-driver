@@ -17,7 +17,7 @@
    [metabase.test.data.sql-jdbc
     [execute :as execute]
     [load-data :as load-data]]
-   [toucan.util.test :as tt]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
@@ -89,7 +89,7 @@
                                 :ssl false
                                 :use_no_proxy false
                                 :use_server_time_zone_for_dates true
-                                :product_name "metabase/1.1.7"})
+                                :product_name "metabase/1.2.0"})
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
@@ -120,7 +120,7 @@
   {:style/indent 0}
   [f]
   (when (not @db-initialized?) (create-metabase-test-db!))
-  (tt/with-temp Database
-    [database (metabase-test-db-details)]
+  (t2.with-temp/with-temp
+    [Database database (metabase-test-db-details)]
     (sync-metadata/sync-db-metadata! database)
     (f database)))
