@@ -5,7 +5,9 @@
 * Connection impersonation support (0.47 feature)
 
 ### Bug fixes
+* More correct general database type -> base type mapping
 * `DateTime64` is now correctly mapped to `:type/DateTime`
+* `database-required` field property is now correctly set to `true` if a field is not `Nullable`
 
 # 1.1.7
 
