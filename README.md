@@ -73,11 +73,12 @@ Metabase Release | Driver Version
 0.42.x           | 0.8.1
 0.44.x           | 0.9.1
 0.45.x           | 1.1.0
-0.46.x           | 1.1.2
+0.46.x           | 1.1.7
+0.47.x           | 1.2.0
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
-You can use a convenience script `build_docker_image.sh` which takes three arguments: Metabase version, ClickHouse driver version, and the desired final Docker image tag.
+You can use a convenience script `build_docker_image.sh`, which takes three arguments: Metabase version, ClickHouse driver version, and the desired final Docker image tag.
 
 ```bash
 ./build_docker_image.sh v0.44.6 0.8.3 my-metabase-with-clickhouse:v0.0.1
@@ -91,7 +92,7 @@ Then you should be able to run it:
 docker run -d -p 3000:3000 --name my-metabase my-metabase-with-clickhouse:v0.0.1
 ```
 
-or use with Docker compose, for example:
+or use it with Docker compose, for example:
 
 ```yaml
 version: '3.8'
@@ -138,7 +139,7 @@ The driver should work fine for many use cases. Please consider the following it
 ## Known limitations
 
 * As the underlying JDBC driver version does not support columns with `AggregateFunction` type, these columns are excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
-* If past month/week/quarter/year filter over a DateTime64 column is not working as intended, this is likely due to a [type conversion issue](https://github.com/ClickHouse/ClickHouse/pull/50280). See [this report](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/164) for more details. This issue was resolved as of ClickHouse 23.5.
+* If the past month/week/quarter/year filter over a DateTime64 column is not working as intended, this is likely due to a [type conversion issue](https://github.com/ClickHouse/ClickHouse/pull/50280). See [this report](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/164) for more details. This issue was resolved as of ClickHouse 23.5.
 
 ## Contributing
 
