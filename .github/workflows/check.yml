@@ -17,7 +17,8 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/metabase
-          ref: v0.47.0-RC1
+          # The latest commit on release-0.47.x branch - fixed failing MB tests
+          ref: dba05c0b6f6cbc6e2f8247c03cc5fcc986cd3fe5
 
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
