@@ -10,7 +10,10 @@
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]))
+             [sync :as sql-jdbc.sync]])
+  (:import (java.sql DatabaseMetaData)))
+
+(set! *warn-on-reflection* true)
 
 (driver/register! :clickhouse :parent :sql-jdbc)
 
@@ -65,7 +68,7 @@
 
 (def ^:private default-connection-details
   {:user "default", :password "", :dbname "default", :host "localhost", :port "8123"})
-(def ^:private product-name "metabase/1.2.0")
+(def ^:private product-name "metabase/1.2.1")
 
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
@@ -101,7 +104,7 @@
         :description (when-not (str/blank? remarks) remarks)}))))
 
 (defn- get-tables-from-metadata
-  [metadata schema-pattern]
+  [^DatabaseMetaData metadata schema-pattern]
   (.getTables metadata
               nil            ; catalog - unused in the source code there
               schema-pattern

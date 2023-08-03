@@ -25,7 +25,7 @@
             ZonedDateTime]
            java.util.Arrays))
 
-;; (set! *warn-on-reflection* true)
+;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (defmethod sql.qp/quote-style       :clickhouse [_] :mysql)
 (defmethod sql.qp/honey-sql-version :clickhouse [_] 2)
@@ -166,22 +166,15 @@
                                           (.toLocalTime t))
                                          (.getOffset t))))
 
-;; We still need this for the tests that use multiple case statements where
-;; we can have either Int or Float in different branches,
-;; so we just coerce everything to Float64.
-;;
-;; See metabase.query-processor-test.expressions-test "Can use expressions as values"
-;; (defmethod sql.qp/->honeysql [:clickhouse :/]
-;;   [driver args]
-;;   (println args)
-;;   (interpose :/ (for [arg args] [:'toFloat64 (sql.qp/->honeysql driver arg)])))
+(defn- args->float64
+  [args]
+  (map (fn [arg] [:'toFloat64 (sql.qp/->honeysql :clickhouse arg)]) args))
 
 (defn- interval? [expr]
   (mbql.u/is-clause? :interval expr))
 
 (defmethod sql.qp/->honeysql [:clickhouse :+]
-  [driver [_ args]]
-  (println args)
+  [driver [_ & args]]
   (if (some interval? args)
     (if-let [[field intervals] (u/pick-first (complement interval?) args)]
       (reduce (fn [hsql-form [_ amount unit]]
@@ -189,34 +182,19 @@
               (sql.qp/->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
-    (interpose :+ (map (fn [arg] [:'toFloat64 (sql.qp/->honeysql driver arg)]) args))))
+    (conj (args->float64 args) :+)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :log]
   [driver [_ field]]
   [:log10 (sql.qp/->honeysql driver field)])
 
-(defn- format-quantile
-  [_fn [p field]]
-  (let [[x-sql & x-args] (sql/format-expr p     {:nested true})
-        [y-sql & y-args] (sql/format-expr field {:nested true})]
-    (into [(format "quantile(%s)(%s)" x-sql y-sql)]
-          cat [x-args y-args])))
-
-(defn- format-extract
-  [_fn [s p]]
-  (let [[x-sql & x-args] (sql/format-expr s {:nested true})
-        [y-sql & y-args] (sql/format-expr p {:nested true})]
-    (into [(format "extract(%s,%s)" x-sql y-sql)]
-          cat [x-args y-args])))
-
-(sql/register-fn! ::quantile #'format-quantile)
-(sql/register-fn! ::extract  #'format-extract)
+(defn- format-expr
+  [expr]
+  (first (sql/format-expr (sql.qp/->honeysql :clickhouse expr) {:nested true})))
 
 (defmethod sql.qp/->honeysql [:clickhouse :percentile]
-  [driver [_ field p]]
-  [:'quantile
-   (sql.qp/->honeysql driver field)
-   (sql.qp/->honeysql driver p)])
+  [_ [_ field p]]
+  [:raw (format "quantile(%s)(%s)" (format-expr p) (format-expr field))])
 
 (defmethod sql.qp/->honeysql [:clickhouse :regex-match-first]
   [driver [_ arg pattern]]
@@ -225,6 +203,10 @@
 (defmethod sql.qp/->honeysql [:clickhouse :stddev]
   [driver [_ field]]
   [:'stddevPop (sql.qp/->honeysql driver field)])
+
+(defmethod sql.qp/->honeysql [:clickhouse :median]
+  [driver [_ field]]
+  [:'median (sql.qp/->honeysql driver field)])
 
 ;; Substring does not work for Enums, so we need to cast to String
 (defmethod sql.qp/->honeysql [:clickhouse :substring]
@@ -328,7 +310,7 @@
         value (sql.qp/->honeysql :clickhouse value)]
     (if (get options :case-sensitive true)
       [fn-name field value]
-      [[:'lowerUTF8 field] (metabase.util/lower-case-en value)])))
+      [fn-name [:'lowerUTF8 field] (metabase.util/lower-case-en value)])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
@@ -361,7 +343,7 @@
 ;; getInt/getLong return 0 in case of a NULL value in the result set
 ;; the only way to check if it was actually NULL - call ResultSet.wasNull afterwards
 (defn- with-null-check
-  [rs get-value-fn]
+  [^ResultSet rs get-value-fn]
   (let [value (get-value-fn)]
     (if (.wasNull rs) nil value)))
 
@@ -378,7 +360,7 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (let [r (.getObject rs i LocalDateTime)]
+    (let [^java.time.LocalDateTime r (.getObject rs i LocalDateTime)]
       (cond (nil? r) nil
             (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
             :else r))))
@@ -437,7 +419,7 @@
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
-  [_ t]
+  [_ ^OffsetDateTime t]
   (format "%s('%s')"
           (if (zero? (.getNano t)) "parseDateTimeBestEffort" "parseDateTime64BestEffort")
           (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))

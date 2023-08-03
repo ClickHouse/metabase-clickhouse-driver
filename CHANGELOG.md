@@ -1,3 +1,7 @@
+# 1.2.1
+### New features
+* Use HoneySQL2 in the driver
+
 # 1.2.0
 
 ### New features
