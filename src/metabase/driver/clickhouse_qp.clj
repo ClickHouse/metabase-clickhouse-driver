@@ -182,7 +182,7 @@
               (sql.qp/->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
-    (conj (args->float64 args) :+)))
+    (into [:+] (map (fn [arg] [:'toFloat64 (sql.qp/->honeysql :clickhouse arg)])) args)
 
 (defmethod sql.qp/->honeysql [:clickhouse :log]
   [driver [_ field]]
