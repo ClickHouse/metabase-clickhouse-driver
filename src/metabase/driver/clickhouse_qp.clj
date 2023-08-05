@@ -154,17 +154,19 @@
   [_ ^java.time.LocalDate t]
   [:'parseDateTimeBestEffort t])
 
+(defn- local-date-time
+  [^java.time.LocalTime t]
+  (t/local-date-time (t/local-date 1970 1 1) t))
+
 (defmethod sql.qp/->honeysql [:clickhouse LocalTime]
   [driver ^java.time.LocalTime t]
-  (sql.qp/->honeysql driver (t/local-date-time (t/local-date 1970 1 1) t)))
+  (sql.qp/->honeysql driver (local-date-time t)))
 
 (defmethod sql.qp/->honeysql [:clickhouse OffsetTime]
   [driver ^java.time.OffsetTime t]
-  (sql.qp/->honeysql driver
-                     (t/offset-date-time (t/local-date-time
-                                          (t/local-date 1970 1 1)
-                                          (.toLocalTime t))
-                                         (.getOffset t))))
+  (sql.qp/->honeysql driver (t/offset-date-time
+                             (local-date-time (.toLocalTime t))
+                             (.getOffset t))))
 
 (defn- args->float64
   [args]
@@ -182,7 +184,7 @@
               (sql.qp/->honeysql driver field)
               intervals)
       (throw (ex-info "Summing intervals is not supported" {:args args})))
-    (into [:+] (map (fn [arg] [:'toFloat64 (sql.qp/->honeysql :clickhouse arg)])) args)
+    (into [:+] (args->float64 args))))
 
 (defmethod sql.qp/->honeysql [:clickhouse :log]
   [driver [_ field]]
@@ -238,28 +240,32 @@
 ;; the filter criterion reads "is empty"
 ;; also see desugar.clj
 (defmethod sql.qp/->honeysql [:clickhouse :=]
-  [driver [_ field value]]
-  (let [[qual valuevalue fieldinfo] value]
+  [driver [op field value]]
+  (let [[qual valuevalue fieldinfo] value
+        hsql-field (sql.qp/->honeysql driver field)
+        hsql-value (sql.qp/->honeysql driver value)]
     (if (and (isa? qual :value)
              (isa? (:base_type fieldinfo) :type/Text)
              (nil? valuevalue))
       [:or
-       [:= (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver value)]
-       [:= [:'empty (sql.qp/->honeysql driver field)] 1]]
-      ((get-method sql.qp/->honeysql [:sql :=]) driver [_ field value]))))
+       [:= hsql-field hsql-value]
+       [:= [:'empty hsql-field] 1]]
+      ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
 
 ;; the filter criterion reads "not empty"
 ;; also see desugar.clj
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
-  [driver [_ field value]]
-  (let [[qual valuevalue fieldinfo] value]
+  [driver [op field value]]
+  (let [[qual valuevalue fieldinfo] value
+        hsql-field (sql.qp/->honeysql driver field)
+        hsql-value (sql.qp/->honeysql driver value)]
     (if (and (isa? qual :value)
              (isa? (:base_type fieldinfo) :type/Text)
              (nil? valuevalue))
       [:and
-       [:!= (sql.qp/->honeysql driver field) (sql.qp/->honeysql driver value)]
-       [:= [:'notEmpty (sql.qp/->honeysql driver field)] 1]]
-      ((get-method sql.qp/->honeysql [:sql :!=]) driver [_ field value]))))
+       [:!= hsql-field hsql-value]
+       [:= [:'notEmpty hsql-field] 1]]
+      ((get-method sql.qp/->honeysql [:sql :!=]) driver [op field value]))))
 
 ;; I do not know why the tests expect nil counts for empty results
 ;; but that's how it is :-)
