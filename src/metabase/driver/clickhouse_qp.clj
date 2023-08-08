@@ -349,19 +349,18 @@
 ;; getInt/getLong return 0 in case of a NULL value in the result set
 ;; the only way to check if it was actually NULL - call ResultSet.wasNull afterwards
 (defn- with-null-check
-  [^ResultSet rs get-value-fn]
-  (let [value (get-value-fn)]
-    (if (.wasNull rs) nil value)))
+  [^ResultSet rs value]
+  (if (.wasNull rs) nil value))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/BIGINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (with-null-check rs #(.getLong rs i))))
+    (with-null-check rs (.getLong rs i))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/INTEGER]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (with-null-check rs #(.getInt rs i))))
+    (with-null-check rs (.getInt rs i))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
