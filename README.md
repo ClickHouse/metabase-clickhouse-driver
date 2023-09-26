@@ -35,8 +35,8 @@
 For example [(using Metabase v0.45.3 and ClickHouse driver 1.1.2)](#choosing-the-right-version):
 
 ```bash
-export METABASE_VERSION=0.45.3
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.1.2
+export METABASE_VERSION=v0.47.2
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.1
 
 mkdir -p mb/plugins && cd mb
 curl -o metabase.jar https://downloads.metabase.com/$METABASE_VERSION/metabase.jar
@@ -49,8 +49,8 @@ MB_PLUGINS_DIR=./plugins; java -jar metabase.jar
 Alternatively, if you don't want to run Metabase Jar, you can use a Docker image:
 
 ```bash
-export METABASE_DOCKER_VERSION=v0.45.3
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.1.2
+export METABASE_DOCKER_VERSION=v0.47.2
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.1
 
 mkdir -p mb/plugins && cd mb
 curl -L -o plugins/ch.jar https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$METABASE_CLICKHOUSE_DRIVER_VERSION/clickhouse.metabase-driver.jar
@@ -61,20 +61,20 @@ docker run -d -p 3000:3000 \
 
 ## Choosing the Right Version
 
-Metabase Release | Driver Version
----------------- | --------------
-0.33.x           | 0.6
-0.34.x           | 0.7.0
-0.35.x           | 0.7.1
-0.37.3           | 0.7.3
-0.38.1+          | 0.7.5
-0.41.2           | 0.8.0
-0.41.3.1         | 0.8.1
-0.42.x           | 0.8.1
-0.44.x           | 0.9.1
-0.45.x           | 1.1.0
-0.46.x           | 1.1.7
-0.47.x           | 1.2.1
+| Metabase Release | Driver Version |
+| ---------------- | -------------- |
+| 0.33.x           | 0.6            |
+| 0.34.x           | 0.7.0          |
+| 0.35.x           | 0.7.1          |
+| 0.37.3           | 0.7.3          |
+| 0.38.1+          | 0.7.5          |
+| 0.41.2           | 0.8.0          |
+| 0.41.3.1         | 0.8.1          |
+| 0.42.x           | 0.8.1          |
+| 0.44.x           | 0.9.1          |
+| 0.45.x           | 1.1.0          |
+| 0.46.x           | 1.1.7          |
+| 0.47.x           | 1.2.1          |
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
