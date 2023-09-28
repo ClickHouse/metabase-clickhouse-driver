@@ -81,15 +81,16 @@
 
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
-(def default-connection-params {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-                                :subprotocol "clickhouse"
-                                :subname "//localhost:8123/default"
-                                :user "default"
-                                :password ""
-                                :ssl false
-                                :use_no_proxy false
-                                :use_server_time_zone_for_dates true
-                                :product_name "metabase/1.2.1"})
+(def default-connection-params
+  {:classname "com.clickhouse.jdbc.ClickHouseDriver"
+   :subprotocol "clickhouse"
+   :subname "//localhost:8123/default"
+   :user "default"
+   :password ""
+   :ssl false
+   :use_no_proxy false
+   :use_server_time_zone_for_dates true
+   :product_name "metabase/1.2.2"})
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"

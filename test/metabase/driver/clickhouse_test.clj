@@ -453,6 +453,17 @@
                  {:filter [:= $ipvfour "127.0.0.1"]
                   :aggregation [:count]})))))))))
 
+(deftest clickhouse-ip-serialization-test
+  (mt/test-driver
+   :clickhouse
+   (is (= [["127.0.0.1" "0:0:0:0:0:ffff:7f00:1"]
+           ["0.0.0.0" "0:0:0:0:0:ffff:0:0"]
+           [nil nil]]
+          (qp.test/formatted-rows
+           [str str]
+           (ctd/do-with-metabase-test-db
+            (fn [db] (data/with-db db (data/run-mbql-query ipaddress_test {})))))))))
+
 (defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
 (deftest clickhouse-simple-map-test
   (mt/test-driver

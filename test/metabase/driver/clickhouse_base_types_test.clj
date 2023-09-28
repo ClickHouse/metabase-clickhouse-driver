@@ -247,11 +247,11 @@
                  :database-required true,
                  :database-type "UUID",
                  :name "c2"}
-                {:base-type :type/IPAddress,
+                {:base-type :type/TextLike,
                  :database-required true,
                  :database-type "IPv4",
                  :name "c3"}
-                {:base-type :type/IPAddress,
+                {:base-type :type/TextLike,
                  :database-required true,
                  :database-type "IPv6",
                  :name "c4"}
@@ -267,11 +267,11 @@
                  :database-required false,
                  :database-type "Nullable(UUID)",
                  :name "c7"}
-                {:base-type :type/IPAddress,
+                {:base-type :type/TextLike,
                  :database-required false,
                  :database-type "Nullable(IPv4)",
                  :name "c8"}
-                {:base-type :type/IPAddress,
+                {:base-type :type/TextLike,
                  :database-required false,
                  :database-type "Nullable(IPv6)",
                  :name "c9"}
