@@ -12,7 +12,7 @@ if [ $# -lt 3 ]; then
     exit 1
 fi
 
-export DOWNLOAD_URL="https://github.com/enqueue/metabase-clickhouse-driver/releases/download/$2/clickhouse.metabase-driver.jar"
+export DOWNLOAD_URL="https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$2/clickhouse.metabase-driver.jar"
 echo "Downloading the driver from $DOWNLOAD_URL"
 
 cd .build

@@ -106,15 +106,29 @@ VALUES (1, 1.1,  'foo'),
        (4, 5.77, 'bar');
 
 -- Temporal bucketing tests
-CREATE TABLE `metabase_test`.`temporal_bucketing`
+CREATE TABLE `metabase_test`.`temporal_bucketing_server_tz`
 (
     start_of_year DateTime,
     mid_of_year   DateTime,
     end_of_year   DateTime
 ) ENGINE = Memory;
 
-INSERT INTO `metabase_test`.`temporal_bucketing`
-VALUES ('2022-01-01 00:00:00', '2022-06-20 06:32:54', '2022-12-31 23:59:59');
+INSERT INTO `metabase_test`.`temporal_bucketing_server_tz`
+VALUES ('2022-01-01 00:00:00',
+        '2022-06-20 06:32:54',
+        '2022-12-31 23:59:59');
+
+CREATE TABLE `metabase_test`.`temporal_bucketing_column_tz`
+(
+    start_of_year DateTime('America/Los_Angeles'),
+    mid_of_year   DateTime('America/Los_Angeles'),
+    end_of_year   DateTime('America/Los_Angeles')
+) ENGINE = Memory;
+
+INSERT INTO `metabase_test`.`temporal_bucketing_column_tz`
+VALUES (toDateTime('2022-01-01 00:00:00', 'America/Los_Angeles'),
+        toDateTime('2022-06-20 06:32:54', 'America/Los_Angeles'),
+        toDateTime('2022-12-31 23:59:59', 'America/Los_Angeles'));
 
 DROP DATABASE IF EXISTS `metabase_db_scan_test`;
 CREATE DATABASE `metabase_db_scan_test`;

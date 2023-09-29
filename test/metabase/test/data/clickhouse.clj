@@ -81,46 +81,47 @@
 
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
-(def default-connection-params {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-                                :subprotocol "clickhouse"
-                                :subname "//localhost:8123/default"
-                                :user "default"
-                                :password ""
-                                :ssl false
-                                :use_no_proxy false
-                                :use_server_time_zone_for_dates true
-                                :product_name "metabase/1.2.1"})
+(def default-connection-params
+  {:classname "com.clickhouse.jdbc.ClickHouseDriver"
+   :subprotocol "clickhouse"
+   :subname "//localhost:8123/default"
+   :user "default"
+   :password ""
+   :ssl false
+   :use_no_proxy false
+   :use_server_time_zone_for_dates true
+   :product_name "metabase/1.2.2"})
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
   [query-result]
   (map #(drop 1 %) (qp.test/rows query-result)))
 
-(defn- metabase-test-db-details
+(defn- test-db-details
   []
   {:engine :clickhouse
    :details (tx/dbdef->connection-details
              :clickhouse :db {:database-name "metabase_test"})})
 
-(def db-initialized? (atom false))
-(defn- create-metabase-test-db!
+(def test-db-initialized? (atom false))
+(defn- create-test-db!
   "Create a ClickHouse database called `metabase_test` and initialize some test data"
   []
   (jdbc/with-db-connection
-    [conn (sql-jdbc.conn/connection-details->spec :clickhouse (metabase-test-db-details))]
+    [conn (sql-jdbc.conn/connection-details->spec :clickhouse (test-db-details))]
     (let [statements (as-> (slurp "modules/drivers/clickhouse/test/metabase/test/data/datasets.sql") s
                        (str/split s #";")
                        (map str/trim s)
                        (filter seq s))]
       (jdbc/db-do-commands conn statements)
-      (reset! db-initialized? true))))
+      (reset! test-db-initialized? true))))
 
-(defn do-with-metabase-test-db
-  "Execute a test function using the test dataset from Metabase itself"
+(defn do-with-test-db
+  "Execute a test function using the test dataset"
   {:style/indent 0}
   [f]
-  (when (not @db-initialized?) (create-metabase-test-db!))
+  (when (not @test-db-initialized?) (create-test-db!))
   (t2.with-temp/with-temp
-    [Database database (metabase-test-db-details)]
+    [Database database (test-db-details)]
     (sync-metadata/sync-db-metadata! database)
     (f database)))

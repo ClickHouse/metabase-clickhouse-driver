@@ -30,10 +30,6 @@
 (defmethod sql.qp/quote-style       :clickhouse [_] :mysql)
 (defmethod sql.qp/honey-sql-version :clickhouse [_] 2)
 
-(defn- clickhouse-datetime-fn
-  [fn-name expr]
-  [fn-name (h2x/->datetime expr)])
-
 (defmethod sql.qp/date [:clickhouse :day-of-week]
   [_ _ expr]
   ;; a tick in the function name prevents HSQL2 to make the function call UPPERCASE
@@ -46,66 +42,62 @@
 
 (defmethod sql.qp/date [:clickhouse :minute]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toStartOfMinute expr))
+  [:'toStartOfMinute expr])
 
 (defmethod sql.qp/date [:clickhouse :minute-of-hour]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toMinute expr))
+  [:'toMinute expr])
 
 (defmethod sql.qp/date [:clickhouse :hour]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toStartOfHour expr))
+  [:'toStartOfHour expr])
 
 (defmethod sql.qp/date [:clickhouse :hour-of-day]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toHour expr))
+  [:'toHour expr])
 
 (defmethod sql.qp/date [:clickhouse :day-of-month]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toDayOfMonth expr))
+  [:'toDayOfMonth expr])
 
 (defn- to-start-of-week
   [expr]
-  ;; ClickHouse weeks usually start on Monday
-  (clickhouse-datetime-fn :'toMonday expr))
+  [:'toMonday expr])
 
 (defn- to-start-of-year
   [expr]
-  (clickhouse-datetime-fn :'toStartOfYear expr))
+  [:'toStartOfYear expr])
 
 (defn- to-relative-day-num
   [expr]
-  (clickhouse-datetime-fn :'toRelativeDayNum expr))
-
-(defn- to-day-of-year
-  [expr]
-  (h2x/+ (h2x/- (to-relative-day-num expr)
-                (to-relative-day-num (to-start-of-year expr)))
-         1))
+  [:'toRelativeDayNum expr])
 
 (defmethod sql.qp/date [:clickhouse :day-of-year]
   [_ _ expr]
-  (to-day-of-year expr))
+  (h2x/+
+   (h2x/- (to-relative-day-num expr)
+          (to-relative-day-num (to-start-of-year expr)))
+   1))
 
 (defmethod sql.qp/date [:clickhouse :week-of-year-iso]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toISOWeek expr))
+  [:'toISOWeek expr])
 
 (defmethod sql.qp/date [:clickhouse :month]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toStartOfMonth expr))
+  [:'toStartOfMonth expr])
 
 (defmethod sql.qp/date [:clickhouse :month-of-year]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toMonth expr))
+  [:'toMonth expr])
 
 (defmethod sql.qp/date [:clickhouse :quarter-of-year]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toQuarter expr))
+  [:'toQuarter expr])
 
 (defmethod sql.qp/date [:clickhouse :year]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toStartOfYear expr))
+  [:'toStartOfYear expr])
 
 (defmethod sql.qp/date [:clickhouse :day]
   [_ _ expr]
@@ -117,7 +109,7 @@
 
 (defmethod sql.qp/date [:clickhouse :quarter]
   [_ _ expr]
-  (clickhouse-datetime-fn :'toStartOfQuarter expr))
+  [:'toStartOfQuarter expr])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :seconds]
   [_ _ expr]
@@ -288,8 +280,7 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :clickhouse
   [_ dt amount unit]
-  (h2x/+ (h2x/->timestamp dt)
-         [:raw (format "INTERVAL %d %s" (int amount) (name unit))]))
+  (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))]))
 
 ;; The following lines make sure we call lowerUTF8 instead of lower
 (defn- ch-like-clause
@@ -326,14 +317,23 @@
   [_ [_ field value options]]
   (clickhouse-string-fn :'endsWith field value options))
 
+;; FIXME: there are still many failing tests that prevent us from turning this feature on
+;; (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
+;;   [driver [_ arg target-timezone source-timezone]]
+;;   (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
+;;         with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
+;;         _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
+;;         inner         (if (not with-tz-info?) [:'toTimeZone expr source-timezone] expr)]
+;;     [:'toTimeZone inner target-timezone]))
+
 ;; We do not have Time data types, so we cheat a little bit
 (defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
-  (h2x/->timestamp [:'parseDateTimeBestEffort [:'concat "1970-01-01T" expr]]))
+  [:'parseDateTimeBestEffort [:'concat "1970-01-01T" expr]])
 
 (defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
-  (h2x/->timestamp expr))
+  expr)
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TINYINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
@@ -370,6 +370,8 @@
             (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
             :else r))))
 
+;; FIXME: should be just (.getObject rs i OffsetDateTime)
+;; still blocked by many failing tests (see `sql.qp/->honeysql [:clickhouse :convert-timezone]` as well)
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
@@ -406,6 +408,18 @@
           ;; Complex types
           :else
           (.asString (ClickHouseArrayValue/of inner)))))))
+
+(defn- ip-column->string
+  [^ResultSet rs ^Integer i]
+  (when-let [inet-address (.getObject rs i java.net.InetAddress)]
+    (.getHostAddress inet-address)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/VARCHAR]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (fn []
+    (cond
+      (str/starts-with? (.getColumnTypeName rsmeta i) "IPv") (ip-column->string rs i)
+      :else (.getString rs i))))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]

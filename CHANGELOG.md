@@ -1,3 +1,9 @@
+# 1.2.2
+
+### Bug fixes
+* Removed forward slash from serialized IPv4/IPv6 columns. NB: IPv4/IPv6 columns are temporarily resolved as `type/TextLike` instead of `type/IPAddress` base type due to an unexpected result in Metabase 0.47 type check.
+* Removed superfluous CAST calls from generated queries that use Date* columns and/or intervals
+
 # 1.2.1
 ### New features
 * Use HoneySQL2 in the driver
