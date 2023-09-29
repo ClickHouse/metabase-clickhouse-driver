@@ -6,11 +6,10 @@
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
-(def ^:private describe-keys [:name :database-type :base-type :database-required])
 (defn- desc-table
   [table-name]
-  (into #{} (map #(select-keys % describe-keys)
-                 (:fields (ctd/do-with-metabase-test-db
+  (into #{} (map #(select-keys % [:name :database-type :base-type :database-required])
+                 (:fields (ctd/do-with-test-db
                            #(driver/describe-table :clickhouse % {:name table-name}))))))
 
 (deftest clickhouse-base-types-test

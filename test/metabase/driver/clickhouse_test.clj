@@ -6,7 +6,10 @@
             [cljc.java-time.offset-date-time :as offset-date-time]
             [cljc.java-time.temporal.chrono-unit :as chrono-unit]
             [clojure.test :refer :all]
+            [metabase.db.query :as mdb.query]
             [metabase.driver :as driver]
+            [metabase.driver.clickhouse-base-types-test]
+            [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -19,8 +22,7 @@
             [metabase.test.data [interface :as tx]]
             [metabase.test.data.clickhouse :as ctd]
             [taoensso.nippy :as nippy]
-            [toucan2.tools.with-temp :as t2.with-temp]
-            [metabase.driver.clickhouse-base-types-test]))
+            [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest clickhouse-server-timezone
   (mt/test-driver
@@ -416,7 +418,7 @@
             (qp.test/formatted-rows
              [str str str]
              :format-nil-values
-             (ctd/do-with-metabase-test-db
+             (ctd/do-with-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -427,7 +429,7 @@
             (qp.test/formatted-rows
              [str]
              :format-nil-values
-             (ctd/do-with-metabase-test-db
+             (ctd/do-with-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -445,7 +447,7 @@
           (qp.test/formatted-rows
            [int]
            :format-nil-values
-           (ctd/do-with-metabase-test-db
+           (ctd/do-with-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
@@ -461,7 +463,7 @@
            [nil nil]]
           (qp.test/formatted-rows
            [str str]
-           (ctd/do-with-metabase-test-db
+           (ctd/do-with-test-db
             (fn [db] (data/with-db db (data/run-mbql-query ipaddress_test {})))))))))
 
 (defn- map-as-string [^java.util.LinkedHashMap m] (.toString m))
@@ -472,7 +474,7 @@
           (qp.test/formatted-rows
            [map-as-string]
            :format-nil-values
-           (ctd/do-with-metabase-test-db
+           (ctd/do-with-test-db
             (fn [db]
               (data/with-db db
                 (data/run-mbql-query
@@ -555,7 +557,7 @@
                                  :database-type "SimpleAggregateFunction(sum, Int64)"
                                  :base-type :type/BigInteger
                                  :database-position 3})}}
-              (ctd/do-with-metabase-test-db
+              (ctd/do-with-test-db
                (fn [db]
                  (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
      (testing "from the result set"
@@ -563,7 +565,7 @@
               (qp.test/formatted-rows
                [int int int]
                :format-nil-values
-               (ctd/do-with-metabase-test-db
+               (ctd/do-with-test-db
                 (fn [db]
                   (data/with-db db
                     (data/run-mbql-query
@@ -635,7 +637,7 @@
             (qp.test/formatted-rows
              [int]
              :format-nil-values
-             (ctd/do-with-metabase-test-db
+             (ctd/do-with-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -646,7 +648,7 @@
             (qp.test/formatted-rows
              [int]
              :format-nil-values
-             (ctd/do-with-metabase-test-db
+             (ctd/do-with-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -657,7 +659,7 @@
             (qp.test/formatted-rows
              [double]
              :format-nil-values
-             (ctd/do-with-metabase-test-db
+             (ctd/do-with-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -668,7 +670,7 @@
             (qp.test/formatted-rows
              [double]
              :format-nil-values
-             (ctd/do-with-metabase-test-db
+             (ctd/do-with-test-db
               (fn [db]
                 (data/with-db db
                   (data/run-mbql-query
@@ -690,107 +692,6 @@
    (testing "UnsignedLong"
      (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
        (is (= value (nippy/thaw (nippy/freeze value))))))))
-
-(defn- temporal-bucketing-query-start-of-year-field
-  [unit]
-  (qp.test/rows
-   (ctd/do-with-metabase-test-db
-    (fn [db]
-      (data/with-db db
-        (data/run-mbql-query
-         temporal_bucketing
-         {:breakout [[:field %start_of_year {:temporal-unit unit}]]}))))))
-
-(defn- temporal-bucketing-query-mid-year-field
-  [unit]
-  (qp.test/rows
-   (ctd/do-with-metabase-test-db
-    (fn [db]
-      (data/with-db db
-        (data/run-mbql-query
-         temporal_bucketing
-         {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}))))))
-
-(defn- temporal-bucketing-query-end-of-year-field
-  [unit]
-  (qp.test/rows
-   (ctd/do-with-metabase-test-db
-    (fn [db]
-      (data/with-db db
-        (data/run-mbql-query
-         temporal_bucketing
-         {:breakout [[:field %end_of_year {:temporal-unit unit}]]}))))))
-
-;; See temporal_bucketing table definition
-;; Fields values are:
-;; start_of_year == '2022-01-01 00:00:00'
-;; mid_of_year   == '2022-06-20 06:32:54'
-;; end_of_year   == '2022-12-31 23:59:59'
-(deftest clickhouse-temporal-bucketing
-  (mt/test-driver
-   :clickhouse
-   (testing "truncate to"
-     (testing "minute"
-       (is (= [["2022-06-20T06:32:00Z"]]
-              (temporal-bucketing-query-mid-year-field :minute))))
-     (testing "hour"
-       (is (= [["2022-06-20T06:00:00Z"]]
-              (temporal-bucketing-query-mid-year-field :hour))))
-     (testing "day"
-       (is (= [["2022-06-20T00:00:00Z"]]
-              (temporal-bucketing-query-mid-year-field :day))))
-     (testing "month"
-       (is (= [["2022-06-01T00:00:00Z"]]
-              (temporal-bucketing-query-mid-year-field :month))))
-     (testing "quarter"
-       (is (= [["2022-04-01T00:00:00Z"]]
-              (temporal-bucketing-query-mid-year-field :quarter))))
-     (testing "year"
-       (is (= [["2022-01-01T00:00:00Z"]]
-              (temporal-bucketing-query-mid-year-field :year)))))
-   (testing "extract"
-     (testing "minute of hour"
-       (is (= [[0]]
-              (temporal-bucketing-query-start-of-year-field :minute-of-hour)))
-       (is (= [[32]]
-              (temporal-bucketing-query-mid-year-field :minute-of-hour)))
-       (is (= [[59]]
-              (temporal-bucketing-query-end-of-year-field :minute-of-hour))))
-     (testing "hour of day"
-       (is (= [[0]]
-              (temporal-bucketing-query-start-of-year-field :hour-of-day)))
-       (is (= [[6]]
-              (temporal-bucketing-query-mid-year-field :hour-of-day)))
-       (is (= [[23]]
-              (temporal-bucketing-query-end-of-year-field :hour-of-day))))
-     (testing "day of month"
-       (is (= [[1]]
-              (temporal-bucketing-query-start-of-year-field :day-of-month)))
-       (is (= [[20]]
-              (temporal-bucketing-query-mid-year-field :day-of-month)))
-       (is (= [[31]]
-              (temporal-bucketing-query-end-of-year-field :day-of-month))))
-     (testing "day of year"
-       (is (= [[1]]
-              (temporal-bucketing-query-start-of-year-field :day-of-year)))
-       (is (= [[171]]
-              (temporal-bucketing-query-mid-year-field :day-of-year)))
-       (is (= [[365]]
-              (temporal-bucketing-query-end-of-year-field :day-of-year))))
-     (testing "month of year"
-       (is (= [[1]]
-              (temporal-bucketing-query-start-of-year-field :month-of-year)))
-       (is (= [[6]]
-              (temporal-bucketing-query-mid-year-field :month-of-year)))
-       (is (= [[12]]
-              (temporal-bucketing-query-end-of-year-field :month-of-year))))
-     (testing "quarter of year"
-       (is (= [[1]]
-              (temporal-bucketing-query-start-of-year-field :quarter-of-year)))
-       (is (= [[2]]
-              (temporal-bucketing-query-mid-year-field :quarter-of-year)))
-       (is (= [[4]]
-              (temporal-bucketing-query-end-of-year-field :quarter-of-year)))))))
 
 (deftest clickhouse-set-role
   (mt/test-driver
@@ -818,3 +719,16 @@
                      (fn [^java.sql.Connection conn]
                        (driver/set-role! :clickhouse conn "asdf")))))))))
 
+(deftest clickhouse-query-formatting
+  (mt/test-driver
+   :clickhouse
+   (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
+         {compiled :query} (qp/compile-and-splice-parameters query)
+         _pretty            (mdb.query/format-sql compiled :clickhouse)]
+     (testing "compiled"
+       (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
+    ;; Ignored due to Metabase bug, see https://github.com/metabase/metabase/issues/34235
+    ;; FIXME: uncomment once it is resolved
+    ;;  (testing "pretty"
+    ;;    (is (= "SELECT\n `test_data`.`venues`.`id` AS `id`\nFROM `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty)))
+     )))

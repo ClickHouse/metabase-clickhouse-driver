@@ -32,11 +32,11 @@
 6. Make sure you are the in the directory where your `metabase.jar` lives.
 7. Run `MB_PLUGINS_DIR=./plugins; java -jar metabase.jar`.
 
-For example [(using Metabase v0.45.3 and ClickHouse driver 1.1.2)](#choosing-the-right-version):
+For example [(using Metabase v0.47.2 and ClickHouse driver 1.2.2)](#choosing-the-right-version):
 
 ```bash
 export METABASE_VERSION=v0.47.2
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.1
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.2
 
 mkdir -p mb/plugins && cd mb
 curl -o metabase.jar https://downloads.metabase.com/$METABASE_VERSION/metabase.jar
@@ -50,7 +50,7 @@ Alternatively, if you don't want to run Metabase Jar, you can use a Docker image
 
 ```bash
 export METABASE_DOCKER_VERSION=v0.47.2
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.1
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.2
 
 mkdir -p mb/plugins && cd mb
 curl -L -o plugins/ch.jar https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$METABASE_CLICKHOUSE_DRIVER_VERSION/clickhouse.metabase-driver.jar
@@ -74,17 +74,17 @@ docker run -d -p 3000:3000 \
 | 0.44.x           | 0.9.1          |
 | 0.45.x           | 1.1.0          |
 | 0.46.x           | 1.1.7          |
-| 0.47.x           | 1.2.1          |
+| 0.47.x           | 1.2.2          |
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
 You can use a convenience script `build_docker_image.sh`, which takes three arguments: Metabase version, ClickHouse driver version, and the desired final Docker image tag.
 
 ```bash
-./build_docker_image.sh v0.44.6 0.8.3 my-metabase-with-clickhouse:v0.0.1
+./build_docker_image.sh v0.47.2 1.2.2 my-metabase-with-clickhouse:v0.0.1
 ```
 
-where `v0.44.6` is Metabase version, `0.8.3` is ClickHouse driver version, and `my-metabase-with-clickhouse:v0.0.1` being the tag.
+where `v0.47.2` is Metabase version, `1.2.2` is ClickHouse driver version, and `my-metabase-with-clickhouse:v0.0.1` being the tag.
 
 Then you should be able to run it:
 
@@ -98,7 +98,7 @@ or use it with Docker compose, for example:
 version: '3.8'
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:22.10.2-alpine'
+    image: 'clickhouse/clickhouse-server:23.8-alpine'
     container_name: 'metabase-clickhouse-server'
     ports:
       - '8123:8123'

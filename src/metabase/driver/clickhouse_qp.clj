@@ -317,6 +317,15 @@
   [_ [_ field value options]]
   (clickhouse-string-fn :'endsWith field value options))
 
+;; FIXME: there are still many failing tests that prevent us from turning this feature on
+;; (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
+;;   [driver [_ arg target-timezone source-timezone]]
+;;   (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
+;;         with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
+;;         _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
+;;         inner         (if (not with-tz-info?) [:'toTimeZone expr source-timezone] expr)]
+;;     [:'toTimeZone inner target-timezone]))
+
 ;; We do not have Time data types, so we cheat a little bit
 (defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
@@ -361,6 +370,8 @@
             (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
             :else r))))
 
+;; FIXME: should be just (.getObject rs i OffsetDateTime)
+;; still blocked by many failing tests (see `sql.qp/->honeysql [:clickhouse :convert-timezone]` as well)
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []

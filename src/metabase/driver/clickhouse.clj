@@ -21,10 +21,11 @@
 (def ^:private product-name "metabase/1.2.2")
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
-                              :set-timezone                    false
                               :foreign-keys                    (not config/is-test?)
+                              :set-timezone                    false
+                              :convert-timezone                false
                               :test/jvm-timezone-setting       false
-                              :connection-impersonation        true
+                              :connection-impersonation        false
                               :schemas                         true}]
 
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))

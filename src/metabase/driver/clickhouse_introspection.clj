@@ -14,7 +14,6 @@
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"Array" :type/Array]
     [#"Bool" :type/Boolean]
-    ;; TODO: test it with :type/DateTimeWithTZ
     [#"DateTime64" :type/DateTime]
     [#"DateTime" :type/DateTime]
     [#"Date" :type/Date]
@@ -41,21 +40,31 @@
     [#"UInt64" :type/BigInteger]
     [#"UUID" :type/UUID]]))
 
-;; Enum8(UInt8) -> Enum8, DateTime64(Europe/Amsterdam) -> DateTime64,
-;; Nullable(DateTime) -> DateTime, SimpleAggregateFunction(sum, Int64) -> Int64, etc
-(defn- normalize-database-type
-  [database-type]
-  (let [db-type    (subs (str database-type) 1) ;; keyword->str; `name` call does not work well
-        normalized (second (re-find #"(?:Nullable\(|LowCardinality\()?(\w+)?\({0,1}.*" db-type))]
-    ;; slightly different normalization for SimpleAggregateFunction - we need to take the second arg
-    (or (keyword (if (= normalized "SimpleAggregateFunction")
-                   (second (re-find #"SimpleAggregateFunction\(\w+?, {0,1}(.+)?\)" db-type))
-                   normalized))
-        database-type))) ;; basically, fall back to :type/* later
+(def ^:private normalize-db-type-regex
+  #"(?:Nullable\(|LowCardinality\()?(DateTime64\(\d, {0,1}'.*|DateTime\(.*|\w+)?\({0,1}.*")
 
+(defn- inner-simple-aggregation-base-type
+  [db-type]
+  (database-type->base-type
+   (keyword (second (re-find #"SimpleAggregateFunction\(\w+?, {0,1}(.+)?\)" db-type)))))
+
+;; Enum8(UInt8) -> :type/Text, DateTime64(Europe/Amsterdam) -> :type/DateTime,
+;; Nullable(DateTime) -> :type/DateTime, SimpleAggregateFunction(sum, Int64) -> :type/BigInteger, etc
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
-  (database-type->base-type (normalize-database-type database-type)))
+  (let [db-type    (subs (str database-type) 1) ;; keyword->str; `name` call does not work well
+        normalized (second (re-find normalize-db-type-regex db-type))]
+    (or
+     (cond
+       ;; slightly different normalization for SimpleAggregateFunction - we need to take the second arg
+       (= normalized "SimpleAggregateFunction")    (inner-simple-aggregation-base-type db-type)
+       ;; DateTime/DateTime64 - which can be either TIMESTAMP or TIMESTAMP WITH TIME ZONE
+       (str/starts-with? normalized "DateTime(")   :type/DateTime ;; FIXME: should be type/DateTimeWithTZ
+       (str/starts-with? normalized "DateTime64(") :type/DateTime ;; FIXME: should be type/DateTimeWithTZ
+       ;; DateTime/DateTime64 without timezone will use just :type/DateTime from this map
+       ;; other types do not need additional processing as well
+       :else (database-type->base-type (keyword normalized)))
+     :type/*)))
 
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
   #{"system" "information_schema" "INFORMATION_SCHEMA"})
