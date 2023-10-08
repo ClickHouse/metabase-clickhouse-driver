@@ -10,6 +10,7 @@
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-base-types-test]
             [metabase.driver.clickhouse-temporal-bucketing-test]
+            [metabase.driver.clickhouse-substitution-test]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -23,6 +24,8 @@
             [metabase.test.data.clickhouse :as ctd]
             [taoensso.nippy :as nippy]
             [toucan2.tools.with-temp :as t2.with-temp]))
+
+(set! *warn-on-reflection* true)
 
 (deftest clickhouse-server-timezone
   (mt/test-driver
@@ -724,7 +727,7 @@
    :clickhouse
    (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
          {compiled :query} (qp/compile-and-splice-parameters query)
-         _pretty            (mdb.query/format-sql compiled :clickhouse)]
+         _pretty           (mdb.query/format-sql compiled :clickhouse)]
      (testing "compiled"
        (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
     ;; Ignored due to Metabase bug, see https://github.com/metabase/metabase/issues/34235
