@@ -17,7 +17,7 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
@@ -32,7 +32,7 @@
    :clickhouse
    (is (= "UTC"
           (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
-            (metabase.driver/db-default-timezone :clickhouse spec))))))
+            (driver/db-default-timezone :clickhouse spec))))))
 
 (deftest clickhouse-now-converted-to-timezone
   (mt/test-driver
@@ -333,29 +333,29 @@
 (deftest clickhouse-non-latin-strings
   (mt/test-driver
    :clickhouse
-   (data/dataset
-    (tx/dataset-definition
-     "metabase_test_lowercases"
-     ["test-data-lowercase"
-      [{:field-name "mystring" :base-type :type/Text}]
-      [["Я_1"] ["R"] ["Я_2"] ["Я"] ["я"] [nil]]])
-    (data/run-mbql-query test-data-lowercase
-                         {:filter [:contains $mystring "Я"]})
-    (testing "basic filtering"
-      (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"]]
-             (qp.test/formatted-rows
-              [int str]
-              :format-nil-values
-              (data/run-mbql-query test-data-lowercase
-                                   {:filter [:contains $mystring "Я"]})))))
-    (testing "case-insensitive non-latin filtering"
-      (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
-             (qp.test/formatted-rows
-              [int str]
-              :format-nil-values
-              (data/run-mbql-query test-data-lowercase
-                                   {:filter [:contains $mystring "Я"
-                                             {:case-sensitive false}]}))))))))
+   (testing "basic filtering"
+     (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"]]
+            (qp.test/formatted-rows
+             [int str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   metabase_test_lowercases
+                   {:filter [:contains $mystring "Я"]}))))))))
+   (testing "case-insensitive non-latin filtering"
+     (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
+            (qp.test/formatted-rows
+             [int str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   metabase_test_lowercases
+                   {:filter [:contains $mystring "Я"
+                             {:case-sensitive false}]}))))))))))
 
 (deftest clickhouse-datetime64-filter
   (mt/test-driver
@@ -456,7 +456,7 @@
                 (data/run-mbql-query
                  ipaddress_test
                  {:filter [:= $ipvfour "127.0.0.1"]
-                  :aggregation [:count]})))))))))
+                  :aggregation [[:count]]})))))))))
 
 (deftest clickhouse-ip-serialization-test
   (mt/test-driver
@@ -537,7 +537,7 @@
                        :host "server.clickhouseconnect.test"
                        :port 8443
                        :additional-options additional-options})]
-            (metabase.driver/db-default-timezone :clickhouse spec))))))
+            (driver/db-default-timezone :clickhouse spec))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test
   (mt/test-driver

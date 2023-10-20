@@ -7,13 +7,13 @@
             [metabase [util :as u]]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.sql-jdbc [execute :as sql-jdbc.execute]]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x]
-            [schema.core :as s])
+            [clojure.pprint :as pprint])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
@@ -180,7 +180,7 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :log]
   [driver [_ field]]
-  [:log10 (sql.qp/->honeysql driver field)])
+  [:'log10 (sql.qp/->honeysql driver field)])
 
 (defn- format-expr
   [expr]
@@ -229,8 +229,6 @@
         :type/IPAddress [:'toIPv4 value]
         (sql.qp/->honeysql driver value)))))
 
-;; the filter criterion reads "is empty"
-;; also see desugar.clj
 (defmethod sql.qp/->honeysql [:clickhouse :=]
   [driver [op field value]]
   (let [[qual valuevalue fieldinfo] value
@@ -244,8 +242,6 @@
        [:= [:'empty hsql-field] 1]]
       ((get-method sql.qp/->honeysql [:sql :=]) driver [op field value]))))
 
-;; the filter criterion reads "not empty"
-;; also see desugar.clj
 (defmethod sql.qp/->honeysql [:clickhouse :!=]
   [driver [op field value]]
   (let [[qual valuevalue fieldinfo] value
@@ -282,32 +278,13 @@
   [_ dt amount unit]
   (h2x/+ dt [:raw (format "INTERVAL %d %s" (int amount) (name unit))]))
 
-;; The following lines make sure we call lowerUTF8 instead of lower
-(defn- ch-like-clause
-  [driver field value options]
-  (if (get options :case-sensitive true)
-    [:like field (sql.qp/->honeysql driver value)]
-    [:like [:'lowerUTF8 field]
-     (sql.qp/->honeysql driver (update value 1 metabase.util/lower-case-en))]))
-
-(s/defn ^:private update-string-value :- mbql.s/value
-  [value :- (s/constrained mbql.s/value #(string? (second %)) ":string value") f]
-  (update value 1 f))
-
-(defmethod sql.qp/->honeysql [:clickhouse :contains]
-  [driver [_ field value options]]
-  (ch-like-clause driver
-                  (sql.qp/->honeysql driver field)
-                  (update-string-value value #(str \% % \%))
-                  options))
-
 (defn- clickhouse-string-fn
   [fn-name field value options]
-  (let [field (sql.qp/->honeysql :clickhouse field)
-        value (sql.qp/->honeysql :clickhouse value)]
+  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+        hsql-value (sql.qp/->honeysql :clickhouse value)]
     (if (get options :case-sensitive true)
-      [fn-name field value]
-      [fn-name [:'lowerUTF8 field] (metabase.util/lower-case-en value)])))
+      [fn-name hsql-field hsql-value]
+      [fn-name [:'lowerUTF8 hsql-field] [:'lowerUTF8 hsql-value]])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
@@ -316,6 +293,14 @@
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with]
   [_ [_ field value options]]
   (clickhouse-string-fn :'endsWith field value options))
+
+(defmethod sql.qp/->honeysql [:clickhouse :contains]
+  [_ [_ field value options]]
+  (let [hsql-field (sql.qp/->honeysql :clickhouse field)
+        hsql-value (sql.qp/->honeysql :clickhouse value)]
+    (if (get options :case-sensitive true)
+      [:> [:'position                hsql-field hsql-value] 0]
+      [:> [:'positionCaseInsensitive hsql-field hsql-value] 0])))
 
 ;; FIXME: there are still many failing tests that prevent us from turning this feature on
 ;; (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
@@ -446,3 +431,10 @@
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+;; see https://github.com/ClickHouse/metabase-clickhouse-driver/issues/196
+(defmethod sql.params.substitution/->temporal-unit :clickhouse
+  [_driver _field _param-type]
+  ;; FIXME: add a workaround for tests
+  ;; should always return nil in "production" mode
+  )

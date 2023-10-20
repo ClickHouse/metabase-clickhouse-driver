@@ -1,34 +1,35 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [metabase.driver :as driver]
+  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
+  (:require [clojure.string :as str]
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.clickhouse-qp]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]]
-            [metabase [config :as config]]))
+             [connection :as sql-jdbc.conn]]
+            [metabase [config :as config]]
+            [metabase.driver :as driver]))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.2.2")
+(def ^:private product-name "metabase/1.3.0")
 
-(doseq [[feature supported?] {:standard-deviation-aggregations true
-                              :foreign-keys                    (not config/is-test?)
-                              :set-timezone                    false
-                              :convert-timezone                false
-                              :test/jvm-timezone-setting       false
-                              :connection-impersonation        false
-                              :schemas                         true}]
-
-  (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
+(doseq [[feature supported?]
+        {:standard-deviation-aggregations true
+         :foreign-keys                    (not config/is-test?)
+         :set-timezone                    false
+         :convert-timezone                false
+         :test/jvm-timezone-setting       false
+         :connection-impersonation        false
+         :schemas                         true}]
+  (defmethod driver/database-supports? [:clickhouse feature]
+    [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})
@@ -52,11 +53,15 @@
       :product_name product-name}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
-(defmethod sql-jdbc.sync/db-default-timezone :clickhouse
-  [_ spec]
-  (let [sql (str "SELECT timezone() AS tz")
-        [{:keys [tz]}] (jdbc/query spec sql)]
-    tz))
+(defmethod driver/db-default-timezone :clickhouse
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn "SELECT timezone() AS tz")
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         (.getString rset 1))))))
 
 (defmethod driver/db-start-of-week :clickhouse [_] :monday)
 

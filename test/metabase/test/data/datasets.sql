@@ -1,6 +1,15 @@
 DROP DATABASE IF EXISTS `metabase_test`;
 CREATE DATABASE `metabase_test`;
 
+CREATE TABLE `metabase_test`.`metabase_test_lowercases`
+(
+    id UInt8,
+    mystring Nullable(String)
+) ENGINE = Memory;
+
+INSERT INTO `metabase_test`.`metabase_test_lowercases`
+VALUES (1, 'Я_1'), (2, 'R'), (3, 'Я_2'), (4, 'Я'), (5, 'я'), (6, NULL);
+
 CREATE TABLE `metabase_test`.`enums_test`
 (
     enum1 Enum8('foo' = 0, 'bar' = 1, 'foo bar' = 2),
