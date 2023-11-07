@@ -5,7 +5,9 @@
             [honey.sql :as sql]
             [java-time.api :as t]
             [metabase [util :as u]]
+            [metabase.config :as config]
             [metabase.driver.clickhouse-nippy]
+            [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.driver.sql-jdbc [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
@@ -27,8 +29,8 @@
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
-(defmethod sql.qp/quote-style       :clickhouse [_] :mysql)
-(defmethod sql.qp/honey-sql-version :clickhouse [_] 2)
+(defmethod sql.qp/quote-style              :clickhouse [_] :mysql)
+(defmethod sql.qp/honey-sql-version        :clickhouse [_] 2)
 
 (defmethod sql.qp/date [:clickhouse :day-of-week]
   [_ _ expr]
@@ -288,19 +290,19 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
-  (clickhouse-string-fn :'startsWith field value options))
+  (clickhouse-string-fn :'startsWithUTF8 field value options))
 
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with]
   [_ [_ field value options]]
-  (clickhouse-string-fn :'endsWith field value options))
+  (clickhouse-string-fn :'endsWithUTF8 field value options))
 
 (defmethod sql.qp/->honeysql [:clickhouse :contains]
   [_ [_ field value options]]
   (let [hsql-field (sql.qp/->honeysql :clickhouse field)
         hsql-value (sql.qp/->honeysql :clickhouse value)]
     (if (get options :case-sensitive true)
-      [:> [:'position                hsql-field hsql-value] 0]
-      [:> [:'positionCaseInsensitive hsql-field hsql-value] 0])))
+      [:> [:'positionUTF8                hsql-field hsql-value] 0]
+      [:> [:'positionCaseInsensitiveUTF8 hsql-field hsql-value] 0])))
 
 ;; FIXME: there are still many failing tests that prevent us from turning this feature on
 ;; (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
@@ -432,9 +434,8 @@
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
-;; see https://github.com/ClickHouse/metabase-clickhouse-driver/issues/196
-(defmethod sql.params.substitution/->temporal-unit :clickhouse
-  [_driver _field _param-type]
-  ;; FIXME: add a workaround for tests
-  ;; should always return nil in "production" mode
-  )
+;; See https://github.com/ClickHouse/metabase-clickhouse-driver/issues/196
+(defmethod sql.params.substitution/align-temporal-unit-with-param-type :clickhouse
+  [_ _field _param-type]
+  ;; This prevents an unnecessary `CAST x AS date` for date filters with last/next minutes/hours
+  nil)
