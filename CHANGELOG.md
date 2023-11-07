@@ -1,3 +1,12 @@
+# 1.3.0
+
+### New features
+* Metabase 0.48.x support
+
+### Bug fixes
+* Fixed last/next minutes/hours filters with variables creating incorrect queries due to unnecessary `CAST col AS date` call.
+* Fixed UI question -> SQL conversion creating incorrect queries due to superfluous spaces in columns/tables/database names.
+
 # 1.2.2
 
 ### Bug fixes
