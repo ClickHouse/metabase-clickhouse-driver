@@ -5,17 +5,14 @@
             [honey.sql :as sql]
             [java-time.api :as t]
             [metabase [util :as u]]
-            [metabase.config :as config]
             [metabase.driver.clickhouse-nippy]
-            [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.driver.sql-jdbc [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honey-sql-2 :as h2x]
-            [clojure.pprint :as pprint])
+            [metabase.util.honey-sql-2 :as h2x])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
@@ -29,8 +26,8 @@
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
-(defmethod sql.qp/quote-style              :clickhouse [_] :mysql)
-(defmethod sql.qp/honey-sql-version        :clickhouse [_] 2)
+(defmethod sql.qp/quote-style       :clickhouse [_] :mysql)
+(defmethod sql.qp/honey-sql-version :clickhouse [_] 2)
 
 (defmethod sql.qp/date [:clickhouse :day-of-week]
   [_ _ expr]
