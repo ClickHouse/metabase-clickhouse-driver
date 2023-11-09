@@ -218,3 +218,7 @@ CREATE TABLE `metabase_test`.`array_base_types` (
     c3 Array(Array(LowCardinality(FixedString(32)))),
     c4 Array(Array(Array(String)))
 ) ENGINE Memory;
+CREATE TABLE `metabase_test`.`low_cardinality_nullable_base_types` (
+    c1 LowCardinality(Nullable(String)),
+    c2 LowCardinality(Nullable(FixedString(16)))
+) ENGINE Memory;
