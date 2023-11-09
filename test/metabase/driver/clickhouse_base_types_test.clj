@@ -246,7 +246,7 @@
                  :database-required true,
                  :database-type "LowCardinality(Nullable(FixedString(16)))",
                  :name "c2"}}
-              (desc-table table-name))))
+              (desc-table table-name)))))
    (testing "everything else"
      (let [table-name "misc_base_types"]
        (is (= #{{:base-type :type/Boolean,
@@ -289,4 +289,4 @@
                  :database-required true,
                  :database-type "Tuple(String, Int32)",
                  :name "c10"}}
-              (desc-table table-name))))))))
+              (desc-table table-name)))))))
