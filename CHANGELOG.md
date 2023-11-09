@@ -1,3 +1,9 @@
+# 1.2.3
+
+### Bug fixes
+
+* Fixed `LowCardinality(Nullable)` types introspection, where it was incorrectly reported as `type/*` ([#203](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/203))
+
 # 1.2.2
 
 ### Bug fixes
