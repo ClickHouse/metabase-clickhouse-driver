@@ -18,7 +18,7 @@
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.2.2")
+(def ^:private product-name "metabase/1.2.3")
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
                               :foreign-keys                    (not config/is-test?)
