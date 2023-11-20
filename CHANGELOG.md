@@ -1,3 +1,10 @@
+# 1.2.4
+
+Metabase 0.47.7+ only.
+
+### Bug fixes
+* Fixed UI question -> SQL conversion creating incorrect queries due to superfluous spaces in columns/tables/database names.
+
 # 1.2.3
 
 ### Bug fixes

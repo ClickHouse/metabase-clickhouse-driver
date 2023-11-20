@@ -724,11 +724,8 @@
    :clickhouse
    (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
          {compiled :query} (qp/compile-and-splice-parameters query)
-         _pretty            (mdb.query/format-sql compiled :clickhouse)]
+         pretty            (driver/prettify-native-form :clickhouse compiled)]
      (testing "compiled"
        (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
-    ;; Ignored due to Metabase bug, see https://github.com/metabase/metabase/issues/34235
-    ;; FIXME: uncomment once it is resolved
-    ;;  (testing "pretty"
-    ;;    (is (= "SELECT\n `test_data`.`venues`.`id` AS `id`\nFROM `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty)))
-     )))
+     (testing "pretty"
+       (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))

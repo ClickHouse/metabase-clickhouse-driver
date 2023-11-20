@@ -1,7 +1,9 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
+  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [metabase [config :as config]]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
@@ -11,14 +13,17 @@
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
-            [metabase [config :as config]]))
+            [metabase.driver.sql.util :as sql.u]))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.2.3")
+(def ^:private product-name "metabase/1.2.4")
+
+(defmethod driver/prettify-native-form :clickhouse [_ native-form]
+  (sql.u/format-sql-and-fix-params :mysql native-form))
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
                               :foreign-keys                    (not config/is-test?)
