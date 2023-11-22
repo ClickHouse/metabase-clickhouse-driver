@@ -20,7 +20,7 @@
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.2.4")
+(def ^:private product-name "metabase/1.2.5")
 
 (defmethod driver/prettify-native-form :clickhouse [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
@@ -31,7 +31,8 @@
                               :convert-timezone                false
                               :test/jvm-timezone-setting       false
                               :connection-impersonation        false
-                              :schemas                         true}]
+                              :schemas                         true
+                              :datetime-diff                   true}]
 
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
