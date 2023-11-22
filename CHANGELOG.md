@@ -1,3 +1,10 @@
+# 1.2.5
+
+Metabase 0.47.7+ only.
+
+### New features
+* Added [datetimeDiff](https://www.metabase.com/docs/latest/questions/query-builder/expressions/datetimediff) function support. See ([#117](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/117)).
+
 # 1.2.4
 
 Metabase 0.47.7+ only.
