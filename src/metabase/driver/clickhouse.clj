@@ -24,16 +24,16 @@
 (defmethod driver/prettify-native-form :clickhouse [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
-(doseq [[feature supported?]
-        {:standard-deviation-aggregations true
-         :foreign-keys                    (not config/is-test?)
-         :set-timezone                    false
-         :convert-timezone                false
-         :test/jvm-timezone-setting       false
-         :connection-impersonation        false
-         :schemas                         true}]
-  (defmethod driver/database-supports? [:clickhouse feature]
-    [_driver _feature _db] supported?))
+(doseq [[feature supported?] {:standard-deviation-aggregations true
+                              :foreign-keys                    (not config/is-test?)
+                              :set-timezone                    false
+                              :convert-timezone                false
+                              :test/jvm-timezone-setting       false
+                              :connection-impersonation        false
+                              :schemas                         true
+                              :datetime-diff                   true}]
+
+  (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})

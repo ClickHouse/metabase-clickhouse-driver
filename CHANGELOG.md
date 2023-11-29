@@ -5,7 +5,26 @@
 
 ### Bug fixes
 * Fixed last/next minutes/hours filters with variables creating incorrect queries due to unnecessary `CAST col AS date` call.
+
+# 1.2.5
+
+Metabase 0.47.7+ only.
+
+### New features
+* Added [datetimeDiff](https://www.metabase.com/docs/latest/questions/query-builder/expressions/datetimediff) function support. See ([#117](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/117)).
+
+# 1.2.4
+
+Metabase 0.47.7+ only.
+
+### Bug fixes
 * Fixed UI question -> SQL conversion creating incorrect queries due to superfluous spaces in columns/tables/database names.
+
+# 1.2.3
+
+### Bug fixes
+
+* Fixed `LowCardinality(Nullable)` types introspection, where it was incorrectly reported as `type/*` ([#203](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/203))
 
 # 1.2.2
 

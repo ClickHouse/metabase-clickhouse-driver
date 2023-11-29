@@ -301,6 +301,21 @@
       [:> [:'positionUTF8                hsql-field hsql-value] 0]
       [:> [:'positionCaseInsensitiveUTF8 hsql-field hsql-value] 0])))
 
+(defmethod sql.qp/->honeysql [:clickhouse :datetime-diff]
+  [driver [_ x y unit]]
+  (let [x (sql.qp/->honeysql driver x)
+        y (sql.qp/->honeysql driver y)]
+    (case unit
+      ;; Week: Metabase tests expect a bit different result from what `age` provides
+      (:week)
+      [:'intDiv [:'dateDiff (h2x/literal :day) [:'toStartOfDay x] [:'toStartOfDay y]] [:raw 7]]
+      ;; -------------------------
+      (:year :month :quarter :day)
+      [:'age (h2x/literal unit) [:'toStartOfDay x] [:'toStartOfDay y]]
+      ;; -------------------------
+      (:hour :minute :second)
+      [:'age (h2x/literal unit) x y])))
+
 ;; FIXME: there are still many failing tests that prevent us from turning this feature on
 ;; (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
 ;;   [driver [_ arg target-timezone source-timezone]]

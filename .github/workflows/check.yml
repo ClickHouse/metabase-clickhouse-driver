@@ -16,9 +16,8 @@ jobs:
       - name: Checkout Metabase Repo
         uses: actions/checkout@v2
         with:
-          # FIXME: when https://github.com/metabase/metabase/pull/34873 is merged
-          repository: slvrtrn/metabase
-          ref: 2310e3be0781e92a1469d136df5f54e016cdb0ec
+          repository: metabase/metabase
+          ref: 78c167c0e42296945f09adea49fba4077c5c3a68 # latest master ("almost" 0.48.x)
 
       - name: Checkout Driver Repo
         uses: actions/checkout@v2

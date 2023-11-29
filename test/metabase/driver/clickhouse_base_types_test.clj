@@ -236,6 +236,17 @@
                  :database-type "Array(Array(Array(String)))",
                  :name "c4"}}
               (desc-table table-name)))))
+   (testing "low cardinality nullable"
+     (let [table-name "low_cardinality_nullable_base_types"]
+       (is (= #{{:base-type :type/Text,
+                 :database-required true,
+                 :database-type "LowCardinality(Nullable(String))",
+                 :name "c1"}
+                {:base-type :type/TextLike,
+                 :database-required true,
+                 :database-type "LowCardinality(Nullable(FixedString(16)))",
+                 :name "c2"}}
+              (desc-table table-name)))))
    (testing "everything else"
      (let [table-name "misc_base_types"]
        (is (= #{{:base-type :type/Boolean,
