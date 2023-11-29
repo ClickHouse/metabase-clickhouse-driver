@@ -1,7 +1,8 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.string :as str]
+  (:require [clojure.pprint :as pprint]
+            [clojure.string :as str]
             [metabase [config :as config]]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
@@ -12,7 +13,8 @@
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql.util :as sql.u]))
+            [metabase.driver.sql.util :as sql.u]
+            [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,6 +58,20 @@
       :use_server_time_zone_for_dates true
       :product_name product-name}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+
+;; FIXME: metabase.driver-test/check-can-connect-before-sync-test
+;; (defmethod driver/can-connect? :clickhouse
+;;   [driver details]
+;;   (pprint/pprint details)
+;;   (try
+;;     (sql-jdbc.execute/do-with-connection-with-options
+;;      driver (get details :db) nil
+;;      (fn [^java.sql.Connection conn]
+;;        (with-open [stmt (.prepareStatement conn "SELECT 1")
+;;                    _    (.executeQuery stmt)])))
+;;     (catch Throwable e
+;;       (log/warn e "An exception during ClickHouse connectivity check")
+;;       false)))
 
 (defmethod driver/db-default-timezone :clickhouse
   [driver database]
