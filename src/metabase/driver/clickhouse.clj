@@ -1,8 +1,7 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.pprint :as pprint]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [metabase [config :as config]]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
@@ -59,19 +58,22 @@
       :product_name product-name}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
-;; FIXME: metabase.driver-test/check-can-connect-before-sync-test
-;; (defmethod driver/can-connect? :clickhouse
-;;   [driver details]
-;;   (pprint/pprint details)
-;;   (try
-;;     (sql-jdbc.execute/do-with-connection-with-options
-;;      driver (get details :db) nil
-;;      (fn [^java.sql.Connection conn]
-;;        (with-open [stmt (.prepareStatement conn "SELECT 1")
-;;                    _    (.executeQuery stmt)])))
-;;     (catch Throwable e
-;;       (log/warn e "An exception during ClickHouse connectivity check")
-;;       false)))
+(defmethod driver/can-connect? :clickhouse
+  [driver details]
+  (try
+    (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
+          db    (or (:db details) "default")
+          query (format "SHOW DATABASES LIKE '%s'" db)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver spec nil
+       (fn [^java.sql.Connection conn]
+         (with-open [stmt  (.prepareStatement conn query)
+                     rset  (.executeQuery stmt)]
+           (when (.next rset)
+             (= db (.getString rset 1)))))))
+    (catch Throwable e
+      (log/error e "An exception during ClickHouse connectivity check")
+      false)))
 
 (defmethod driver/db-default-timezone :clickhouse
   [driver database]

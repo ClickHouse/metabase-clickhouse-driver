@@ -6,6 +6,7 @@
             [java-time.api :as t]
             [metabase [util :as u]]
             [metabase.driver.clickhouse-nippy]
+            [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.driver.sql-jdbc [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
@@ -447,7 +448,11 @@
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 ;; See https://github.com/ClickHouse/metabase-clickhouse-driver/issues/196
+(def ^:private int-base-types [:type/Integer :type/BigInteger])
 (defmethod sql.params.substitution/align-temporal-unit-with-param-type :clickhouse
-  [_ _field _param-type]
-  ;; This prevents an unnecessary `CAST x AS date` for date filters with last/next minutes/hours
-  nil)
+  [_ field param-type]
+  ;; Required for working with integer timestamps
+  ;; See `metabase.query-processor-test.alternative-date-test/substitute-native-parameters-test`
+  (let [base-type (:base-type field)]
+    (when (and (params.dates/date-type? param-type) (some #(= base-type %) int-base-types))
+      :day)))
