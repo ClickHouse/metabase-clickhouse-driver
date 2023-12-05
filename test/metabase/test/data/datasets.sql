@@ -130,6 +130,19 @@ VALUES (toDateTime('2022-01-01 00:00:00', 'America/Los_Angeles'),
         toDateTime('2022-06-20 06:32:54', 'America/Los_Angeles'),
         toDateTime('2022-12-31 23:59:59', 'America/Los_Angeles'));
 
+CREATE TABLE `metabase_test`.`datetime_diff_nullable` (
+    idx  Int32,
+    dt64 Nullable(DateTime64(3, 'UTC')),
+    dt   Nullable(DateTime('UTC')),
+    d    Nullable(Date)
+) ENGINE Memory;
+
+INSERT INTO `metabase_test`.`datetime_diff_nullable`
+VALUES (42, '2022-01-01 00:00:00.000', '2022-06-20 06:32:54', '2022-07-22'),
+       (43, '2022-01-01 00:00:00.000', NULL, NULL),
+       (44, NULL, '2022-06-20 06:32:54', '2022-07-22'),
+       (45, NULL, NULL, NULL);
+
 DROP DATABASE IF EXISTS `metabase_db_scan_test`;
 CREATE DATABASE `metabase_db_scan_test`;
 
