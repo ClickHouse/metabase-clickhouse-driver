@@ -731,3 +731,19 @@
        (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
      (testing "pretty"
        (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
+
+(deftest clickhouse-datetime-diff-nullable
+  (mt/test-driver
+   :clickhouse
+   (is (= [[170 202] [nil nil] [nil nil] [nil nil]]
+          (ctd/do-with-test-db
+           (fn [db]
+             (data/with-db db
+               (->> (data/run-mbql-query
+                     datetime_diff_nullable
+                     {:fields [[:expression "dt64,dt"]
+                               [:expression "dt64,d"]]
+                      :expressions
+                      {"dt64,dt" [:datetime-diff $dt64 $dt :day]
+                       "dt64,d"  [:datetime-diff $dt64 $d  :day]}})
+                    (mt/formatted-rows [int int])))))))))

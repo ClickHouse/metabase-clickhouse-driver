@@ -67,10 +67,11 @@
       (sql-jdbc.execute/do-with-connection-with-options
        driver spec nil
        (fn [^java.sql.Connection conn]
-         (with-open [stmt  (.prepareStatement conn query)
-                     rset  (.executeQuery stmt)]
-           (when (.next rset)
-             (= db (.getString rset 1)))))))
+         (with-open [stmt (.prepareStatement conn query)
+                     rset (.executeQuery stmt)]
+           (if (.next rset)
+             (= db (.getString rset 1))
+             false))))) ;; Empty ResultSet => Database does not exist
     (catch Throwable e
       (log/error e "An exception during ClickHouse connectivity check")
       false)))
