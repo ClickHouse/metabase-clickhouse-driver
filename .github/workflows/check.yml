@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/metabase
-          ref: 78c167c0e42296945f09adea49fba4077c5c3a68 # latest master ("almost" 0.48.x)
+          ref: v0.48.0-RC1
 
       - name: Checkout Driver Repo
         uses: actions/checkout@v2
