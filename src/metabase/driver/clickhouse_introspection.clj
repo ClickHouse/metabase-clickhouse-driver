@@ -28,9 +28,8 @@
     [#"Int16" :type/Integer]
     [#"Int32" :type/Integer]
     [#"Int64" :type/BigInteger]
-    ;; FIXME: set it back to IPAddress when 0.48 is out, as it should resolve IPAddress and other semantic types checks issues
-    [#"IPv4" :type/TextLike]
-    [#"IPv6" :type/TextLike]
+    [#"IPv4" :type/IPAddress]
+    [#"IPv6" :type/IPAddress]
     [#"Map" :type/Dictionary]
     [#"String" :type/Text]
     [#"Tuple" :type/*]
@@ -151,14 +150,14 @@
 
 (defn- ^:private is-db-required?
   [field]
-  (not (str/starts-with? (get-in field [:database-type]) "Nullable")))
+  (not (str/starts-with? (get field :database-type) "Nullable")))
 
 (defmethod driver/describe-table :clickhouse
   [_ database table]
   (let [table-metadata (sql-jdbc.sync/describe-table :clickhouse database table)
         filtered-fields (for [field (:fields table-metadata)
-                              :let [updated-field (update-in field [:database-required]
-                                                             (fn [_] (is-db-required? field)))]
+                              :let [updated-field (update field :database-required
+                                                          (fn [_] (is-db-required? field)))]
                               ;; Skip all AggregateFunction (but keeping SimpleAggregateFunction) columns
                               ;; JDBC does not support that and it crashes the data browser
                               :when (not (re-matches #"^AggregateFunction\(.+$"

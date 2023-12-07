@@ -8,7 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
    [metabase.models [database :refer [Database]]]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test.data
     [interface :as tx]
@@ -90,7 +90,7 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.2.5"})
+   :product_name "metabase/1.3.0"})
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"

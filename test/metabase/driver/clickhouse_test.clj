@@ -6,17 +6,17 @@
             [cljc.java-time.offset-date-time :as offset-date-time]
             [cljc.java-time.temporal.chrono-unit :as chrono-unit]
             [clojure.test :refer :all]
-            [metabase.db.query :as mdb.query]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-base-types-test]
             [metabase.driver.clickhouse-temporal-bucketing-test]
+            [metabase.driver.clickhouse-substitution-test]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
@@ -24,12 +24,14 @@
             [taoensso.nippy :as nippy]
             [toucan2.tools.with-temp :as t2.with-temp]))
 
+(set! *warn-on-reflection* true)
+
 (deftest clickhouse-server-timezone
   (mt/test-driver
    :clickhouse
    (is (= "UTC"
           (let [spec (sql-jdbc.conn/connection-details->spec :clickhouse {})]
-            (metabase.driver/db-default-timezone :clickhouse spec))))))
+            (driver/db-default-timezone :clickhouse spec))))))
 
 (deftest clickhouse-now-converted-to-timezone
   (mt/test-driver
@@ -330,29 +332,29 @@
 (deftest clickhouse-non-latin-strings
   (mt/test-driver
    :clickhouse
-   (data/dataset
-    (tx/dataset-definition
-     "metabase_test_lowercases"
-     ["test-data-lowercase"
-      [{:field-name "mystring" :base-type :type/Text}]
-      [["Я_1"] ["R"] ["Я_2"] ["Я"] ["я"] [nil]]])
-    (data/run-mbql-query test-data-lowercase
-                         {:filter [:contains $mystring "Я"]})
-    (testing "basic filtering"
-      (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"]]
-             (qp.test/formatted-rows
-              [int str]
-              :format-nil-values
-              (data/run-mbql-query test-data-lowercase
-                                   {:filter [:contains $mystring "Я"]})))))
-    (testing "case-insensitive non-latin filtering"
-      (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
-             (qp.test/formatted-rows
-              [int str]
-              :format-nil-values
-              (data/run-mbql-query test-data-lowercase
-                                   {:filter [:contains $mystring "Я"
-                                             {:case-sensitive false}]}))))))))
+   (testing "basic filtering"
+     (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"]]
+            (qp.test/formatted-rows
+             [int str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   metabase_test_lowercases
+                   {:filter [:contains $mystring "Я"]}))))))))
+   (testing "case-insensitive non-latin filtering"
+     (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
+            (qp.test/formatted-rows
+             [int str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   metabase_test_lowercases
+                   {:filter [:contains $mystring "Я"
+                             {:case-sensitive false}]}))))))))))
 
 (deftest clickhouse-datetime64-filter
   (mt/test-driver
@@ -453,7 +455,7 @@
                 (data/run-mbql-query
                  ipaddress_test
                  {:filter [:= $ipvfour "127.0.0.1"]
-                  :aggregation [:count]})))))))))
+                  :aggregation [[:count]]})))))))))
 
 (deftest clickhouse-ip-serialization-test
   (mt/test-driver
@@ -534,7 +536,7 @@
                        :host "server.clickhouseconnect.test"
                        :port 8443
                        :additional-options additional-options})]
-            (metabase.driver/db-default-timezone :clickhouse spec))))))
+            (driver/db-default-timezone :clickhouse spec))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test
   (mt/test-driver
@@ -729,3 +731,19 @@
        (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
      (testing "pretty"
        (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
+
+(deftest clickhouse-datetime-diff-nullable
+  (mt/test-driver
+   :clickhouse
+   (is (= [[170 202] [nil nil] [nil nil] [nil nil]]
+          (ctd/do-with-test-db
+           (fn [db]
+             (data/with-db db
+               (->> (data/run-mbql-query
+                     datetime_diff_nullable
+                     {:fields [[:expression "dt64,dt"]
+                               [:expression "dt64,d"]]
+                      :expressions
+                      {"dt64,dt" [:datetime-diff $dt64 $dt :day]
+                       "dt64,d"  [:datetime-diff $dt64 $d  :day]}})
+                    (mt/formatted-rows [int int])))))))))

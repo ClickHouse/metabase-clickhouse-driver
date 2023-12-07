@@ -1,6 +1,15 @@
 DROP DATABASE IF EXISTS `metabase_test`;
 CREATE DATABASE `metabase_test`;
 
+CREATE TABLE `metabase_test`.`metabase_test_lowercases`
+(
+    id UInt8,
+    mystring Nullable(String)
+) ENGINE = Memory;
+
+INSERT INTO `metabase_test`.`metabase_test_lowercases`
+VALUES (1, 'Я_1'), (2, 'R'), (3, 'Я_2'), (4, 'Я'), (5, 'я'), (6, NULL);
+
 CREATE TABLE `metabase_test`.`enums_test`
 (
     enum1 Enum8('foo' = 0, 'bar' = 1, 'foo bar' = 2),
@@ -129,6 +138,19 @@ INSERT INTO `metabase_test`.`temporal_bucketing_column_tz`
 VALUES (toDateTime('2022-01-01 00:00:00', 'America/Los_Angeles'),
         toDateTime('2022-06-20 06:32:54', 'America/Los_Angeles'),
         toDateTime('2022-12-31 23:59:59', 'America/Los_Angeles'));
+
+CREATE TABLE `metabase_test`.`datetime_diff_nullable` (
+    idx  Int32,
+    dt64 Nullable(DateTime64(3, 'UTC')),
+    dt   Nullable(DateTime('UTC')),
+    d    Nullable(Date)
+) ENGINE Memory;
+
+INSERT INTO `metabase_test`.`datetime_diff_nullable`
+VALUES (42, '2022-01-01 00:00:00.000', '2022-06-20 06:32:54', '2022-07-22'),
+       (43, '2022-01-01 00:00:00.000', NULL, NULL),
+       (44, NULL, '2022-06-20 06:32:54', '2022-07-22'),
+       (45, NULL, NULL, NULL);
 
 DROP DATABASE IF EXISTS `metabase_db_scan_test`;
 CREATE DATABASE `metabase_db_scan_test`;

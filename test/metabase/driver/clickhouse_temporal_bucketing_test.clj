@@ -2,7 +2,7 @@
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
-   [metabase.query-processor-test :as qp.test]
+   [metabase.query-processor.test-util :as qp.test]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.clickhouse :as ctd]))
