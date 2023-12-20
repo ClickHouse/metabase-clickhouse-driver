@@ -13,7 +13,8 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honey-sql-2 :as h2x])
+            [metabase.util.honey-sql-2 :as h2x]
+            [metabase.util.log :as log])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
@@ -393,14 +394,24 @@
       (.getLong rs i)
       (.getBigDecimal rs i))))
 
+(defn- get-array-base-type
+  [^ResultSetMetaData rsmeta ^Integer i]
+  (try
+    (-> (.columns rsmeta)
+        (.get i)
+        (.arrayBaseColumn)
+        (.originalTypeName))
+    (catch Exception e
+      (log/error e "Failed to get the inner type of the array column"))))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/ARRAY]
-  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
     (when-let [arr (.getArray rs i)]
-      (let [inner (.getArray arr)]
+      (let [array-base-type (get-array-base-type rsmeta i)
+            inner           (.getArray arr)]
         (cond
-          ;; Booleans are returned as just bytes
-          (bytes? inner)
+          (= array-base-type "Bool")
           (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
           ;; All other primitives
           (.isPrimitive (.getComponentType (.getClass inner)))

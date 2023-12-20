@@ -76,7 +76,7 @@ docker run -d -p 3000:3000 \
 | 0.46.x           | 1.1.7          |
 | 0.47.x           | 1.2.3          |
 | 0.47.7+          | 1.2.5          |
-| 0.48.0-RC1       | 1.3.0          |
+| 0.48.x           | 1.3.1          |
 
 ## Creating a Metabase Docker image with ClickHouse driver
 

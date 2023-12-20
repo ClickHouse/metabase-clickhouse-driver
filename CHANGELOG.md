@@ -1,3 +1,8 @@
+# 1.3.1
+
+### Bug fixes
+* Fixed incorrect serialization of `Array(UInt8)` columns ([#209](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/209))
+
 # 1.3.0
 
 ### New features
@@ -11,7 +16,7 @@
 Metabase 0.47.7+ only.
 
 ### New features
-* Added [datetimeDiff](https://www.metabase.com/docs/latest/questions/query-builder/expressions/datetimediff) function support. See ([#117](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/117)).
+* Added [datetimeDiff](https://www.metabase.com/docs/latest/questions/query-builder/expressions/datetimediff) function support ([#117](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/117))
 
 # 1.2.4
 
