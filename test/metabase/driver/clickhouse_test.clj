@@ -168,6 +168,21 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[true, false, true]"], ["[]"]] result)))))
 
+(deftest clickhouse-array-of-uint8
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list 42 100 2))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_uint8"
+                                              ["test-data-array-of-uint8"
+                                               [{:field-name "my_array_of_uint8"
+                                                 :base-type {:native "Array(UInt8)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-uint8 {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[42, 100, 2]"], ["[]"]] result)))))
+
 (deftest clickhouse-array-of-floats
   (mt/test-driver
    :clickhouse

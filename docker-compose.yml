@@ -36,6 +36,7 @@ services:
     container_name: metabase-with-clickhouse-driver
     environment:
       'MB_HTTP_TIMEOUT': '5000'
+      'JAVA_TIMEZONE': 'UTC'
     ports:
       - '3000:3000'
     volumes:
