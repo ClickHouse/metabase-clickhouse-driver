@@ -18,6 +18,15 @@
       <quota>default</quota>
       <access_management>1</access_management>
     </default>
+    <user_with_password>
+      <password>foo@bar!</password>
+      <networks>
+        <ip>::/0</ip>
+      </networks>
+      <profile>default</profile>
+      <quota>default</quota>
+      <access_management>1</access_management>
+    </user_with_password>
   </users>
 
   <quotas>

@@ -62,16 +62,11 @@
   [driver details]
   (try
     (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-          db    (or (:db details) "default")
-          query (format "SHOW DATABASES LIKE '%s'" db)]
+          db    (or (:dbname details) (:db details) "default")]
       (sql-jdbc.execute/do-with-connection-with-options
        driver spec nil
        (fn [^java.sql.Connection conn]
-         (with-open [stmt (.prepareStatement conn query)
-                     rset (.executeQuery stmt)]
-           (if (.next rset)
-             (= db (.getString rset 1))
-             false))))) ;; Empty ResultSet => Database does not exist
+         (.next (.getSchemas (.getMetaData conn) nil db)))))
     (catch Throwable e
       (log/error e "An exception during ClickHouse connectivity check")
       false)))

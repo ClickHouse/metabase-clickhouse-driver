@@ -8,8 +8,8 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-base-types-test]
-            [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.driver.clickhouse-substitution-test]
+            [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -762,3 +762,13 @@
                       {"dt64,dt" [:datetime-diff $dt64 $dt :day]
                        "dt64,d"  [:datetime-diff $dt64 $d  :day]}})
                     (mt/formatted-rows [int int])))))))))
+
+(deftest clickhouse-can-connect
+  (mt/test-driver
+   :clickhouse
+   (ctd/create-test-db!)
+   (doall
+    (for [[username password] [["default" ""] ["user_with_password" "foo@bar!"]]
+          database            ["default" "Test Database" "Special@Characters~" "'Escaping'"]]
+      (testing (format "User `%s` can connect to `%s`" username database)
+        (is (true? (driver/can-connect? :clickhouse {:user username :password password :dbname database}))))))))
