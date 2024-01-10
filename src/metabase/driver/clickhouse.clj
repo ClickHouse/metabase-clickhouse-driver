@@ -60,16 +60,21 @@
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
-  (try
-    (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-          db    (or (:dbname details) (:db details) "default")]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver spec nil
-       (fn [^java.sql.Connection conn]
-         (.next (.getSchemas (.getMetaData conn) nil db)))))
-    (catch Throwable e
-      (log/error e "An exception during ClickHouse connectivity check")
-      false)))
+  (if config/is-test?
+    (try
+      ;; Default SELECT 1 is not enough for Metabase test suite,
+      ;; as it works slightly differently than expected there
+      (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
+            db    (or (:dbname details) (:db details) "default")]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver spec nil
+         (fn [^java.sql.Connection conn]
+           (.next (.getSchemas (.getMetaData conn) nil db)))))
+      (catch Throwable e
+        (log/error e "An exception during ClickHouse connectivity check")
+        false))
+    ;; During normal usage, fall back to the default implementation
+    (sql-jdbc.conn/can-connect? driver details)))
 
 (defmethod driver/db-default-timezone :clickhouse
   [driver database]
