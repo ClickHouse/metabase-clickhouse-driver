@@ -20,7 +20,7 @@
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.3.1")
+(def ^:private product-name "metabase/1.3.2")
 
 (defmethod driver/prettify-native-form :clickhouse [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
@@ -60,21 +60,21 @@
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
-  (try
-    (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-          db    (or (:db details) "default")
-          query (format "SHOW DATABASES LIKE '%s'" db)]
-      (sql-jdbc.execute/do-with-connection-with-options
-       driver spec nil
-       (fn [^java.sql.Connection conn]
-         (with-open [stmt (.prepareStatement conn query)
-                     rset (.executeQuery stmt)]
-           (if (.next rset)
-             (= db (.getString rset 1))
-             false))))) ;; Empty ResultSet => Database does not exist
-    (catch Throwable e
-      (log/error e "An exception during ClickHouse connectivity check")
-      false)))
+  (if config/is-test?
+    (try
+      ;; Default SELECT 1 is not enough for Metabase test suite,
+      ;; as it works slightly differently than expected there
+      (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
+            db    (or (:dbname details) (:db details) "default")]
+        (sql-jdbc.execute/do-with-connection-with-options
+         driver spec nil
+         (fn [^java.sql.Connection conn]
+           (.next (.getSchemas (.getMetaData conn) nil db)))))
+      (catch Throwable e
+        (log/error e "An exception during ClickHouse connectivity check")
+        false))
+    ;; During normal usage, fall back to the default implementation
+    (sql-jdbc.conn/can-connect? driver details)))
 
 (defmethod driver/db-default-timezone :clickhouse
   [driver database]

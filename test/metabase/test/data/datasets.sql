@@ -244,3 +244,11 @@ CREATE TABLE `metabase_test`.`low_cardinality_nullable_base_types` (
     c1 LowCardinality(Nullable(String)),
     c2 LowCardinality(Nullable(FixedString(16)))
 ) ENGINE Memory;
+
+-- can-connect tests (odd database names)
+DROP DATABASE IF EXISTS `Test Database`;
+CREATE DATABASE `Test Database`;
+DROP DATABASE IF EXISTS `Special@Characters~`;
+CREATE DATABASE `Special@Characters~`;
+DROP DATABASE IF EXISTS `'Escaping'`;
+CREATE DATABASE `'Escaping'`;
