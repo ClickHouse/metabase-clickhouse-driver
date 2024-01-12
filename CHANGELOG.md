@@ -1,3 +1,9 @@
+# 1.3.2
+
+### Bug fixes
+* Remove `can-connect?` method override which could cause issues with editing or creating new connections. ([#212](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/212))
+
+
 # 1.3.1
 
 ### Bug fixes
