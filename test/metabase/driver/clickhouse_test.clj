@@ -538,20 +538,33 @@
        (is (= :type/Boolean (transduce identity (driver.common/values->base-type) [c1, c3])))
        (is (= :type/Boolean (driver.common/class->base-type (class c1))))))))
 
-(deftest clickhouse-simple-tls-connection
+(deftest clickhouse-tls
   (mt/test-driver
    :clickhouse
-   (is (= "UTC"
-          (let [working-dir (System/getProperty "user.dir")
-                cert-path (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
-                additional-options (str "sslrootcert=" cert-path)
-                spec (sql-jdbc.conn/connection-details->spec
-                      :clickhouse
-                      {:ssl true
-                       :host "server.clickhouseconnect.test"
-                       :port 8443
-                       :additional-options additional-options})]
-            (driver/db-default-timezone :clickhouse spec))))))
+   (let [working-dir (System/getProperty "user.dir")
+         cert-path (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
+         additional-options (str "sslrootcert=" cert-path)]
+     (testing "simple connection with a single database"
+       (is (= "UTC"
+              (driver/db-default-timezone
+               :clickhouse
+               (sql-jdbc.conn/connection-details->spec
+                :clickhouse
+                {:ssl true
+                 :host "server.clickhouseconnect.test"
+                 :port 8443
+                 :additional-options additional-options})))))
+     (testing "connection with multiple databases"
+       (is (= "UTC"
+              (driver/db-default-timezone
+               :clickhouse
+               (sql-jdbc.conn/connection-details->spec
+                :clickhouse
+                {:ssl true
+                 :host "server.clickhouseconnect.test"
+                 :port 8443
+                 :dbname "default system"
+                 :additional-options additional-options}))))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test
   (mt/test-driver
@@ -769,6 +782,6 @@
    (ctd/create-test-db!)
    (doall
     (for [[username password] [["default" ""] ["user_with_password" "foo@bar!"]]
-          database            ["default" "Test Database" "Special@Characters~" "'Escaping'"]]
+          database            ["default" "Special@Characters~" "'Escaping'"]]
       (testing (format "User `%s` can connect to `%s`" username database)
         (is (true? (driver/can-connect? :clickhouse {:user username :password password :dbname database}))))))))

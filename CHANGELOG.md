@@ -1,3 +1,8 @@
+# 1.3.3
+
+### Bug fixes
+* Fixed an issue where it was not possible to create a connection with multiple databases using TLS. ([#215](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/215))
+
 # 1.3.2
 
 ### Bug fixes

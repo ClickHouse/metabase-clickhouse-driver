@@ -1,6 +1,6 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 1.3.2
+  version: 1.3.3
   description: Allows Metabase to connect to ClickHouse databases.
 contact-info:
   name: ClickHouse
@@ -20,7 +20,7 @@ driver:
     - name: dbname
       display-name: Databases
       placeholder: default
-      helper-text: "To specify multiple databases, separate them by the space symbol. For example: default data logs"
+      helper-text: "To specify multiple databases, separate them by the space symbol. For example: default data logs."
     - name: scan-all-databases
       display-name: Scan all databases
       type: boolean
