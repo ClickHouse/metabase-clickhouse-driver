@@ -20,7 +20,7 @@
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.3.2")
+(def ^:private product-name "metabase/1.3.3")
 
 (defmethod driver/prettify-native-form :clickhouse [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
@@ -45,7 +45,10 @@
   (let [details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
-        {:keys [user password dbname host port ssl use-no-proxy]} details]
+        {:keys [user password dbname host port ssl use-no-proxy]} details
+        ;; if multiple databases were specified for the connection,
+        ;; use only the first dbname as the "main" one
+        dbname (first (str/split (str/trim dbname) #" "))]
     (->
      {:classname "com.clickhouse.jdbc.ClickHouseDriver"
       :subprotocol "clickhouse"
