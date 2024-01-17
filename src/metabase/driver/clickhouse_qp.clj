@@ -1,7 +1,8 @@
 (ns metabase.driver.clickhouse-qp
   "CLickHouse driver: QueryProcessor-related definition"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.string :as str]
+  (:require [clojure.pprint :as pprint]
+            [clojure.string :as str]
             [honey.sql :as sql]
             [java-time.api :as t]
             [metabase [util :as u]]
@@ -24,7 +25,8 @@
             OffsetDateTime
             OffsetTime
             ZonedDateTime]
-           java.util.Arrays))
+           java.util.Arrays
+           (metabase.driver.common.parameters Date)))
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
@@ -460,10 +462,17 @@
 
 ;; See https://github.com/ClickHouse/metabase-clickhouse-driver/issues/196
 (def ^:private int-base-types [:type/Integer :type/BigInteger])
-(defmethod sql.params.substitution/align-temporal-unit-with-param-type :clickhouse
-  [_ field param-type]
-  ;; Required for working with integer timestamps
-  ;; See `metabase.query-processor-test.alternative-date-test/substitute-native-parameters-test`
-  (let [base-type (:base-type field)]
-    (when (and (params.dates/date-type? param-type) (some #(= base-type %) int-base-types))
-      :day)))
+(defmethod sql.params.substitution/align-temporal-unit-with-param-type-and-value :clickhouse
+  [_ field param-type value]
+  (cond
+    ;;;; cast to a Date type
+    (or
+     ;; an integer timestamp value,
+     ;; required for `metabase.query-processor-test.alternative-date-test/substitute-native-parameters-test`
+     (and (params.dates/date-type? param-type) (some #(= (:base-type field) %) int-base-types))
+     ;; an ISO Date string value like "2024-01-16"
+     (and (string? value) (= (count value) 10) (boolean (re-matches #"^\d{4}-\d{2}-\d{2}$" value)))) :day
+    ;;;; cast to a DateTime type with minutes precision (for values like "2024-01-16T12:45:00")
+    (and (string? value) (= (count value) 19) (boolean (re-matches #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00$" value))) :minute
+    ;;;; otherwise, don't do any additional cast operations
+    :else nil))

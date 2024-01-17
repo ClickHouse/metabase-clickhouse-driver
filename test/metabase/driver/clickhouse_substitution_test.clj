@@ -57,6 +57,23 @@
          (t/format "yyyy-MM-dd'T'HH:mm:ss'Z'" ldt))]
        (doseq [base-type ["DateTime" "DateTime64"]]
          (testing base-type
+           (testing "on specific"
+             (let [db    (format "metabase_tests_variables_replacement_on_specific_%s"
+                                 (u/lower-case-en base-type))
+                   now   (local-date-time-now)
+                   row1  (.minusHours   now 14)
+                   row2  (.minusMinutes now 20)
+                   row3  (.plusMinutes  now 5)
+                   row4  (.plusHours    now 6)
+                   table (get-test-table [row1 row2 row3 row4] base-type)]
+               (data/dataset
+                (tx/dataset-definition db table)
+                (testing "date"
+                  (is (= [[(->iso-str row1)] [(->iso-str row2)] [(->iso-str row3)]]
+                         (ctd/rows-without-index (qp/process-query (get-mbql "2019-11-30" db))))))
+                (testing "datetime"
+                  (is (= [[(->iso-str row2)]]
+                         (ctd/rows-without-index (qp/process-query (get-mbql "2019-11-30T22:40:00" db)))))))))
            (testing "past/next minutes"
              (let [db    (format "metabase_tests_variables_replacement_past_next_minutes_%s"
                                  (u/lower-case-en base-type))
@@ -168,6 +185,19 @@
          (str (t/format "yyyy-MM-dd" ld) "T00:00:00Z"))]
        (doseq [base-type ["Date" "Date32"]]
          (testing base-type
+           (testing "on specific date"
+             (let [db    (format "metabase_tests_variables_replacement_on_specific_%s"
+                                 (u/lower-case-en base-type))
+                   now   (local-date-time-now)
+                   row1  (.minusDays now 14)
+                   row2  now
+                   row3  (.plusDays  now 25)
+                   row4  (.plusDays  now 6)
+                   table (get-test-table [row1 row2 row3 row4] base-type)]
+               (data/dataset
+                (tx/dataset-definition db table)
+                (is (= [[(->iso-str row2)]]
+                       (ctd/rows-without-index (qp/process-query (get-mbql "2019-11-30" db))))))))
            (testing "past/next days"
              (let [db    (format "metabase_tests_variables_replacement_past_next_days_%s"
                                  (u/lower-case-en base-type))
