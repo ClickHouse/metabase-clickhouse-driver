@@ -1,8 +1,7 @@
 (ns metabase.driver.clickhouse-qp
   "CLickHouse driver: QueryProcessor-related definition"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.pprint :as pprint]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [honey.sql :as sql]
             [java-time.api :as t]
             [metabase [util :as u]]
@@ -25,8 +24,7 @@
             OffsetDateTime
             OffsetTime
             ZonedDateTime]
-           java.util.Arrays
-           (metabase.driver.common.parameters Date)))
+           java.util.Arrays))
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
