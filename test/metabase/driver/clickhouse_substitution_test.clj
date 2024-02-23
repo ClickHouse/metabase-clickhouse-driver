@@ -2,8 +2,6 @@
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.test :refer :all]
             [java-time.api :as t]
-            [metabase.driver.clickhouse-base-types-test]
-            [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.data :as data]

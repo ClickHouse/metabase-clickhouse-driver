@@ -3,8 +3,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.common :as driver.common]
+   [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.test-util :as qp.test]
    [metabase.test :as mt]
-   [metabase.test.data.clickhouse :as ctd]))
+   [metabase.test.data :as data]
+   [metabase.test.data.clickhouse :as ctd]
+   [metabase.test.data.interface :as tx]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- desc-table
   [table-name]
@@ -290,3 +297,115 @@
                  :database-type "Tuple(String, Int32)",
                  :name "c10"}}
               (desc-table table-name)))))))
+
+(deftest clickhouse-boolean-type-metadata
+  (mt/test-driver
+   :clickhouse
+   (let [result      (-> {:query "SELECT false, 123, true"} mt/native-query qp/process-query)
+         [[c1 _ c3]] (-> result qp.test/rows)]
+     (testing "column should be of type :type/Boolean"
+       (is (= :type/Boolean (-> result :data :results_metadata :columns first :base_type)))
+       (is (= :type/Boolean (transduce identity (driver.common/values->base-type) [c1, c3])))
+       (is (= :type/Boolean (driver.common/class->base-type (class c1))))))))
+
+(def ^:private base-field
+  {:database-is-auto-increment false
+   :json-unfolding false
+   :database-required true})
+
+(deftest clickhouse-filtered-aggregate-functions-test
+  (mt/test-driver
+   :clickhouse
+   (testing "AggregateFunction columns are filtered"
+     (testing "from the table metadata"
+       (is (= {:name "aggregate_functions_filter_test"
+               :fields #{(merge base-field
+                                {:name "idx"
+                                 :database-type "UInt8"
+                                 :base-type :type/Integer
+                                 :database-position 0})
+                         (merge base-field
+                                {:name "lowest_value"
+                                 :database-type "SimpleAggregateFunction(min, UInt8)"
+                                 :base-type :type/Integer
+                                 :database-position 2})
+                         (merge base-field
+                                {:name "count"
+                                 :database-type "SimpleAggregateFunction(sum, Int64)"
+                                 :base-type :type/BigInteger
+                                 :database-position 3})}}
+              (ctd/do-with-test-db
+               (fn [db]
+                 (driver/describe-table :clickhouse db {:name "aggregate_functions_filter_test"}))))))
+     (testing "from the result set"
+       (is (= [[42 144 255255]]
+              (qp.test/formatted-rows
+               [int int int]
+               :format-nil-values
+               (ctd/do-with-test-db
+                (fn [db]
+                  (data/with-db db
+                    (data/run-mbql-query
+                     aggregate_functions_filter_test
+                     {})))))))))))
+
+(deftest clickhouse-describe-database
+  (let [test-tables
+        #{{:description nil,
+           :name "table1",
+           :schema "metabase_db_scan_test"}
+          {:description nil,
+           :name "table2",
+           :schema "metabase_db_scan_test"}}]
+    (testing "scanning a single database"
+      (t2.with-temp/with-temp
+        [Database db {:engine :clickhouse
+                      :details (merge {:scan-all-databases nil}
+                                      (tx/dbdef->connection-details
+                                       :clickhouse :db
+                                       {:database-name "metabase_db_scan_test"}))}]
+        (let [describe-result (driver/describe-database :clickhouse db)]
+          (is (=
+               {:tables test-tables}
+               describe-result)))))
+    (testing "scanning all databases"
+      (t2.with-temp/with-temp
+        [Database db {:engine :clickhouse
+                      :details (merge {:scan-all-databases true}
+                                      (tx/dbdef->connection-details
+                                       :clickhouse :db
+                                       {:database-name "default"}))}]
+        (let [describe-result (driver/describe-database :clickhouse db)]
+            ;; check the existence of at least some test tables here
+          (doseq [table test-tables]
+            (is (contains? (:tables describe-result)
+                           table)))
+            ;; should not contain any ClickHouse system tables
+          (is (not (some #(= (:schema %) "system")
+                         (:tables describe-result))))
+          (is (not (some #(= (:schema %) "information_schema")
+                         (:tables describe-result))))
+          (is (not (some #(= (:schema %) "INFORMATION_SCHEMA")
+                         (:tables describe-result)))))))
+    (testing "scanning multiple databases"
+      (t2.with-temp/with-temp
+        [Database db {:engine :clickhouse
+                      :details (tx/dbdef->connection-details
+                                :clickhouse :db
+                                {:database-name "metabase_db_scan_test information_schema"})}]
+        (let [{:keys [tables] :as _describe-result}
+              (driver/describe-database :clickhouse db)
+              tables-table  {:name        "tables"
+                             :description nil
+                             :schema      "information_schema"}
+              columns-table {:name        "columns"
+                             :description nil
+                             :schema      "information_schema"}]
+
+          ;; tables from `metabase_db_scan_test`
+          (doseq [table test-tables]
+            (is (contains? tables table)))
+
+          ;; tables from `information_schema`
+          (is (contains? tables tables-table))
+          (is (contains? tables columns-table)))))))
