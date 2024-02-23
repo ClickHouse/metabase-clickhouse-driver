@@ -22,8 +22,9 @@
             [taoensso.nippy :as nippy]))
 
 (set! *warn-on-reflection* true)
+(use-fixtures :once ctd/create-test-db!)
 
-(deftest clickhouse-version
+(deftest ^:parallel clickhouse-version
   (mt/test-driver
    :clickhouse
    (let [version (driver/dbms-version :clickhouse (mt/db))]
@@ -31,7 +32,7 @@
      (is (number?  (get-in version [:semantic-version :minor])))
      (is (string? (get version :version))))))
 
-(deftest clickhouse-server-timezone
+(deftest ^:parallel clickhouse-server-timezone
   (mt/test-driver
    :clickhouse
    (is (= "UTC"
@@ -39,7 +40,7 @@
                 spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
             (driver/db-default-timezone :clickhouse spec))))))
 
-(deftest clickhouse-now-converted-to-timezone
+(deftest ^:parallel clickhouse-now-converted-to-timezone
   (mt/test-driver
    :clickhouse
    (let [[[utc-now shanghai-now]]
@@ -54,7 +55,7 @@
                (offset-date-time/parse utc-now date-time-formatter/iso-offset-date-time)
                (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
 
-(deftest clickhouse-connection-string
+(deftest ^:parallel clickhouse-connection-string
   (testing "connection with no additional options"
     (is (= ctd/default-connection-params
            (sql-jdbc.conn/connection-details->spec
@@ -84,7 +85,7 @@
             :clickhouse
             {:dbname nil})))))
 
-(deftest clickhouse-tls
+(deftest ^:parallel clickhouse-tls
   (mt/test-driver
    :clickhouse
    (let [working-dir (System/getProperty "user.dir")
@@ -112,7 +113,7 @@
                  :dbname "default system"
                  :additional-options additional-options}))))))))
 
-(deftest clickhouse-nippy
+(deftest ^:parallel clickhouse-nippy
   (mt/test-driver
    :clickhouse
    (testing "UnsignedByte"
@@ -156,7 +157,7 @@
                      (fn [^java.sql.Connection conn]
                        (driver/set-role! :clickhouse conn "asdf")))))))))
 
-(deftest clickhouse-query-formatting
+(deftest ^:parallel clickhouse-query-formatting
   (mt/test-driver
    :clickhouse
    (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
@@ -167,10 +168,9 @@
      (testing "pretty"
        (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
 
-(deftest clickhouse-can-connect
+(deftest ^:parallel clickhouse-can-connect
   (mt/test-driver
    :clickhouse
-   (ctd/create-test-db!)
    (doall
     (for [[username password] [["default" ""] ["user_with_password" "foo@bar!"]]
           database            ["default" "Special@Characters~" "'Escaping'"]]

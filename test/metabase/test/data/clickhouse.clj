@@ -100,7 +100,7 @@
 (def ^:private test-db-initialized? (atom false))
 (defn create-test-db!
   "Create a ClickHouse database called `metabase_test` and initialize some test data"
-  []
+  [f]
   (when (not @test-db-initialized?)
     (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})]
       (jdbc/with-db-connection
@@ -110,13 +110,13 @@
                            (map str/trim s)
                            (filter seq s))]
           (jdbc/db-do-commands conn statements)
-          (reset! test-db-initialized? true))))))
+          (reset! test-db-initialized? true)))))
+  (f))
 
 (defn do-with-test-db
   "Execute a test function using the test dataset"
   {:style/indent 0}
   [f]
-  (create-test-db!)
   (t2.with-temp/with-temp
     [Database database
      {:engine :clickhouse
