@@ -297,11 +297,10 @@
 (defn- clickhouse-string-fn
   [fn-name field value options]
   (let [hsql-field (sql.qp/->honeysql :clickhouse field)
-        hsql-value (sql.qp/->honeysql :clickhouse value)
-        lower (with-min-version 23 8 :'lowerUTF8 :'lower)]
+        hsql-value (sql.qp/->honeysql :clickhouse value)]
     (if (get options :case-sensitive true)
       [fn-name hsql-field hsql-value]
-      [fn-name [lower hsql-field] [lower hsql-value]])))
+      [fn-name [:'lowerUTF8 hsql-field] [:'lowerUTF8 hsql-value]])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
@@ -318,8 +317,8 @@
   (let [hsql-field (sql.qp/->honeysql :clickhouse field)
         hsql-value (sql.qp/->honeysql :clickhouse value)
         position-fn (if (get options :case-sensitive true)
-                      (with-min-version 23 8 :'positionUTF8 :'position)
-                      (with-min-version 23 8 :'positionCaseInsensitiveUTF8 :'positionCaseInsensitive))]
+                      :'positionUTF8
+                      :'positionCaseInsensitiveUTF8)]
     [:> [position-fn hsql-field hsql-value] 0]))
 
 (defmethod sql.qp/->honeysql [:clickhouse :datetime-diff]

@@ -41,6 +41,7 @@ jobs:
           down-flags: "--volumes"
           services: |
             clickhouse
+            clickhouse_older_version
             clickhouse_tls
 
       - name: Install Clojure CLI
@@ -75,7 +76,6 @@ jobs:
         env:
           DRIVERS: clickhouse
           MB_CLICKHOUSE_TEST_PORT: 8124
-          MB_CLICKHOUSE_TEST_SKIP_CASE_INSENSITIVE_TESTS: 1
         run: |
           clojure -X:dev:drivers:drivers-dev:test:user/clickhouse :only metabase.driver.clickhouse-test
 

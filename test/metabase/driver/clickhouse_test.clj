@@ -366,19 +366,18 @@
                   (data/run-mbql-query
                    metabase_test_lowercases
                    {:filter [:contains $mystring "Я"]}))))))))
-   (when (nil? (tx/db-test-env-var :clickhouse :skip-case-insensitive-tests))
-     (testing "case-insensitive non-latin filtering"
-       (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
-              (qp.test/formatted-rows
-               [int str]
-               :format-nil-values
-               (ctd/do-with-test-db
-                (fn [db]
-                  (data/with-db db
-                    (data/run-mbql-query
-                     metabase_test_lowercases
-                     {:filter [:contains $mystring "Я"
-                               {:case-sensitive false}]})))))))))))
+   (testing "case-insensitive non-latin filtering"
+     (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
+            (qp.test/formatted-rows
+             [int str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   metabase_test_lowercases
+                   {:filter [:contains $mystring "Я"
+                             {:case-sensitive false}]}))))))))))
 
 (deftest clickhouse-datetime64-filter
   (mt/test-driver

@@ -2,7 +2,7 @@
 
 ### New features
 
-* If introspected ClickHouse version is lower than 23.8, the driver will not use the UTF8 versions of string functions ([startsWithUTF8](https://clickhouse.com/docs/en/sql-reference/functions/string-functions#startswithutf8), [lowerUTF8](https://clickhouse.com/docs/en/sql-reference/functions/string-functions#lowerutf8), [positionUTF8](https://clickhouse.com/docs/en/sql-reference/functions/string-search-functions#positionutf8), [positionCaseInsensitiveUTF8](https://clickhouse.com/docs/en/sql-reference/functions/string-search-functions#positioncaseinsensitiveutf8)) and fall back to their non-UTF8 counterparts instead. An expected drawback of this compatibility mode: potentially incorrect filtering results when working with non-latin strings. If your use case includes filtering by columns with such strings, consider upgrading your ClickHouse server to 23.8+. ([#224](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/224))
+* If introspected ClickHouse version is lower than 23.8, the driver will not use [startsWithUTF8](https://clickhouse.com/docs/en/sql-reference/functions/string-functions#startswithutf8) and fall back to its [non-UTF8 counterpart](https://clickhouse.com/docs/en/sql-reference/functions/string-functions#startswith) instead. There is a drawback in this compatibility mode: potentially incorrect filtering results when working with non-latin strings. If your use case includes filtering by columns with such strings and you experience these issues, consider upgrading your ClickHouse server to 23.8+. ([#224](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/224))
 
 # 1.3.3
 
