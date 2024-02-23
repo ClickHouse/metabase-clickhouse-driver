@@ -26,6 +26,14 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest clickhouse-version
+  (mt/test-driver
+   :clickhouse
+   (let [version (driver/dbms-version :clickhouse (mt/db))]
+     (is (number? (get-in version [:semantic-version :major])))
+     (is (number?  (get-in version [:semantic-version :minor])))
+     (is (string? (get version :version))))))
+
 (deftest clickhouse-server-timezone
   (mt/test-driver
    :clickhouse
@@ -358,18 +366,19 @@
                   (data/run-mbql-query
                    metabase_test_lowercases
                    {:filter [:contains $mystring "Я"]}))))))))
-   (testing "case-insensitive non-latin filtering"
-     (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
-            (qp.test/formatted-rows
-             [int str]
-             :format-nil-values
-             (ctd/do-with-test-db
-              (fn [db]
-                (data/with-db db
-                  (data/run-mbql-query
-                   metabase_test_lowercases
-                   {:filter [:contains $mystring "Я"
-                             {:case-sensitive false}]}))))))))))
+   (when (nil? (tx/db-test-env-var :clickhouse :skip-case-insensitive-tests))
+     (testing "case-insensitive non-latin filtering"
+       (is (= [[1 "Я_1"] [3 "Я_2"] [4 "Я"] [5 "я"]]
+              (qp.test/formatted-rows
+               [int str]
+               :format-nil-values
+               (ctd/do-with-test-db
+                (fn [db]
+                  (data/with-db db
+                    (data/run-mbql-query
+                     metabase_test_lowercases
+                     {:filter [:contains $mystring "Я"
+                               {:case-sensitive false}]})))))))))))
 
 (deftest clickhouse-datetime64-filter
   (mt/test-driver

@@ -5,13 +5,16 @@
             [honey.sql :as sql]
             [java-time.api :as t]
             [metabase [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.driver.sql-jdbc [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.lib.metadata :as lib.metadata]
             [metabase.mbql.util :as mbql.u]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x]
             [metabase.util.log :as log])
@@ -30,6 +33,18 @@
 
 (defmethod sql.qp/quote-style       :clickhouse [_] :mysql)
 (defmethod sql.qp/honey-sql-version :clickhouse [_] 2)
+
+(defn- clickhouse-version []
+  (let [db (lib.metadata/database (qp.store/metadata-provider))]
+    (qp.store/cached ::clickhouse-version (driver/dbms-version :clickhouse db))))
+
+(defn- with-min-version [major minor default-fn fallback-fn]
+  (let [version (clickhouse-version)]
+    (if (or (> (get-in version [:semantic-version :major]) major)
+            (and (= (get-in version [:semantic-version :major]) major)
+                 (>= (get-in version [:semantic-version :minor]) minor)))
+      default-fn
+      fallback-fn)))
 
 (defmethod sql.qp/date [:clickhouse :day-of-week]
   [_ _ expr]
@@ -282,26 +297,30 @@
 (defn- clickhouse-string-fn
   [fn-name field value options]
   (let [hsql-field (sql.qp/->honeysql :clickhouse field)
-        hsql-value (sql.qp/->honeysql :clickhouse value)]
+        hsql-value (sql.qp/->honeysql :clickhouse value)
+        lower (with-min-version 23 8 :'lowerUTF8 :'lower)]
     (if (get options :case-sensitive true)
       [fn-name hsql-field hsql-value]
-      [fn-name [:'lowerUTF8 hsql-field] [:'lowerUTF8 hsql-value]])))
+      [fn-name [lower hsql-field] [lower hsql-value]])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
-  (clickhouse-string-fn :'startsWithUTF8 field value options))
+  (let [starts-with (with-min-version 23 8 :'startsWithUTF8 :'startsWith)]
+    (clickhouse-string-fn starts-with field value options)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with]
   [_ [_ field value options]]
-  (clickhouse-string-fn :'endsWithUTF8 field value options))
+  (let [ends-with (with-min-version 23 8 :'endsWithUTF8 :'endsWith)]
+    (clickhouse-string-fn ends-with field value options)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :contains]
   [_ [_ field value options]]
   (let [hsql-field (sql.qp/->honeysql :clickhouse field)
-        hsql-value (sql.qp/->honeysql :clickhouse value)]
-    (if (get options :case-sensitive true)
-      [:> [:'positionUTF8                hsql-field hsql-value] 0]
-      [:> [:'positionCaseInsensitiveUTF8 hsql-field hsql-value] 0])))
+        hsql-value (sql.qp/->honeysql :clickhouse value)
+        position-fn (if (get options :case-sensitive true)
+                      (with-min-version 23 8 :'positionUTF8 :'position)
+                      (with-min-version 23 8 :'positionCaseInsensitiveUTF8 :'positionCaseInsensitive))]
+    [:> [position-fn hsql-field hsql-value] 0]))
 
 (defmethod sql.qp/->honeysql [:clickhouse :datetime-diff]
   [driver [_ x y unit]]
