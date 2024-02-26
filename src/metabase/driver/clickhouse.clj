@@ -20,7 +20,7 @@
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.3.3")
+(def ^:private product-name "metabase/1.3.4")
 
 (defmethod driver/prettify-native-form :clickhouse [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
@@ -93,6 +93,20 @@
 
 (defmethod ddl.i/format-name :clickhouse [_ table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
+
+(def ^:private version-query
+  "WITH s AS (SELECT version() AS ver, splitByChar('.', ver) AS verSplit) SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s")
+(defmethod driver/dbms-version :clickhouse
+  [driver database]
+  (sql-jdbc.execute/do-with-connection-with-options
+    driver database nil
+    (fn [^java.sql.Connection conn]
+      (with-open [stmt (.prepareStatement conn version-query)
+                  rset (.executeQuery stmt)]
+        (when (.next rset)
+          {:version          (.getString rset 1)
+           :semantic-version {:major (.getInt rset 2)
+                              :minor (.getInt rset 3)}})))))
 
 ;;; ------------------------------------------ User Impersonation ------------------------------------------
 

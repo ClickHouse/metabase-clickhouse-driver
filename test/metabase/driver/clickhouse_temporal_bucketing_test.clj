@@ -12,7 +12,7 @@
 ;; start_of_year == '2022-01-01 00:00:00'
 ;; mid_of_year   == '2022-06-20 06:32:54'
 ;; end_of_year   == '2022-12-31 23:59:59'
-(deftest clickhouse-temporal-bucketing-server-tz
+(deftest ^:parallel clickhouse-temporal-bucketing-server-tz
   (mt/test-driver
    :clickhouse
    (defn- start-of-year [unit]
@@ -102,7 +102,7 @@
        (is (= [[4]]
               (end-of-year :quarter-of-year)))))))
 
-(deftest clickhouse-temporal-bucketing-column-tz
+(deftest ^:parallel clickhouse-temporal-bucketing-column-tz
   (mt/test-driver
    :clickhouse
    (defn- start-of-year [unit]

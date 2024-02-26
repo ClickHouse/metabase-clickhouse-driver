@@ -2,8 +2,6 @@
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.test :refer :all]
             [java-time.api :as t]
-            [metabase.driver.clickhouse-base-types-test]
-            [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.data :as data]
@@ -38,7 +36,7 @@
 (s/defn ^:private local-date-now      :- LocalDate     [] (LocalDate/now clock))
 (s/defn ^:private local-date-time-now :- LocalDateTime [] (LocalDateTime/now clock))
 
-(deftest clickhouse-variables-field-filters-datetime-and-datetime64
+(deftest ^:parallel clickhouse-variables-field-filters-datetime-and-datetime64
   (mt/test-driver
    :clickhouse
    (mt/with-clock clock
@@ -149,7 +147,7 @@
                   (is (= [[(->iso-str row4)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next12years" db)))))))))))))))
 
-(deftest clickhouse-variables-field-filters-date-and-date32
+(deftest ^:parallel clickhouse-variables-field-filters-date-and-date32
   (mt/test-driver
    :clickhouse
    (mt/with-clock clock

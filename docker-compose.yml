@@ -1,11 +1,26 @@
 version: '3.8'
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:23.8-alpine'
+    image: 'clickhouse/clickhouse-server:24.1-alpine'
     container_name: 'metabase-driver-clickhouse-server'
     ports:
       - '8123:8123'
       - '9000:9000'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - './.docker/clickhouse/single_node/config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/single_node/users.xml:/etc/clickhouse-server/users.xml'
+
+  # For testing pre-23.8 string functions switch between UTF8 and non-UTF8 versions (see clickhouse_qp.clj)
+  clickhouse_older_version:
+    image: 'clickhouse/clickhouse-server:23.3-alpine'
+    container_name: 'metabase-driver-clickhouse-server-older-version'
+    ports:
+      - '8124:8123'
+      - '9001:9000'
     ulimits:
       nofile:
         soft: 262144
