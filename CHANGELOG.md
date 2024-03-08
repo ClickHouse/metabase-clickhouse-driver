@@ -1,8 +1,9 @@
 # 1.4.0
 
 ### New features
-
 * Metabase 0.49.x support.
+
+### Bug fixes
 * Fixed an incorrect substitution for the current day filter with DateTime columns. ([#216](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/216))
 
 # 1.3.4
