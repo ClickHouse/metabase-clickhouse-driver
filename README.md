@@ -76,7 +76,7 @@ docker run -d -p 3000:3000 \
 | 0.46.x           | 1.1.7          |
 | 0.47.x           | 1.2.3          |
 | 0.47.7+          | 1.2.5          |
-| 0.48.x           | 1.3.2          |
+| 0.48.x           | 1.3.4          |
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
@@ -142,6 +142,7 @@ The driver should work fine for many use cases. Please consider the following it
 
 * As the underlying JDBC driver version does not support columns with `AggregateFunction` type, these columns are excluded from the table metadata and data browser result sets to prevent sync or data browsing errors.
 * If the past month/week/quarter/year filter over a DateTime64 column is not working as intended, this is likely due to a [type conversion issue](https://github.com/ClickHouse/ClickHouse/pull/50280). See [this report](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/164) for more details. This issue was resolved as of ClickHouse 23.5.
+* If introspected ClickHouse version is lower than 23.8, the driver will not use [startsWithUTF8](https://clickhouse.com/docs/en/sql-reference/functions/string-functions#startswithutf8) and fall back to its [non-UTF8 counterpart](https://clickhouse.com/docs/en/sql-reference/functions/string-functions#startswith) instead. There is a drawback in this compatibility mode: potentially incorrect filtering results when working with non-latin strings. If your use case includes filtering by columns with such strings and you experience these issues, consider upgrading your ClickHouse server to 23.8+.
 
 ## Contributing
 
