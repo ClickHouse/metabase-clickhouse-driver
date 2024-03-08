@@ -20,7 +20,7 @@
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.3.4")
+(def ^:private product-name "metabase/1.4.0")
 
 (defmethod driver/prettify-native-form :clickhouse [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
