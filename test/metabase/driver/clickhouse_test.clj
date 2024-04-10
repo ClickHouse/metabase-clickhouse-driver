@@ -8,11 +8,10 @@
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-data-types-test]
             [metabase.driver.clickhouse-introspection-test]
+            [metabase.driver.clickhouse-set-role-test]
             [metabase.driver.clickhouse-substitution-test]
             [metabase.driver.clickhouse-temporal-bucketing-test]
-            [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.query-processor :as qp]
             [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
@@ -22,6 +21,7 @@
             [taoensso.nippy :as nippy]))
 
 (set! *warn-on-reflection* true)
+
 (use-fixtures :once ctd/create-test-db!)
 
 (deftest ^:parallel clickhouse-version
@@ -128,34 +128,6 @@
    (testing "UnsignedLong"
      (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
        (is (= value (nippy/thaw (nippy/freeze value))))))))
-
-(deftest clickhouse-set-role
-  (mt/test-driver
-   :clickhouse
-   (let [default-role (driver.sql/default-database-role :clickhouse nil)
-         details      (merge {:user "metabase_test_user"}
-                             (tx/dbdef->connection-details :clickhouse :db {:database-name "default"}))
-         spec         (sql-jdbc.conn/connection-details->spec :clickhouse details)]
-     (testing "default role is NONE"
-       (is (= default-role "NONE")))
-     (testing "does not throw with an existing role"
-       (sql-jdbc.execute/do-with-connection-with-options
-        :clickhouse spec nil
-        (fn [^java.sql.Connection conn]
-          (driver/set-role! :clickhouse conn "metabase_test_role")))
-       (is true))
-     (testing "does not throw with the default role"
-       (sql-jdbc.execute/do-with-connection-with-options
-        :clickhouse spec nil
-        (fn [^java.sql.Connection conn]
-          (driver/set-role! :clickhouse conn default-role)))
-       (is true))
-     (testing "throws when assigning a non-existent role"
-       (is (thrown? Exception
-                    (sql-jdbc.execute/do-with-connection-with-options
-                     :clickhouse spec nil
-                     (fn [^java.sql.Connection conn]
-                       (driver/set-role! :clickhouse conn "asdf")))))))))
 
 (deftest ^:parallel clickhouse-query-formatting
   (mt/test-driver

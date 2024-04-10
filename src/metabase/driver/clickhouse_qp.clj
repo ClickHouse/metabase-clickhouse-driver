@@ -32,7 +32,6 @@
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (defmethod sql.qp/quote-style       :clickhouse [_] :mysql)
-(defmethod sql.qp/honey-sql-version :clickhouse [_] 2)
 
 (defn- clickhouse-version []
   (let [db (lib.metadata/database (qp.store/metadata-provider))]

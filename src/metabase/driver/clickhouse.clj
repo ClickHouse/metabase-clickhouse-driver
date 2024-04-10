@@ -30,7 +30,7 @@
                               :set-timezone                    false
                               :convert-timezone                false
                               :test/jvm-timezone-setting       false
-                              :connection-impersonation        false
+                              :connection-impersonation        true
                               :schemas                         true
                               :datetime-diff                   true}]
 

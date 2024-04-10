@@ -84,11 +84,11 @@
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod load-data/load-data! :clickhouse [& args]
-  (apply load-data/load-data-add-ids! args))
+  (apply load-data/load-data-add-ids args))
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Nullable(Int32)")
 
-(defmethod sql.tx/add-fk-sql :clickhouse [& _] nil) ; TODO - fix me
+(defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
@@ -104,18 +104,23 @@
   (when (not @test-db-initialized?)
     (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})]
       (jdbc/with-db-connection
-        [conn (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
+        [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
         (let [statements (as-> (slurp "modules/drivers/clickhouse/test/metabase/test/data/datasets.sql") s
                            (str/split s #";")
                            (map str/trim s)
                            (filter seq s))]
-          (jdbc/db-do-commands conn statements)
+          (jdbc/db-do-commands spec statements)
           (reset! test-db-initialized? true)))))
   (f))
 
+(defn exec-statements
+  [statements details-map]
+  (jdbc/with-db-connection
+    [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))]
+    (jdbc/db-do-commands spec statements)))
+
 (defn do-with-test-db
   "Execute a test function using the test dataset"
-  {:style/indent 0}
   [f]
   (t2.with-temp/with-temp
     [Database database
