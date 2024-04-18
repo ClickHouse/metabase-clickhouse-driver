@@ -47,7 +47,7 @@ services:
     hostname: server.clickhouseconnect.test
 
   metabase:
-    image: metabase/metabase:v0.49.0-RC2
+    image: metabase/metabase:v0.49.3
     container_name: metabase-with-clickhouse-driver
     environment:
       'MB_HTTP_TIMEOUT': '5000'
@@ -57,3 +57,9 @@ services:
     volumes:
       - '../../../resources/modules/clickhouse.metabase-driver.jar:/plugins/clickhouse.jar'
       - './.docker/clickhouse/single_node_tls/certificates/ca.crt:/certs/ca.crt'
+  postgres:
+    image: postgres
+    # shm_size: 128mb
+    environment:
+      POSTGRES_USER: example
+      POSTGRES_PASSWORD: example
