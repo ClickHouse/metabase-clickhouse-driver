@@ -1,3 +1,9 @@
+# 1.4.1
+
+### Bug fixes
+
+* Fixed missing data for the last day when using filters with DateTime columns. ([#202](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/202), [#229](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/229))
+
 # 1.4.0
 
 ### New features

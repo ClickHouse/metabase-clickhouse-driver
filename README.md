@@ -32,11 +32,11 @@
 6. Make sure you are the in the directory where your `metabase.jar` lives.
 7. Run `MB_PLUGINS_DIR=./plugins; java -jar metabase.jar`.
 
-For example [(using Metabase v0.47.2 and ClickHouse driver 1.2.2)](#choosing-the-right-version):
+For example [(using Metabase v0.49.3 and ClickHouse driver 1.4.1)](#choosing-the-right-version):
 
 ```bash
-export METABASE_VERSION=v0.47.2
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.2
+export METABASE_VERSION=v0.49.3
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.4.1
 
 mkdir -p mb/plugins && cd mb
 curl -o metabase.jar https://downloads.metabase.com/$METABASE_VERSION/metabase.jar
@@ -49,8 +49,8 @@ MB_PLUGINS_DIR=./plugins; java -jar metabase.jar
 Alternatively, if you don't want to run Metabase Jar, you can use a Docker image:
 
 ```bash
-export METABASE_DOCKER_VERSION=v0.47.2
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.2.2
+export METABASE_DOCKER_VERSION=v0.49.3
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.4.1
 
 mkdir -p mb/plugins && cd mb
 curl -L -o plugins/ch.jar https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$METABASE_CLICKHOUSE_DRIVER_VERSION/clickhouse.metabase-driver.jar
@@ -77,17 +77,17 @@ docker run -d -p 3000:3000 \
 | 0.47.x           | 1.2.3          |
 | 0.47.7+          | 1.2.5          |
 | 0.48.x           | 1.3.4          |
-| 0.49.x           | 1.4.0          |
+| 0.49.x           | 1.4.1          |
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
 You can use a convenience script `build_docker_image.sh`, which takes three arguments: Metabase version, ClickHouse driver version, and the desired final Docker image tag.
 
 ```bash
-./build_docker_image.sh v0.47.2 1.2.2 my-metabase-with-clickhouse:v0.0.1
+./build_docker_image.sh v0.49.3 1.4.1 my-metabase-with-clickhouse:v0.0.1
 ```
 
-where `v0.47.2` is Metabase version, `1.2.2` is ClickHouse driver version, and `my-metabase-with-clickhouse:v0.0.1` being the tag.
+where `v0.49.3` is Metabase version, `1.3.3` is ClickHouse driver version, and `my-metabase-with-clickhouse:v0.0.1` being the tag.
 
 Then you should be able to run it:
 
@@ -101,7 +101,7 @@ or use it with Docker compose, for example:
 version: '3.8'
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:23.8-alpine'
+    image: 'clickhouse/clickhouse-server:24.3-alpine'
     container_name: 'metabase-clickhouse-server'
     ports:
       - '8123:8123'
@@ -113,6 +113,10 @@ services:
   metabase:
     image: 'my-metabase-with-clickhouse:v0.0.1'
     container_name: 'metabase-with-clickhouse'
+    environment:
+      'MB_HTTP_TIMEOUT': '5000'
+      # Replace with a timezone matching your ClickHouse or DateTime columns timezone
+      'JAVA_TIMEZONE': 'UTC'
     ports:
       - '3000:3000'
 ```
@@ -137,7 +141,6 @@ The driver should work fine for many use cases. Please consider the following it
 * Consider running the Metabase instance in the same time zone as your ClickHouse database; the more time zones involved the more issues.
 * Compare the results of the queries with the results returned by `clickhouse-client`.
 * Metabase is a good tool for organizing questions, dashboards etc. and to give non-technical users a good way to explore the data and share their results. The driver cannot support all the cool special features of ClickHouse, e.g. array functions. You are free to use native queries, of course.
-
 
 ## Known limitations
 

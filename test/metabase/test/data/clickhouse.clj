@@ -65,12 +65,9 @@
 
 (defmethod sql.tx/create-table-sql :clickhouse
   [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
-  (let [quot          #(sql.u/quote-name driver :field (ddl.i/format-name driver %))
-        pk-field-name (quot (sql.tx/pk-field-name driver))]
-    (format "CREATE TABLE %s (%s %s, %s) ENGINE = Memory"
+  (let [quot #(sql.u/quote-name driver :field (ddl.i/format-name driver %))]
+    (format "CREATE TABLE %s (%s) ENGINE = Memory"
             (sql.tx/qualify-and-quote driver database-name table-name)
-            pk-field-name
-            (sql.tx/pk-sql-type driver)
             (->> field-definitions
                  (map (fn [{:keys [field-name base-type]}]
                         (format "%s %s" (quot field-name)
@@ -84,7 +81,7 @@
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod load-data/load-data! :clickhouse [& args]
-  (apply load-data/load-data-add-ids! args))
+ (apply load-data/load-data-maybe-add-ids-chunked! args))
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Nullable(Int32)")
 
