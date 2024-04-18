@@ -57,9 +57,3 @@ services:
     volumes:
       - '../../../resources/modules/clickhouse.metabase-driver.jar:/plugins/clickhouse.jar'
       - './.docker/clickhouse/single_node_tls/certificates/ca.crt:/certs/ca.crt'
-  postgres:
-    image: postgres
-    # shm_size: 128mb
-    environment:
-      POSTGRES_USER: example
-      POSTGRES_PASSWORD: example
