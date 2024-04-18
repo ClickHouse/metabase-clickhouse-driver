@@ -139,20 +139,20 @@
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ ^java.time.LocalDateTime t]
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
-        fn (date-time-parse-fn (.getNano t))]
+        fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
 
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [_ ^java.time.ZonedDateTime t]
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
-        fn (date-time-parse-fn (.getNano t))]
+        fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
 
 (defmethod sql.qp/->honeysql [:clickhouse OffsetDateTime]
   [_ ^java.time.OffsetDateTime t]
   ;; copy-paste due to reflection warnings
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
-        fn (date-time-parse-fn (.getNano t))]
+        fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDate]
@@ -449,7 +449,7 @@
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
-  (format "toDate('%s')" (t/format "yyyy-MM-dd" t)))
+  (format "'%s'" (t/format "yyyy-MM-dd" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalTime]
   [_ t]

@@ -63,27 +63,46 @@
   ([_ db-name table-name]            [db-name table-name])
   ([_ db-name table-name field-name] [db-name table-name field-name]))
 
+(defn- quote-name
+  [name]
+  (sql.u/quote-name :clickhouse :field (ddl.i/format-name :clickhouse name)))
+
+(defn- field->clickhouse-column
+  [field]
+  (let [{:keys [field-name base-type]} field]
+    (format "%s %s" (quote-name field-name)
+            (if (map? base-type)
+              (:native base-type)
+              (sql.tx/field-base-type->sql-type :clickhouse base-type)))))
+
+(defn- ->comma-separated-str
+  [coll]
+  (->> coll
+       (interpose ", ")
+       (apply str)))
+
 (defmethod sql.tx/create-table-sql :clickhouse
-  [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
-  (let [quot #(sql.u/quote-name driver :field (ddl.i/format-name driver %))]
-    (format "CREATE TABLE %s (%s) ENGINE = Memory"
-            (sql.tx/qualify-and-quote driver database-name table-name)
-            (->> field-definitions
-                 (map (fn [{:keys [field-name base-type]}]
-                        (format "%s %s" (quot field-name)
-                                (if (map? base-type)
-                                  (:native base-type)
-                                  (sql.tx/field-base-type->sql-type driver base-type)))))
-                 (interpose ", ")
-                 (apply str)))))
+  [_ {:keys [database-name]} {:keys [table-name field-definitions]}]
+  (let [table-name     (sql.tx/qualify-and-quote :clickhouse database-name table-name)
+        pk-fields      (filter (fn [{:keys [pk?]}] pk?) field-definitions)
+        pk-field-names (map #(quote-name (:field-name %)) pk-fields)
+        fields         (->> field-definitions
+                            (map field->clickhouse-column)
+                            (->comma-separated-str))
+        order-by       (->comma-separated-str pk-field-names)]
+    (format "CREATE TABLE %s (%s)
+             ENGINE = MergeTree
+             ORDER BY (%s)
+             SETTINGS allow_nullable_key=1"
+            table-name fields order-by)))
 
 (defmethod execute/execute-sql! :clickhouse [& args]
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod load-data/load-data! :clickhouse [& args]
- (apply load-data/load-data-maybe-add-ids-chunked! args))
+  (apply load-data/load-data-maybe-add-ids-chunked! args))
 
-(defmethod sql.tx/pk-sql-type :clickhouse [_] "Nullable(Int32)")
+(defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil) ; TODO - fix me
 
