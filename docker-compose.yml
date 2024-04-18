@@ -47,7 +47,7 @@ services:
     hostname: server.clickhouseconnect.test
 
   metabase:
-    image: metabase/metabase:v0.49.3
+    image: metabase/metabase:v0.49.6
     container_name: metabase-with-clickhouse-driver
     environment:
       'MB_HTTP_TIMEOUT': '5000'
