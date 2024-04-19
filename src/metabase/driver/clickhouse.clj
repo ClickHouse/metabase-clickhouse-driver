@@ -72,7 +72,11 @@
         (sql-jdbc.execute/do-with-connection-with-options
          driver spec nil
          (fn [^java.sql.Connection conn]
-           (.next (.getSchemas (.getMetaData conn) nil db)))))
+           (let [stmt (.prepareStatement conn "SELECT count(*) > 0 FROM system.databases WHERE name = ?")
+                 _    (.setString stmt 1 db)
+                 rset (.executeQuery stmt)]
+             (when (.next rset)
+               (.getBoolean rset 1))))))
       (catch Throwable e
         (log/error e "An exception during ClickHouse connectivity check")
         false))

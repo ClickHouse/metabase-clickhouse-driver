@@ -38,9 +38,9 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "Date")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]   [_ _] "DateTime64")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]      [_ _] "Float64")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Nullable(Int32)")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Int32")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/IPAddress]  [_ _] "IPv4")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "Nullable(String)")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "String")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime64")
 
@@ -67,13 +67,20 @@
   [name]
   (sql.u/quote-name :clickhouse :field (ddl.i/format-name :clickhouse name)))
 
+(def ^:private non-nullable-types ["Array" "Map" "Tuple"])
+(defn- disallowed-as-nullable?
+  [ch-type]
+  (boolean (some #(str/starts-with? ch-type %) non-nullable-types)))
+
 (defn- field->clickhouse-column
   [field]
-  (let [{:keys [field-name base-type]} field]
-    (format "%s %s" (quote-name field-name)
-            (if (map? base-type)
-              (:native base-type)
-              (sql.tx/field-base-type->sql-type :clickhouse base-type)))))
+  (let [{:keys [field-name base-type pk?]} field
+        ch-type  (if (map? base-type)
+                      (:native base-type)
+                      (sql.tx/field-base-type->sql-type :clickhouse base-type))
+        col-name (quote-name field-name)
+        fmt      (if (or pk? (disallowed-as-nullable? ch-type)) "%s %s" "%s Nullable(%s)")]
+    (format fmt col-name ch-type)))
 
 (defn- ->comma-separated-str
   [coll]
