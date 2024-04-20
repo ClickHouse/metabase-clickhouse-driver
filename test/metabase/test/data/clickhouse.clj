@@ -30,7 +30,7 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.4.0"})
+   :product_name "metabase/1.4.1"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
@@ -38,9 +38,9 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "Date")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]   [_ _] "DateTime64")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]      [_ _] "Float64")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Nullable(Int32)")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Int32")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/IPAddress]  [_ _] "IPv4")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "Nullable(String)")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "String")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime64")
 
@@ -63,30 +63,53 @@
   ([_ db-name table-name]            [db-name table-name])
   ([_ db-name table-name field-name] [db-name table-name field-name]))
 
+(defn- quote-name
+  [name]
+  (sql.u/quote-name :clickhouse :field (ddl.i/format-name :clickhouse name)))
+
+(def ^:private non-nullable-types ["Array" "Map" "Tuple"])
+(defn- disallowed-as-nullable?
+  [ch-type]
+  (boolean (some #(str/starts-with? ch-type %) non-nullable-types)))
+
+(defn- field->clickhouse-column
+  [field]
+  (let [{:keys [field-name base-type pk?]} field
+        ch-type  (if (map? base-type)
+                      (:native base-type)
+                      (sql.tx/field-base-type->sql-type :clickhouse base-type))
+        col-name (quote-name field-name)
+        fmt      (if (or pk? (disallowed-as-nullable? ch-type)) "%s %s" "%s Nullable(%s)")]
+    (format fmt col-name ch-type)))
+
+(defn- ->comma-separated-str
+  [coll]
+  (->> coll
+       (interpose ", ")
+       (apply str)))
+
 (defmethod sql.tx/create-table-sql :clickhouse
-  [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
-  (let [quot          #(sql.u/quote-name driver :field (ddl.i/format-name driver %))
-        pk-field-name (quot (sql.tx/pk-field-name driver))]
-    (format "CREATE TABLE %s (%s %s, %s) ENGINE = Memory"
-            (sql.tx/qualify-and-quote driver database-name table-name)
-            pk-field-name
-            (sql.tx/pk-sql-type driver)
-            (->> field-definitions
-                 (map (fn [{:keys [field-name base-type]}]
-                        (format "%s %s" (quot field-name)
-                                (if (map? base-type)
-                                  (:native base-type)
-                                  (sql.tx/field-base-type->sql-type driver base-type)))))
-                 (interpose ", ")
-                 (apply str)))))
+  [_ {:keys [database-name]} {:keys [table-name field-definitions]}]
+  (let [table-name     (sql.tx/qualify-and-quote :clickhouse database-name table-name)
+        pk-fields      (filter (fn [{:keys [pk?]}] pk?) field-definitions)
+        pk-field-names (map #(quote-name (:field-name %)) pk-fields)
+        fields         (->> field-definitions
+                            (map field->clickhouse-column)
+                            (->comma-separated-str))
+        order-by       (->comma-separated-str pk-field-names)]
+    (format "CREATE TABLE %s (%s)
+             ENGINE = MergeTree
+             ORDER BY (%s)
+             SETTINGS allow_nullable_key=1"
+            table-name fields order-by)))
 
 (defmethod execute/execute-sql! :clickhouse [& args]
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod load-data/load-data! :clickhouse [& args]
-  (apply load-data/load-data-add-ids! args))
+  (apply load-data/load-data-maybe-add-ids-chunked! args))
 
-(defmethod sql.tx/pk-sql-type :clickhouse [_] "Nullable(Int32)")
+(defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil) ; TODO - fix me
 
