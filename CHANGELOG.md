@@ -1,3 +1,11 @@
+# 1.5.0
+
+### New features
+
+* Support [Metabase connection impersonation feature](https://www.metabase.com/learn/permissions/impersonation). ([#219](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/219))
+* Support setting role on cluster deployments (related issue: [#192](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/192))
+* Bump the JDBC driver to [0.6.0-patch4](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.6.0-patch4).
+
 # 1.4.1
 
 ### Bug fixes

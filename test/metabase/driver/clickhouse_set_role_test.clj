@@ -49,8 +49,7 @@
   (mt/test-driver
    :clickhouse
    (testing "single node"
-     (let [statements ["DROP DATABASE metabase_test_role_db"
-                       "CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
+     (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
                        "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` (i Int32) ENGINE = MergeTree ORDER BY (i);"
                        "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
                        "CREATE ROLE IF NOT EXISTS `metabase_test_role`;"
@@ -60,9 +59,8 @@
        (ctd/exec-statements statements {})
        (set-role-test! {:user "metabase_test_user"})))
    (testing "on-premise cluster"
-     (let [statements ["DROP DATABASE IF EXISTS metabase_test_role_db ON CLUSTER 'test_cluster'"
-                       "CREATE DATABASE `metabase_test_role_db` ON CLUSTER 'test_cluster';"
-                       "CREATE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER 'test_cluster' (i Int32)
+     (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER 'test_cluster';"
+                       "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER 'test_cluster' (i Int32)
                            ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
                            ORDER BY (i);"
                        "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"

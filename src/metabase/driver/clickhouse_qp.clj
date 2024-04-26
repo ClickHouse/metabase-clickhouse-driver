@@ -35,7 +35,9 @@
   (let [db (lib.metadata/database (qp.store/metadata-provider))]
     (qp.store/cached ::clickhouse-version (driver/dbms-version :clickhouse db))))
 
-(defn- with-min-version [major minor default-fn fallback-fn]
+(defn with-min-version
+  "Execute default-fn if the ClickHouse version is greater or equal to major.minor; otherwise, execute fallback-fn."
+  [major minor default-fn fallback-fn]
   (let [version (clickhouse-version)]
     (if (or (> (get-in version [:semantic-version :major]) major)
             (and (= (get-in version [:semantic-version :major]) major)

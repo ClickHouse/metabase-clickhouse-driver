@@ -103,20 +103,22 @@
 (defmethod driver/dbms-version :clickhouse
   [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
-    driver database nil
-    (fn [^java.sql.Connection conn]
-      (with-open [stmt (.prepareStatement conn version-query)
-                  rset (.executeQuery stmt)]
-        (when (.next rset)
-          {:version          (.getString rset 1)
-           :semantic-version {:major (.getInt rset 2)
-                              :minor (.getInt rset 3)}})))))
+   driver database nil
+   (fn [^java.sql.Connection conn]
+     (with-open [stmt (.prepareStatement conn version-query)
+                 rset (.executeQuery stmt)]
+       (when (.next rset)
+         {:version          (.getString rset 1)
+          :semantic-version {:major (.getInt rset 2)
+                             :minor (.getInt rset 3)}})))))
 
 ;;; ------------------------------------------ User Impersonation ------------------------------------------
 
 (defmethod driver.sql/set-role-statement :clickhouse
   [_ role]
-  (format "SET ROLE %s;" role))
+  (metabase.driver.clickhouse-qp/with-min-version 24 4
+    (format "SET ROLE %s;" role)
+    "-- Connection impersonation feature requires ClickHouse 24.4+ to work\nSELECT 1;"))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
