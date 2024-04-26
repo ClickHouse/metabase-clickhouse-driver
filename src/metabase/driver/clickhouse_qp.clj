@@ -7,9 +7,7 @@
             [metabase [util :as u]]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-nippy]
-            [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.driver.sql-jdbc [execute :as sql-jdbc.execute]]
-            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.lib.metadata :as lib.metadata]
@@ -141,20 +139,20 @@
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ ^java.time.LocalDateTime t]
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
-        fn (date-time-parse-fn (.getNano t))]
+        fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
 
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [_ ^java.time.ZonedDateTime t]
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
-        fn (date-time-parse-fn (.getNano t))]
+        fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
 
 (defmethod sql.qp/->honeysql [:clickhouse OffsetDateTime]
   [_ ^java.time.OffsetDateTime t]
   ;; copy-paste due to reflection warnings
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
-        fn (date-time-parse-fn (.getNano t))]
+        fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDate]
@@ -451,7 +449,7 @@
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
-  (format "toDate('%s')" (t/format "yyyy-MM-dd" t)))
+  (format "'%s'" (t/format "yyyy-MM-dd" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalTime]
   [_ t]
@@ -474,20 +472,3 @@
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
-
-;; See https://github.com/ClickHouse/metabase-clickhouse-driver/issues/196
-(def ^:private int-base-types [:type/Integer :type/BigInteger])
-(defmethod sql.params.substitution/align-temporal-unit-with-param-type-and-value :clickhouse
-  [_ field param-type value]
-  (cond
-    ;;;; cast to a Date type
-    (or
-     ;; an integer timestamp value,
-     ;; required for `metabase.query-processor-test.alternative-date-test/substitute-native-parameters-test`
-     (and (params.dates/date-type? param-type) (some #(= (:base-type field) %) int-base-types))
-     ;; an ISO Date string value like "2024-01-16"
-     (and (string? value) (= (count value) 10) (boolean (re-matches #"^\d{4}-\d{2}-\d{2}$" value)))) :day
-    ;;;; cast to a DateTime type with minutes precision (for values like "2024-01-16T12:45:00")
-    (and (string? value) (= (count value) 19) (boolean (re-matches #"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00$" value))) :minute
-    ;;;; otherwise, don't do any additional cast operations
-    :else nil))
