@@ -2,6 +2,7 @@
   "Driver for ClickHouse databases"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.string :as str]
+            [honey.sql :as sql]
             [metabase [config :as config]]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
@@ -12,7 +13,11 @@
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.query-processor.writeback :as qp.writeback]
+            [metabase.test.data.sql :as sql.tx]
+            [metabase.upload :as upload]
             [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -32,7 +37,9 @@
                               :test/jvm-timezone-setting       false
                               :connection-impersonation        false
                               :schemas                         true
-                              :datetime-diff                   true}]
+                              :uploads                         true
+                              :datetime-diff                   true
+                              :upload-with-auto-pk             false}]
 
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
@@ -111,6 +118,74 @@
           {:version          (.getString rset 1)
            :semantic-version {:major (.getInt rset 2)
                               :minor (.getInt rset 3)}})))))
+
+(defmethod driver/upload-type->database-type :clickhouse
+  [_driver upload-type]
+  (case upload-type
+    ::upload/varchar-255              "Nullable(String)"
+    ::upload/text                     "Nullable(String)"
+    ::upload/int                      "Nullable(Int64)"
+    ::upload/float                    "Nullable(Float64)"
+    ::upload/boolean                  "Nullable(Boolean)"
+    ::upload/date                     "Nullable(Date32)"
+    ::upload/datetime                 "Nullable(DateTime64(3))"
+    ;; FIXME: should be `Nullable(DateTime64(3))`
+    ::upload/offset-datetime          nil))
+
+(defmethod driver/table-name-length-limit :clickhouse
+  [_driver]
+  ;; FIXME: This is a lie because you're really limited by a filesystems' limits, because Clickhouse uses
+  ;; filenames as table/column names. But its an approximation
+  206)
+
+(defn- quote-name [s]
+  (let [parts (str/split (name s) #"\.")]
+    (str/join "." (map #(str "`" % "`") parts))))
+
+(defn- create-table!-sql
+  [driver table-name column-definitions & {:keys [primary-key]}]
+  (str/join "\n"
+            [(first (sql/format {:create-table (keyword table-name)
+                                 :with-columns (mapv (fn [[name type-spec]]
+                                                       (vec (cons name [[:raw type-spec]])))
+                                                     column-definitions)}
+                                :quoted true
+                                :dialect (sql.qp/quote-style driver)))
+             "ENGINE = MergeTree"
+             (format "PRIMARY KEY (%s)" (str/join ", " (map quote-name primary-key)))
+             "ORDER BY ()"]))
+
+(defmethod driver/create-table! :clickhouse
+  [driver db-id table-name column-definitions & {:keys [primary-key]}]
+  (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
+    (qp.writeback/execute-write-sql! db-id sql)))
+
+(defmethod driver/insert-into! :clickhouse
+  [driver db-id table-name column-names values]
+  (when (seq values)
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     db-id
+     {:write? true}
+     (fn [^java.sql.Connection conn]
+       (let [sql (format "insert into %s (%s)" (quote-name table-name) (str/join ", " (map quote-name column-names)))]
+         (with-open [ps (.prepareStatement conn sql)]
+           (doseq [row values]
+             (when (seq row)
+               (doseq [[idx v] (map-indexed (fn [x y] [(inc x) y]) row)]
+                 (condp isa? (type v)
+                   java.lang.String         (.setString ps idx v)
+                   java.lang.Boolean        (.setBoolean ps idx v)
+                   java.lang.Long           (.setLong ps idx v)
+                   java.lang.Double         (.setFloat ps idx v)
+                   java.math.BigInteger     (.setObject ps idx v)
+                   java.time.LocalDate      (.setObject ps idx v)
+                   java.time.LocalDateTime  (.setObject ps idx v)
+                   (.setString ps idx v)))
+               (.addBatch ps)))
+           (doall (.executeBatch ps))))))))
+
+(defmethod sql.tx/session-schema :clickhouse [_] "default")
 
 ;;; ------------------------------------------ User Impersonation ------------------------------------------
 
