@@ -113,6 +113,8 @@
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil) ; TODO - fix me
 
+(defmethod sql.tx/session-schema :clickhouse [_] "default")
+
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
 (defn rows-without-index

@@ -185,8 +185,6 @@
                (.addBatch ps)))
            (doall (.executeBatch ps))))))))
 
-(defmethod sql.tx/session-schema :clickhouse [_] "default")
-
 ;;; ------------------------------------------ User Impersonation ------------------------------------------
 
 (defmethod driver.sql/set-role-statement :clickhouse
