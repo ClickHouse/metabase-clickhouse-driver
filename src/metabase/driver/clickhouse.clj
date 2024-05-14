@@ -58,7 +58,8 @@
       :ssl (boolean ssl)
       :use_no_proxy (boolean use-no-proxy)
       :use_server_time_zone_for_dates true
-      :product_name product-name}
+      :product_name product-name
+      :databaseTerm "schema"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/can-connect? :clickhouse

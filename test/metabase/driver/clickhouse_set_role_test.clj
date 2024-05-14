@@ -6,6 +6,7 @@
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [metabase.test.data.clickhouse :as ctd]))
 
@@ -13,37 +14,38 @@
 
 (defn- set-role-test!
   [details-map]
-  (let [default-role (driver.sql/default-database-role :clickhouse nil)
-        spec         (sql-jdbc.conn/connection-details->spec :clickhouse details-map)]
-    (testing "default role is NONE"
-      (is (= default-role "NONE")))
-    (testing "does not throw with an existing role"
-      (sql-jdbc.execute/do-with-connection-with-options
-       :clickhouse spec nil
-       (fn [^java.sql.Connection conn]
-         (driver/set-role! :clickhouse conn "metabase_test_role")))
-      (is true))
-    (testing "does not throw with the default role"
-      (sql-jdbc.execute/do-with-connection-with-options
-       :clickhouse spec nil
-       (fn [^java.sql.Connection conn]
-         (driver/set-role! :clickhouse conn default-role)
+  (qp.store/with-metadata-provider (mt/id)
+    (let [default-role (driver.sql/default-database-role :clickhouse nil)
+          spec         (sql-jdbc.conn/connection-details->spec :clickhouse details-map)]
+      (testing "default role is NONE"
+        (is (= default-role "NONE")))
+      (testing "does not throw with an existing role"
+        (sql-jdbc.execute/do-with-connection-with-options
+         :clickhouse spec nil
+         (fn [^java.sql.Connection conn]
+           (driver/set-role! :clickhouse conn "metabase_test_role")))
+        (is true))
+      (testing "does not throw with the default role"
+        (sql-jdbc.execute/do-with-connection-with-options
+         :clickhouse spec nil
          (fn [^java.sql.Connection conn]
            (driver/set-role! :clickhouse conn default-role)
-           (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
-                       rset (.executeQuery stmt)]
-             (is (.next rset) true)
-             (is (.getInt rset 1) 42)
-             (is (.next rset) true)
-             (is (.getInt rset 1) 144)
-             (is (.next rset) false)))))
-      (is true))
-    (testing "throws when assigning a non-existent role"
-      (is (thrown? Exception
-                   (sql-jdbc.execute/do-with-connection-with-options
-                    :clickhouse spec nil
-                    (fn [^java.sql.Connection conn]
-                      (driver/set-role! :clickhouse conn "asdf"))))))))
+           (fn [^java.sql.Connection conn]
+             (driver/set-role! :clickhouse conn default-role)
+             (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
+                         rset (.executeQuery stmt)]
+               (is (.next rset) true)
+               (is (.getInt rset 1) 42)
+               (is (.next rset) true)
+               (is (.getInt rset 1) 144)
+               (is (.next rset) false)))))
+        (is true))
+      (testing "throws when assigning a non-existent role"
+        (is (thrown? Exception
+                     (sql-jdbc.execute/do-with-connection-with-options
+                      :clickhouse spec nil
+                      (fn [^java.sql.Connection conn]
+                        (driver/set-role! :clickhouse conn "asdf")))))))))
 
 (deftest clickhouse-set-role
   (mt/test-driver
