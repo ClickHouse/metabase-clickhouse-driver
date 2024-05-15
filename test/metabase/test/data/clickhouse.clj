@@ -30,7 +30,7 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.4.1"
+   :product_name "metabase/1.5.0"
    :databaseTerm "schema"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")

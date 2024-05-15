@@ -59,6 +59,9 @@
       :use_no_proxy (boolean use-no-proxy)
       :use_server_time_zone_for_dates true
       :product_name product-name
+      ;; addresses breaking changes from the 0.5.0 JDBC driver release
+      ;; see https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.5.0
+      ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
       :databaseTerm "schema"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
@@ -118,8 +121,8 @@
 (defmethod driver.sql/set-role-statement :clickhouse
   [_ role]
   (metabase.driver.clickhouse-qp/with-min-version 24 4
-    (format "SET ROLE %s;" role)
-    "-- Connection impersonation feature requires ClickHouse 24.4+ to work\nSELECT 1;"))
+    #(format "SET ROLE %s;" role)
+    (fn [] "-- Connection impersonation feature requires ClickHouse 24.4+ to work\nSELECT 1;")))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]

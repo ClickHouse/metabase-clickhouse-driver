@@ -110,6 +110,56 @@ services:
     container_name: metabase-nginx
 
   ##########################################################################################################
+  # ClickHouse cluster with the version < 24.4 (CH driver SET ROLE tests only).
+  # Required to verify that there are no failures with the current code.
+  # See test/metabase/driver/clickhouse_set_role.clj
+  ##########################################################################################################
+
+  clickhouse_cluster_older_node1:
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-23.3-alpine}'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    hostname: clickhouse_older_node1
+    container_name: metabase-driver-clickhouse-cluster-older-node-1
+    ports:
+      - '8128:8123'
+      - '9004:9000'
+      - '9183:9181'
+    volumes:
+      - './.docker/clickhouse/cluster_older/server1_config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/cluster_older/server1_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
+      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+
+  clickhouse_cluster_older_node2:
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-23.3-alpine}'
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    hostname: clickhouse_older_node2
+    container_name: metabase-driver-clickhouse-cluster-older-node-2
+    ports:
+      - '8129:8123'
+      - '9005:9000'
+      - '9184:9181'
+    volumes:
+      - './.docker/clickhouse/cluster_older/server2_config.xml:/etc/clickhouse-server/config.xml'
+      - './.docker/clickhouse/cluster_older/server2_macros.xml:/etc/clickhouse-server/config.d/macros.xml'
+      - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
+
+  # See `nginx`; it's the same for the cluster with the older ClickHouse version
+  nginx_cluster_older:
+    image: 'nginx:1.23.1-alpine'
+    hostname: nginx-cluster-older
+    ports:
+      - '8130:8123'
+    volumes:
+      - './.docker/nginx/local_older.conf:/etc/nginx/conf.d/local.conf'
+    container_name: metabase-nginx-cluster-older
+
+  ##########################################################################################################
   # Metabase
   ##########################################################################################################
 

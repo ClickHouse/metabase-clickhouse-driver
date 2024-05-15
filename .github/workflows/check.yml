@@ -45,10 +45,6 @@ jobs:
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
-          services: |
-            clickhouse
-            clickhouse_older_version
-            clickhouse_tls
 
       - name: Install Clojure CLI
         run: |

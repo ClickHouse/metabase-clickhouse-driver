@@ -29,8 +29,8 @@
    :clickhouse
    (let [version (driver/dbms-version :clickhouse (mt/db))]
      (is (number? (get-in version [:semantic-version :major])))
-     (is (number?  (get-in version [:semantic-version :minor])))
-     (is (string? (get version :version))))))
+     (is (number? (get-in version [:semantic-version :minor])))
+     (is (string? (get    version :version))))))
 
 (deftest ^:parallel clickhouse-server-timezone
   (mt/test-driver
