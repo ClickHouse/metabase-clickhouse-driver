@@ -6,9 +6,12 @@
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.models [database :refer [Database]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
-            [metabase.test.data.clickhouse :as ctd]))
+            [metabase.test.data.clickhouse :as ctd]
+            [metabase.util :as u]
+            [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -50,10 +53,10 @@
                     (driver/set-role! :clickhouse conn "asdf")))))))
 
 (defn- do-with-new-metadata-provider
-  [thunk]
-  (binding [qp.store/*TESTS-ONLY-allow-replacing-metadata-provider* true]
-    (qp.store/with-metadata-provider (mt/id)
-      (thunk))))
+  [details thunk]
+  (t2.with-temp/with-temp
+    [Database db {:engine :clickhouse :details details}]
+    (qp.store/with-metadata-provider (u/the-id db) (thunk))))
 
 (deftest clickhouse-set-role
   (mt/test-driver
@@ -62,12 +65,16 @@
          ;; See docker-compose.yml for the port mappings
          ;; 24.4+
          port-details               {:port 8123}
+         single-node-details        (merge user-details port-details)
          ;; 23.3
          port-details-older         {:port 8124}
+         single-node-details-older  (merge user-details port-details-older)
          ;; 24.4+
          cluster-port-details       {:port 8127}
+         cluster-details            (merge user-details cluster-port-details)
          ;; 23.3
-         cluster-port-details-older {:port 8130}]
+         cluster-port-details-older {:port 8130}
+         cluster-details-older      (merge user-details cluster-port-details-older)]
 
      (testing "single node"
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
@@ -79,20 +86,22 @@
                          "GRANT `metabase_test_role` TO `metabase_test_user`;"]]
          (testing "current ClickHouse version"
            (do-with-new-metadata-provider
+            single-node-details
             (fn []
               (ctd/exec-statements statements port-details)
-              (set-role-test!        (merge user-details port-details))
-              (set-role-throws-test! (merge user-details port-details)))))
+              (set-role-test!        single-node-details)
+              (set-role-throws-test! single-node-details))))
          (testing "older ClickHouse version"
            (do-with-new-metadata-provider
+            single-node-details-older
             (fn []
               (ctd/exec-statements statements port-details-older)
-              (set-role-test! (merge user-details port-details-older)))))))
+              (set-role-test! single-node-details-older))))))
      (testing "on-premise cluster"
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER 'test_cluster';"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER 'test_cluster' (i Int32)
-                                       ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
-                                       ORDER BY (i);"
+                          ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
+                          ORDER BY (i);"
                          "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
                          "CREATE ROLE IF NOT EXISTS `metabase_test_role` ON CLUSTER 'test_cluster';"
                          "CREATE USER IF NOT EXISTS `metabase_test_user` ON CLUSTER 'test_cluster' NOT IDENTIFIED;"
@@ -100,12 +109,14 @@
                          "GRANT ON CLUSTER 'test_cluster' `metabase_test_role` TO `metabase_test_user`;"]]
          (testing "current ClickHouse version"
            (do-with-new-metadata-provider
+            cluster-details
             (fn []
               (ctd/exec-statements statements cluster-port-details)
-              (set-role-test!        (merge user-details cluster-port-details))
-              (set-role-throws-test! (merge user-details cluster-port-details)))))
+              (set-role-test!        cluster-details)
+              (set-role-throws-test! cluster-details))))
          (testing "older ClickHouse version"
            (do-with-new-metadata-provider
+            cluster-details-older
             (fn []
               (ctd/exec-statements statements cluster-port-details-older)
-              (set-role-test! (merge user-details cluster-port-details-older))))))))))
+              (set-role-test! cluster-details-older)))))))))
