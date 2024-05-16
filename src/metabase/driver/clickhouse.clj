@@ -19,7 +19,8 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.upload :as upload]
             [metabase.util.log :as log])
-  (:import [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
+  (:import [com.clickhouse.client ClickHouseRequest]
+           [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
 (set! *warn-on-reflection* true)
 
@@ -185,11 +186,11 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (let [stmt    (.unwrap stmt ClickHouseStatementImpl)
+       (let [^ClickHouseStatementImpl stmt (.unwrap stmt ClickHouseStatementImpl)
              request (.getRequest stmt)]
-         (.set request "wait_end_of_query" 1)
+         (.set request "wait_end_of_query" "1")
          (with-open [_response (-> request
-                                   (.query (create-table!-sql driver table-name column-definitions :primary-key primary-key))
+                                   (.query ^String (create-table!-sql driver table-name column-definitions :primary-key primary-key))
                                    (.executeAndWait))]))))))
 
 (defmethod driver/insert-into! :clickhouse
