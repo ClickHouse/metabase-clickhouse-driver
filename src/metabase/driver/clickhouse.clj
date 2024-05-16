@@ -1,10 +1,11 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [honey.sql :as sql]
             [metabase [config :as config]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
@@ -37,11 +38,30 @@
                               :test/jvm-timezone-setting       false
                               :connection-impersonation        false
                               :schemas                         true
-                              :uploads                         true
                               :datetime-diff                   true
                               :upload-with-auto-pk             false}]
 
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
+
+(def ^:private ^{:arglists '([db])} cloud?
+  "Is this a cloud DB?"
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[db]]
+                         [(mdb.connection/unique-identifier) (:details db)])}
+   (fn [db]
+     (sql-jdbc.execute/do-with-connection-with-options
+      :clickhouse db nil
+      (fn [^java.sql.Connection conn]
+        (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
+                    rset (.executeQuery stmt)]
+          (when (.next rset)
+            (.getBoolean rset 1))))))
+   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
+   ;; large
+   :ttl/threshold (* 60 60 1000)))
+
+(defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
+  (cloud? db))
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})
@@ -142,10 +162,6 @@
   (let [parts (str/split (name s) #"\.")]
     (str/join "." (map #(str "`" % "`") parts))))
 
-(defn- cloud? [conn]
-  (let [sql "SELECT value='1' FROM system.settings WHERE name='cloud_mode'"]
-    (= 1 (val (ffirst (jdbc/query {:connection conn} sql))))))
-
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
    so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
@@ -168,15 +184,13 @@
    db-id
    {:write? true}
    (fn [^java.sql.Connection conn]
-     (if (cloud? conn)
-       (throw (Exception. "Only supported for ClickHouse Cloud"))
-       (with-open [stmt (.createStatement conn)]
-         (let [stmt    (.unwrap stmt ClickHouseStatementImpl)
-               request (.getRequest stmt)]
-           (.set request "wait_end_of_query" 1)
-           (with-open [_response (-> request
-                                     (.query (create-table!-sql driver table-name column-definitions :primary-key primary-key))
-                                     (.executeAndWait))])))))))
+     (with-open [stmt (.createStatement conn)]
+       (let [stmt    (.unwrap stmt ClickHouseStatementImpl)
+             request (.getRequest stmt)]
+         (.set request "wait_end_of_query" 1)
+         (with-open [_response (-> request
+                                   (.query (create-table!-sql driver table-name column-definitions :primary-key primary-key))
+                                   (.executeAndWait))]))))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
