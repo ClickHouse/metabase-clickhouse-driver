@@ -5,14 +5,12 @@
             [honey.sql :as sql]
             [java-time.api :as t]
             [metabase [util :as u]]
-            [metabase.driver :as driver]
             [metabase.driver.clickhouse-nippy]
+            [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.sql-jdbc [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.lib.metadata :as lib.metadata]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.store :as qp.store]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x]
             [metabase.util.log :as log])
@@ -30,27 +28,6 @@
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
-
-(defn- clickhouse-version []
-  (let [db (lib.metadata/database (qp.store/metadata-provider))]
-    (qp.store/cached ::clickhouse-version (driver/dbms-version :clickhouse db))))
-
-(defn- is-min-clickhouse-version?
-  [major minor]
-  (let [version (clickhouse-version)]
-    (or (> (get-in version [:semantic-version :major]) major)
-        (and (=  (get-in version [:semantic-version :major]) major)
-             (>= (get-in version [:semantic-version :minor]) minor)))))
-
-(defn with-min-version
-  "Execute `f` if the ClickHouse version is greater or equal to `major.minor` (e.g., 24.4);
-   otherwise, execute `fallback-f`, if it's provided."
-  ([major minor f]
-   (with-min-version major minor f nil))
-  ([major minor f fallback-f]
-   (if (is-min-clickhouse-version? major minor)
-     (f)
-     (when (not (nil? fallback-f)) (fallback-f)))))
 
 (defmethod sql.qp/date [:clickhouse :day-of-week]
   [_ _ expr]
@@ -310,12 +287,16 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :starts-with]
   [_ [_ field value options]]
-  (let [starts-with (with-min-version 23 8 (fn [] :'startsWithUTF8) (fn [] :'startsWith))]
+  (let [starts-with (clickhouse-version/with-min 23 8
+                      (constantly :'startsWithUTF8)
+                      (constantly :'startsWith))]
     (clickhouse-string-fn starts-with field value options)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :ends-with]
   [_ [_ field value options]]
-  (let [ends-with (with-min-version 23 8 (fn [] :'endsWithUTF8) (fn [] :'endsWith))]
+  (let [ends-with (clickhouse-version/with-min 23 8
+                    (constantly :'endsWithUTF8)
+                    (constantly :'endsWith))]
     (clickhouse-string-fn ends-with field value options)))
 
 (defmethod sql.qp/->honeysql [:clickhouse :contains]

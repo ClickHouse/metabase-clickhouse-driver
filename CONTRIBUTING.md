@@ -75,8 +75,7 @@ Here's an overview of the started containers, which have the ports exposed to th
 - Current ClickHouse version (port: 8123) - the main instance for all tests.
 - Current ClickHouse cluster with two nodes (+ nginx as an LB, port: 8127) - required for the set role tests (verifying that the role is set correctly via the query parameters).
 - Current ClickHouse version with TLS support (port: 8443) - required for the TLS tests.
-- Older ClickHouse version (port: 8124) - required for the string functions tests (switch between UTF8 (current) and non-UTF8 (pre-23.8) versions).
-- Older ClickHouse version cluster with two nodes (+ nginx as an LB, port: 8130) - required for the set role tests (verifying that it does not fail with the older versions).
+- Older ClickHouse version (port: 8124) - required for the string functions tests (switch between UTF8 (current) and non-UTF8 (pre-23.8) versions), as well as to verify that certain features, such as connection impersonation, are disabled on the older server versions.
 
 Now, you should be able to run the tests:
 

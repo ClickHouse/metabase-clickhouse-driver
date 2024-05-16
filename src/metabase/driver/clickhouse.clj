@@ -7,12 +7,14 @@
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.clickhouse-qp]
+            [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.models]
             [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -22,7 +24,8 @@
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 (def ^:private product-name "metabase/1.5.0")
 
-(defmethod driver/prettify-native-form :clickhouse [_ native-form]
+(defmethod driver/prettify-native-form :clickhouse
+  [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
@@ -30,10 +33,8 @@
                               :set-timezone                    false
                               :convert-timezone                false
                               :test/jvm-timezone-setting       false
-                              :connection-impersonation        true
                               :schemas                         true
                               :datetime-diff                   true}]
-
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -99,30 +100,19 @@
 
 (defmethod driver/db-start-of-week :clickhouse [_] :monday)
 
-(defmethod ddl.i/format-name :clickhouse [_ table-or-field-name]
+(defmethod ddl.i/format-name :clickhouse
+  [_ table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
-(def ^:private version-query
-  "WITH s AS (SELECT version() AS ver, splitByChar('.', ver) AS verSplit) SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s")
-(defmethod driver/dbms-version :clickhouse
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver database nil
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn version-query)
-                 rset (.executeQuery stmt)]
-       (when (.next rset)
-         {:version          (.getString rset 1)
-          :semantic-version {:major (.getInt rset 2)
-                             :minor (.getInt rset 3)}})))))
+;;; ------------------------------------------ Connection Impersonation ------------------------------------------
 
-;;; ------------------------------------------ User Impersonation ------------------------------------------
+(defmethod driver/database-supports? [:clickhouse :connection-impersonation]
+  [_driver _feature db]
+  (clickhouse-version/is-at-least? 24 4 db))
 
 (defmethod driver.sql/set-role-statement :clickhouse
   [_ role]
-  (metabase.driver.clickhouse-qp/with-min-version 24 4
-    #(format "SET ROLE %s;" role)
-    (fn [] "-- Connection impersonation feature requires ClickHouse 24.4+ to work\nSELECT 1;")))
+  (format "SET ROLE %s;" role))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]

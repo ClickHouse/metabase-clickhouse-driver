@@ -56,27 +56,23 @@
   [details thunk]
   (t2.with-temp/with-temp
     [Database db {:engine :clickhouse :details details}]
-    (qp.store/with-metadata-provider (u/the-id db) (thunk))))
+    (qp.store/with-metadata-provider (u/the-id db) (thunk db))))
 
 (deftest clickhouse-set-role
   (mt/test-driver
    :clickhouse
-   (let [user-details               {:user "metabase_test_user"}
+   (let [user-details                   {:user "metabase_test_user"}
          ;; See docker-compose.yml for the port mappings
          ;; 24.4+
-         port-details               {:port 8123}
-         single-node-details        (merge user-details port-details)
-         ;; 23.3
-         port-details-older         {:port 8124}
-         single-node-details-older  (merge user-details port-details-older)
-         ;; 24.4+
-         cluster-port-details       {:port 8127}
-         cluster-details            (merge user-details cluster-port-details)
-         ;; 23.3
-         cluster-port-details-older {:port 8130}
-         cluster-details-older      (merge user-details cluster-port-details-older)]
-
+         single-node-port-details       {:port 8123}
+         single-node-details            (merge user-details single-node-port-details)
+         cluster-port-details           {:port 8127}
+         cluster-details                (merge user-details cluster-port-details)]
      (testing "single node"
+       (testing "should support the impersonation feature"
+         (t2.with-temp/with-temp
+           [Database db {:engine :clickhouse :details {:user "default" :port 8123}}]
+           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` (i Int32) ENGINE = MergeTree ORDER BY (i);"
                          "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
@@ -84,20 +80,17 @@
                          "CREATE USER IF NOT EXISTS `metabase_test_user` NOT IDENTIFIED;"
                          "GRANT SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`;"
                          "GRANT `metabase_test_role` TO `metabase_test_user`;"]]
-         (testing "current ClickHouse version"
-           (do-with-new-metadata-provider
-            single-node-details
-            (fn []
-              (ctd/exec-statements statements port-details)
-              (set-role-test!        single-node-details)
-              (set-role-throws-test! single-node-details))))
-         (testing "older ClickHouse version"
-           (do-with-new-metadata-provider
-            single-node-details-older
-            (fn []
-              (ctd/exec-statements statements port-details-older)
-              (set-role-test! single-node-details-older))))))
+         (ctd/exec-statements statements single-node-port-details)
+         (do-with-new-metadata-provider
+          single-node-details
+          (fn [_db]
+            (set-role-test!        single-node-details)
+            (set-role-throws-test! single-node-details)))))
      (testing "on-premise cluster"
+       (testing "should support the impersonation feature"
+         (t2.with-temp/with-temp
+           [Database db {:engine :clickhouse :details {:user "default" :port 8127}}]
+           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER 'test_cluster';"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER 'test_cluster' (i Int32)
                           ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
@@ -107,16 +100,14 @@
                          "CREATE USER IF NOT EXISTS `metabase_test_user` ON CLUSTER 'test_cluster' NOT IDENTIFIED;"
                          "GRANT ON CLUSTER 'test_cluster' SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`;"
                          "GRANT ON CLUSTER 'test_cluster' `metabase_test_role` TO `metabase_test_user`;"]]
-         (testing "current ClickHouse version"
-           (do-with-new-metadata-provider
-            cluster-details
-            (fn []
-              (ctd/exec-statements statements cluster-port-details)
-              (set-role-test!        cluster-details)
-              (set-role-throws-test! cluster-details))))
-         (testing "older ClickHouse version"
-           (do-with-new-metadata-provider
-            cluster-details-older
-            (fn []
-              (ctd/exec-statements statements cluster-port-details-older)
-              (set-role-test! cluster-details-older)))))))))
+         (ctd/exec-statements statements cluster-port-details)
+         (do-with-new-metadata-provider
+          cluster-details
+          (fn [_db]
+            (set-role-test!        cluster-details)
+            (set-role-throws-test! cluster-details)))))
+     (testing "older ClickHouse version" ;; 23.3
+       (testing "should NOT support the impersonation feature"
+         (t2.with-temp/with-temp
+           [Database db {:engine :clickhouse :details {:user "default" :port 8124}}]
+           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))))))

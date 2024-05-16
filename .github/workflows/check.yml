@@ -13,7 +13,7 @@ env:
   METABASE_VERSION: v0.49.10
 
 jobs:
-  check:
+  check-local-current:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Metabase Repo
@@ -90,16 +90,65 @@ jobs:
         run: |
           clojure -X:dev:drivers:drivers-dev:test:user/clickhouse
 
-      - name: Report test results
-        uses: mikepenz/action-junit-report@v2.8.1
-        if: always()
-        with:
-          report_paths: "**/target/junit/*.xml"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-  build:
+  check-local-older-version:
     runs-on: ubuntu-latest
-    needs: [ 'check' ]
+    steps:
+      - name: Checkout Metabase Repo
+        uses: actions/checkout@v2
+        with:
+          repository: metabase/metabase
+          ref: ${{ env.METABASE_VERSION }}
+
+      - name: Checkout Driver Repo
+        uses: actions/checkout@v2
+        with:
+          path: modules/drivers/clickhouse
+
+      - name: Prepare JDK 17
+        uses: actions/setup-java@v2
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
+      - name: Start ClickHouse in Docker
+        uses: isbang/compose-action@v1.4.1
+        with:
+          compose-file: "modules/drivers/clickhouse/docker-compose.yml"
+          down-flags: "--volumes"
+
+      - name: Install Clojure CLI
+        run: |
+          curl -O https://download.clojure.org/install/linux-install-1.11.1.1182.sh &&
+          sudo bash ./linux-install-1.11.1.1182.sh
+
+      - name: Get M2 cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.m2
+            ~/.gitlibs
+          key: ${{ runner.os }}-clickhouse-${{ hashFiles('**/deps.edn') }}
+
+      # Use custom deps.edn containing "user/clickhouse" alias to include driver sources
+      - name: Prepare deps.edn
+        run: |
+          mkdir -p /home/runner/.config/clojure
+          cat modules/drivers/clickhouse/.github/deps.edn | sed -e "s|PWD|$PWD|g" > /home/runner/.config/clojure/deps.edn
+
+      - name: Run ClickHouse driver tests with 23.3
+        env:
+          DRIVERS: clickhouse
+          MB_CLICKHOUSE_TEST_PORT: 8124
+        run: |
+          clojure -X:dev:drivers:drivers-dev:test:user/clickhouse :only metabase.driver.clickhouse-test
+
+  build-jar:
+    runs-on: ubuntu-latest
+    needs: [ 'check-local-current-version', 'check-local-older-version' ]
     steps:
       - name: Checkout Metabase Repo
         uses: actions/checkout@v2
