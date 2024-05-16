@@ -86,6 +86,9 @@
       :ssl (boolean ssl)
       :use_no_proxy (boolean use-no-proxy)
       :use_server_time_zone_for_dates true
+      ;; select_sequential_consistency is needed to guarantee that we can query data from any replica in CH Cloud
+      ;; immediately after it is written
+      :select_sequential_consistency true
       :product_name product-name}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
