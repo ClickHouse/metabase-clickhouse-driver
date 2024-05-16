@@ -175,8 +175,7 @@
                                 :quoted true
                                 :dialect (sql.qp/quote-style driver)))
              "ENGINE = MergeTree"
-             (format "PRIMARY KEY (%s)" (str/join ", " (map quote-name primary-key)))
-             "ORDER BY ()"]))
+             (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))]))
 
 (defmethod driver/create-table! :clickhouse
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
