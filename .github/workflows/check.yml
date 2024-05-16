@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Metabase Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: metabase/metabase
           ref: ${{ env.METABASE_VERSION }}
@@ -29,7 +29,7 @@ jobs:
           echo "(ns metabase.test.data.dataset-definition-test)" > test/metabase/test/data/dataset_definition_test.clj
 
       - name: Checkout Driver Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: modules/drivers/clickhouse
 
@@ -55,13 +55,13 @@ jobs:
           sudo bash ./linux-install-1.11.1.1182.sh
 
       - name: Setup Node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "yarn"
 
       - name: Get M2 cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.m2
@@ -94,13 +94,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Metabase Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: metabase/metabase
           ref: ${{ env.METABASE_VERSION }}
 
       - name: Checkout Driver Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: modules/drivers/clickhouse
 
@@ -126,7 +126,7 @@ jobs:
           sudo bash ./linux-install-1.11.1.1182.sh
 
       - name: Get M2 cache
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.m2
@@ -151,13 +151,13 @@ jobs:
     needs: [ 'check-local-current-version', 'check-local-older-version' ]
     steps:
       - name: Checkout Metabase Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: metabase/metabase
           ref: ${{ env.METABASE_VERSION }}
 
       - name: Checkout Driver Repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: modules/drivers/clickhouse
 
@@ -173,7 +173,7 @@ jobs:
           ls -lah resources/modules
 
       - name: Archive driver JAR
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: clickhouse.metabase-driver.jar
           path: resources/modules/clickhouse.metabase-driver.jar
