@@ -13,7 +13,7 @@ env:
   METABASE_VERSION: v0.49.11
 
 jobs:
-  check-local-current:
+  check-local-current-version:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Metabase Repo
