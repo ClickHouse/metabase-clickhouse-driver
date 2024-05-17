@@ -2,8 +2,8 @@
  as both Driver and QP overrides require access to it, avoiding circular dependencies."
 (ns metabase.driver.clickhouse-version
   (:require    [clojure.core.memoize :as memoize]
-               [metabase.db.connection :as mdb.connection]
                [metabase.driver :as driver]
+               [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
                [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
                [metabase.driver.util :as driver.u]
                [metabase.lib.metadata :as lib.metadata]
@@ -19,13 +19,13 @@
   (str "WITH s AS (SELECT version() AS ver, splitByChar('.', ver) AS verSplit) "
        "SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s"))
 
-(def ^:private ^{:arglists '([db])} get-clickhouse-version
+(def ^:private ^{:arglists '([db-details])} get-clickhouse-version
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[db]]
-                         [(mdb.connection/unique-identifier) (:details db)])}
-   (fn [db]
+   (fn [db-details]
      (sql-jdbc.execute/do-with-connection-with-options
-      :clickhouse db nil
+      :clickhouse
+      (sql-jdbc.conn/connection-details->spec :clickhouse db-details)
+      nil
       (fn [^java.sql.Connection conn]
         (with-open [stmt (.prepareStatement conn clickhouse-version-query)
                     rset (.executeQuery stmt)]
@@ -37,7 +37,7 @@
 
 (defmethod driver/dbms-version :clickhouse
   [_driver db]
-  (get-clickhouse-version db))
+  (get-clickhouse-version (:details db)))
 
 (defn is-at-least?
   "Is ClickHouse version at least `major.minor` (e.g., 24.4)?"
