@@ -2,8 +2,12 @@
 
 ### New features
 
-* Support [Metabase connection impersonation feature](https://www.metabase.com/learn/permissions/impersonation). ([#219](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/219))
+* Added [Metabase CSV Uploads feature](https://www.metabase.com/docs/latest/databases/uploads) support, which is currently enabled with ClickHouse Cloud only. On-premise deployments support will be added in the next release. ([calherries](https://github.com/calherries), [#236](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/236))
+* Added [Metabase connection impersonation feature](https://www.metabase.com/learn/permissions/impersonation) support. ([#219](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/219))
 * Support setting role on cluster deployments (related issue: [#192](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/192))
+
+### Improvements
+
 * Bump the JDBC driver to [0.6.0-patch4](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.6.0-patch4).
 
 # 1.4.1
