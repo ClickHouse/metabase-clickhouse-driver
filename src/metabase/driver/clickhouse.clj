@@ -44,33 +44,12 @@
 
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
-(def ^:private ^{:arglists '([db])} cloud?
-  "Is this a cloud DB?"
-  (memoize/ttl
-   ^{::memoize/args-fn (fn [[db]]
-                         [(mdb.connection/unique-identifier) (:details db)])}
-   (fn [db]
-     (sql-jdbc.execute/do-with-connection-with-options
-      :clickhouse db nil
-      (fn [^java.sql.Connection conn]
-        (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
-                    rset (.executeQuery stmt)]
-          (when (.next rset)
-            (.getBoolean rset 1))))))
-   ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
-   ;; large
-   :ttl/threshold (* 60 60 1000)))
-
-(defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (cloud? db))
-
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})
 
-(defmethod sql-jdbc.conn/connection-details->spec :clickhouse
-  [_ details]
-  ;; ensure defaults merge on top of nils
-  (let [details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
+(defn- connection-details->spec* [details]
+  (let [;; ensure defaults merge on top of nils
+        details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl use-no-proxy]} details
@@ -86,11 +65,35 @@
       :ssl (boolean ssl)
       :use_no_proxy (boolean use-no-proxy)
       :use_server_time_zone_for_dates true
-      ;; select_sequential_consistency is needed to guarantee that we can query data from any replica in CH Cloud
-      ;; immediately after it is written
-      :select_sequential_consistency true
       :product_name product-name}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+
+(def ^:private ^{:arglists '([db-details])} cloud?
+  "Is this a cloud DB?"
+  (memoize/ttl
+   (fn [db-details]
+     (sql-jdbc.execute/do-with-connection-with-options
+      :clickhouse
+      (connection-details->spec* db-details)
+      nil
+      (fn [^java.sql.Connection conn]
+        (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
+                    rset (.executeQuery stmt)]
+          (when (.next rset)
+            (.getBoolean rset 1))))))
+   ;; cache the results for 48 hours; TTL is here only to eventually clear out old entries
+   :ttl/threshold (* 48 60 60 1000)))
+
+(defmethod sql-jdbc.conn/connection-details->spec :clickhouse
+  [_ details]
+  (cond-> (connection-details->spec* details)
+    (cloud? details)
+    ;; select_sequential_consistency guarantees that we can query data from any replica in CH Cloud
+    ;; immediately after it is written
+    (assoc :select_sequential_consistency true)))
+
+(defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
+  (cloud? (:details db)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
@@ -203,7 +206,7 @@
      db-id
      {:write? true}
      (fn [^java.sql.Connection conn]
-       (let [sql (format "insert into %s (%s)" (quote-name table-name) (str/join ", " (map quote-name column-names)))]
+       (let [sql (format "INSERT INTO %s (%s)" (quote-name table-name) (str/join ", " (map quote-name column-names)))]
          (with-open [ps (.prepareStatement conn sql)]
            (doseq [row values]
              (when (seq row)
