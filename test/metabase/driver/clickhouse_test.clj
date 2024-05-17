@@ -6,6 +6,7 @@
             [cljc.java-time.temporal.chrono-unit :as chrono-unit]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
+            [metabase.driver.clickhouse :as clickhouse]
             [metabase.driver.clickhouse-data-types-test]
             [metabase.driver.clickhouse-introspection-test]
             [metabase.driver.clickhouse-substitution-test]
@@ -56,34 +57,47 @@
                (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
 
 (deftest ^:parallel clickhouse-connection-string
-  (testing "connection with no additional options"
-    (is (= ctd/default-connection-params
-           (sql-jdbc.conn/connection-details->spec
-            :clickhouse
-            {}))))
-  (testing "custom connection with additional options"
-    (is (= (merge
-            ctd/default-connection-params
-            {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
-             :user "bob"
-             :password "qaz"
-             :use_no_proxy true
-             :ssl true})
-           (sql-jdbc.conn/connection-details->spec
-            :clickhouse
-            {:host "myclickhouse"
-             :port 9999
-             :user "bob"
-             :password "qaz"
-             :dbname "foo"
-             :use-no-proxy true
-             :additional-options "sessionTimeout=42"
-             :ssl true}))))
-  (testing "nil dbname handling"
-    (is (= ctd/default-connection-params
-           (sql-jdbc.conn/connection-details->spec
-            :clickhouse
-            {:dbname nil})))))
+  (mt/with-dynamic-redefs [;; This function's implementation requires the connection details to actually connect to the
+                           ;; database, which is orthogonal to the purpose of this test.
+                           clickhouse/cloud? (constantly false)]
+    (testing "connection with no additional options"
+      (is (= ctd/default-connection-params
+             (sql-jdbc.conn/connection-details->spec
+              :clickhouse
+              {}))))
+    (testing "custom connection with additional options"
+      (is (= (merge
+              ctd/default-connection-params
+              {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
+               :user "bob"
+               :password "qaz"
+               :use_no_proxy true
+               :ssl true})
+             (sql-jdbc.conn/connection-details->spec
+              :clickhouse
+              {:host "myclickhouse"
+               :port 9999
+               :user "bob"
+               :password "qaz"
+               :dbname "foo"
+               :use-no-proxy true
+               :additional-options "sessionTimeout=42"
+               :ssl true}))))
+    (testing "nil dbname handling"
+      (is (= ctd/default-connection-params
+             (sql-jdbc.conn/connection-details->spec
+              :clickhouse
+              {:dbname nil}))))))
+
+(deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
+  (mt/with-dynamic-redefs [;; This function's implementation requires the connection details to actually
+                           ;; connect to the database, which is orthogonal to the purpose of this test.
+                           clickhouse/cloud? (constantly true)]
+    (testing "connection with no additional options"
+      (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
+             (sql-jdbc.conn/connection-details->spec
+              :clickhouse
+              {}))))))
 
 (deftest ^:parallel clickhouse-tls
   (mt/test-driver
