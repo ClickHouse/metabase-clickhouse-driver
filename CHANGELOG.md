@@ -10,8 +10,6 @@
 * Proper role setting support on cluster deployments (related issue: [#192](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/192)).
 * Bump the JDBC driver to [0.6.0-patch4](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.6.0-patch4).
 
-# 1.4.1
-
 ### Bug fixes
 
 * Fixed missing data for the last day when using filters with DateTime columns. ([#202](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/202), [#229](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/229))
