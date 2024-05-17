@@ -5,7 +5,6 @@
             [clojure.string :as str]
             [honey.sql :as sql]
             [metabase [config :as config]]
-            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
@@ -19,8 +18,7 @@
             [metabase.driver.sql.util :as sql.u]
             [metabase.upload :as upload]
             [metabase.util.log :as log])
-  (:import [com.clickhouse.client ClickHouseRequest]
-           [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
+  (:import [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
 (set! *warn-on-reflection* true)
 
