@@ -67,7 +67,8 @@
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
-  "Is this a cloud DB?"
+  "Returns true if the `db-details` are for a ClickHouse Cloud instance, and false otherwise. If it fails to connect
+   to the database, it throws a java.sql.SQLException."
   (memoize/ttl
    (fn [db-details]
      (sql-jdbc.execute/do-with-connection-with-options
@@ -85,13 +86,17 @@
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
   (cond-> (connection-details->spec* details)
-    (cloud? details)
+    (try (cloud? details)
+      (catch java.sql.SQLException _e
+        false))
     ;; select_sequential_consistency guarantees that we can query data from any replica in CH Cloud
     ;; immediately after it is written
     (assoc :select_sequential_consistency true)))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (cloud? (:details db)))
+  (try (cloud? (:details db))
+    (catch java.sql.SQLException _e
+      false)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
@@ -179,7 +184,9 @@
                                 :quoted true
                                 :dialect (sql.qp/quote-style driver)))
              "ENGINE = MergeTree"
-             (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))]))
+             (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
+             ;; disable insert idempotency to allow duplicate inserts
+             "SETTINGS replicated_deduplication_window = 0"]))
 
 (defmethod driver/create-table! :clickhouse
   [driver db-id table-name column-definitions & {:keys [primary-key]}]

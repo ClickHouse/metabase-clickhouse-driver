@@ -99,6 +99,17 @@
               :clickhouse
               {}))))))
 
+(deftest clickhouse-connection-fails-test
+  (mt/test-driver :clickhouse
+    (mt/with-temp [:model/Database db {:details (assoc (mt/db) :password "wrongpassword") :engine :clickhouse}]
+      (testing "Sense check that checking the cloud mode fails with a SQLException."
+        (is (thrown? java.sql.SQLException (#'clickhouse/cloud? (:details db)))))
+      (testing "`driver/database-supports?` succeeds even if the connection fails."
+        (is (false? (driver/database-supports? :clickhouse :uploads db))))
+      (testing (str "`sql-jdbc.conn/connection-details->spec` succeeds even if the connection fails, "
+                    "and doesn't include the `select_sequential_consistency` parameter.")
+        (is (nil? (:select_sequential_consistency (sql-jdbc.conn/connection-details->spec :clickhouse (:details db)))))))))
+
 (deftest ^:parallel clickhouse-tls
   (mt/test-driver
    :clickhouse
