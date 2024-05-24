@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: metabase/metabase
-          ref: v0.49.11
+          ref: v0.50.0-RC1
 
       - name: Remove incompatible tests
         # dataset-definition-test tests test data definition,
