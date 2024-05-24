@@ -47,8 +47,9 @@ services:
     hostname: server.clickhouseconnect.test
 
   metabase:
-    image: metabase/metabase:v0.49.6
+    image: metabase/metabase:v0.50.0-RC1
     container_name: metabase-with-clickhouse-driver
+    hostname: metabase
     environment:
       'MB_HTTP_TIMEOUT': '5000'
       'JAVA_TIMEZONE': 'UTC'
@@ -57,3 +58,24 @@ services:
     volumes:
       - '../../../resources/modules/clickhouse.metabase-driver.jar:/plugins/clickhouse.jar'
       - './.docker/clickhouse/single_node_tls/certificates/ca.crt:/certs/ca.crt'
+    healthcheck:
+      test: curl --fail -X GET -I http://localhost:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # setup:
+  #   build: .docker/setup/.
+  #   container_name: metabase-clickhouse-setup
+  #   volumes:
+  #     - .docker/setup/setup.py:/app/setup.py
+  #   depends_on:
+  #     metabase:
+  #       condition: service_healthy
+  #   command: python /app/setup.py
+  #   environment:
+  #     host: http://metabase
+  #     port: 3000
+  #     admin_email: 'admin@example.com'
+  #     user_email: 'user@example.com'
+  #     password: 'metabot1'
