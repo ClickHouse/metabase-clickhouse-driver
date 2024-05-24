@@ -67,7 +67,9 @@
       ;; addresses breaking changes from the 0.5.0 JDBC driver release
       ;; see https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.5.0
       ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
-      :databaseTerm "schema"}
+      :databaseTerm "schema"
+      :remember_last_set_roles true
+      :http_connection_provider "HTTP_URL_CONNECTION"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
@@ -218,7 +220,9 @@
 
 (defmethod driver/database-supports? [:clickhouse :connection-impersonation]
   [_driver _feature db]
-  (clickhouse-version/is-at-least? 24 4 db))
+  (if db
+    (clickhouse-version/is-at-least? 24 4 db)
+    false))
 
 (defmethod driver.sql/set-role-statement :clickhouse
   [_ role]

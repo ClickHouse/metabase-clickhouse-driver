@@ -6,5 +6,4 @@
   {:mvn/version "0.6.0-patch4"
    :exclusions [com.clickhouse/clickhouse-cli-client$shaded
                 com.clickhouse/clickhouse-grpc-client$shaded]}
-  com.widdindustries/cljc.java-time {:mvn/version "0.1.21"}
-  org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.3.1"}}}
+  com.widdindustries/cljc.java-time {:mvn/version "0.1.21"}}}

@@ -31,7 +31,9 @@
    :use_no_proxy false
    :use_server_time_zone_for_dates true
    :product_name "metabase/1.5.0"
-   :databaseTerm "schema"})
+   :databaseTerm "schema"
+   :remember_last_set_roles true
+   :http_connection_provider "HTTP_URL_CONNECTION"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
