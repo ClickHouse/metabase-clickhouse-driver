@@ -11,7 +11,7 @@
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.lib.metadata :as lib.metadata]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.legacy-mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x]
