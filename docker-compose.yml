@@ -114,7 +114,7 @@ services:
   ##########################################################################################################
 
   metabase:
-    image: metabase/metabase-enterprise:v1.49.10
+    image: metabase/metabase-enterprise:v1.49.12
     container_name: metabase-with-clickhouse-driver
     environment:
       'MB_HTTP_TIMEOUT': '5000'
