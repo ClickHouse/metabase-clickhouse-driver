@@ -7,16 +7,14 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.models [database :refer [Database]]]
+   [metabase.models.database :refer [Database]]
    [metabase.query-processor.test-util :as qp.test]
    [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.test.data
-    [interface :as tx]
-    [sql-jdbc :as sql-jdbc.tx]]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.sql-jdbc
-    [execute :as execute]
-    [load-data :as load-data]]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)

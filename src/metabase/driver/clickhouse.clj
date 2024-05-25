@@ -4,15 +4,15 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [honey.sql :as sql]
-            [metabase [config :as config]]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.clickhouse-qp]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
-            [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
@@ -38,7 +38,8 @@
                               :connection-impersonation        false
                               :schemas                         true
                               :datetime-diff                   true
-                              :upload-with-auto-pk             false}]
+                              :upload-with-auto-pk             false
+                              :window-functions/offset         false}]
 
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 

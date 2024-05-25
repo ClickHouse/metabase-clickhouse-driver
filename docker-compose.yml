@@ -1,7 +1,6 @@
-version: '3.8'
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:24.3-alpine'
+    image: 'clickhouse/clickhouse-server:24.4-alpine'
     container_name: 'metabase-driver-clickhouse-server'
     ports:
       - '8123:8123'
@@ -64,18 +63,18 @@ services:
       timeout: 5s
       retries: 10
 
-  # setup:
-  #   build: .docker/setup/.
-  #   container_name: metabase-clickhouse-setup
-  #   volumes:
-  #     - .docker/setup/setup.py:/app/setup.py
-  #   depends_on:
-  #     metabase:
-  #       condition: service_healthy
-  #   command: python /app/setup.py
-  #   environment:
-  #     host: http://metabase
-  #     port: 3000
-  #     admin_email: 'admin@example.com'
-  #     user_email: 'user@example.com'
-  #     password: 'metabot1'
+  setup:
+    build: .docker/setup/.
+    container_name: metabase-clickhouse-setup
+    volumes:
+      - .docker/setup/setup.py:/app/setup.py
+    depends_on:
+      metabase:
+        condition: service_healthy
+    command: python /app/setup.py
+    environment:
+      host: http://metabase
+      port: 3000
+      admin_email: 'admin@example.com'
+      user_email: 'user@example.com'
+      password: 'metabot1'
