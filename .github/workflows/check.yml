@@ -30,6 +30,8 @@ jobs:
 
       - name: Checkout Driver Repo
         uses: actions/checkout@v4
+        with:
+          path: modules/drivers/clickhouse
 
       - name: Prepare JDK 17
         uses: actions/setup-java@v4
