@@ -220,6 +220,7 @@
 
 (defmethod driver/database-supports? [:clickhouse :connection-impersonation]
   [_driver _feature db]
+  (println "DB supports?" db _feature)
   (if db
     (clickhouse-version/is-at-least? 24 4 db)
     false))
