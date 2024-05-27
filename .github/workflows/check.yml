@@ -3,8 +3,6 @@ name: Check
 on:
   workflow_dispatch:
   push:
-    branches:
-      - master
     paths-ignore:
       - "**.md"
   pull_request:
