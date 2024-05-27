@@ -169,6 +169,10 @@ jobs:
         with:
           path: modules/drivers/clickhouse
 
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
       - name: Install Clojure CLI
         run: |
           curl -O https://download.clojure.org/install/linux-install-1.11.1.1182.sh &&
