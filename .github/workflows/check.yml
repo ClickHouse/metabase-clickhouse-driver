@@ -34,7 +34,7 @@ jobs:
           path: modules/drivers/clickhouse
 
       - name: Prepare JDK 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
@@ -44,10 +44,16 @@ jobs:
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Start ClickHouse in Docker
-        uses: isbang/compose-action@v1.4.1
+        uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
+          services: |
+            clickhouse
+            clickhouse_tls
+            clickhouse_cluster_node1
+            clickhouse_cluster_node2
+            nginx
 
       - name: Install Clojure CLI
         run: |
@@ -98,7 +104,7 @@ jobs:
           path: modules/drivers/clickhouse
 
       - name: Prepare JDK 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
           distribution: "temurin"
           java-version: "17"
@@ -108,10 +114,12 @@ jobs:
           sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
 
       - name: Start ClickHouse in Docker
-        uses: isbang/compose-action@v1.4.1
+        uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
+          services: |
+            clickhouse_older_version
 
       - name: Install Clojure CLI
         run: |
