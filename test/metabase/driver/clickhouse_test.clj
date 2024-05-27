@@ -13,13 +13,15 @@
             [metabase.driver.clickhouse-substitution-test]
             [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.models [database :refer [Database]]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data [interface :as tx]]
             [metabase.test.data.clickhouse :as ctd]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy]
+            [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,10 +30,14 @@
 (deftest ^:parallel clickhouse-version
   (mt/test-driver
    :clickhouse
-   (let [version (driver/dbms-version :clickhouse (mt/db))]
-     (is (number? (get-in version [:semantic-version :major])))
-     (is (number? (get-in version [:semantic-version :minor])))
-     (is (string? (get    version :version))))))
+   (t2.with-temp/with-temp
+     [Database db
+      {:engine  :clickhouse
+       :details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
+     (let [version (driver/dbms-version :clickhouse db)]
+       (is (number? (get-in version [:semantic-version :major])))
+       (is (number? (get-in version [:semantic-version :minor])))
+       (is (string? (get    version :version)))))))
 
 (deftest ^:parallel clickhouse-server-timezone
   (mt/test-driver
