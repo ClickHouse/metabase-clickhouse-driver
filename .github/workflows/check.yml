@@ -118,8 +118,15 @@ jobs:
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
+          # FIXME: We only need to run a few specific tests with `clickhouse_older_version`
+          #        Currently, we run all tests with it, which is unnecessary.
           services: |
             clickhouse_older_version
+            clickhouse
+            clickhouse_tls
+            clickhouse_cluster_node1
+            clickhouse_cluster_node2
+            nginx
 
       - name: Install Clojure CLI
         run: |
