@@ -77,18 +77,11 @@ jobs:
           mkdir -p /home/runner/.config/clojure
           cat modules/drivers/clickhouse/.github/deps.edn | sed -e "s|PWD|$PWD|g" > /home/runner/.config/clojure/deps.edn
 
-      - name: Run ClickHouse driver tests with 23.3
-        env:
-          DRIVERS: clickhouse
-          MB_CLICKHOUSE_TEST_PORT: 8124
-        run: |
-          clojure -X:dev:drivers:drivers-dev:test:user/clickhouse :only metabase.driver.clickhouse-test
-
       - name: Run all tests with the latest ClickHouse version
         env:
           DRIVERS: clickhouse
         run: |
-          clojure -X:dev:drivers:drivers-dev:test:user/clickhouse
+          clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse
 
   check-local-older-version:
     runs-on: ubuntu-latest
@@ -144,7 +137,7 @@ jobs:
           DRIVERS: clickhouse
           MB_CLICKHOUSE_TEST_PORT: 8124
         run: |
-          clojure -X:dev:drivers:drivers-dev:test:user/clickhouse :only metabase.driver.clickhouse-test
+          clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse :only metabase.driver.clickhouse-test
 
   build-jar:
     runs-on: ubuntu-latest
