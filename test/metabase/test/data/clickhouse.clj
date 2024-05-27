@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
    [metabase.models [database :refer [Database]]]
    [metabase.query-processor.test-util :as qp.test]
@@ -17,7 +18,8 @@
    [metabase.test.data.sql-jdbc
     [execute :as execute]
     [load-data :as load-data]]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import    [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
@@ -79,8 +81,8 @@
   [field]
   (let [{:keys [field-name base-type pk?]} field
         ch-type  (if (map? base-type)
-                      (:native base-type)
-                      (sql.tx/field-base-type->sql-type :clickhouse base-type))
+                   (:native base-type)
+                   (sql.tx/field-base-type->sql-type :clickhouse base-type))
         col-name (quote-name field-name)
         fmt      (if (or pk? (disallowed-as-nullable? ch-type)) "%s %s" "%s Nullable(%s)")]
     (format fmt col-name ch-type)))
@@ -141,11 +143,26 @@
           (reset! test-db-initialized? true)))))
   (f))
 
+#_{:clj-kondo/ignore [:warn-on-reflection]}
 (defn exec-statements
-  [statements details-map]
-  (jdbc/with-db-connection
-    [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))]
-    (jdbc/db-do-commands spec statements)))
+  ([statements details-map]
+   (exec-statements statements details-map nil))
+  ([statements details-map clickhouse-settings]
+  (sql-jdbc.execute/do-with-connection-with-options
+   :clickhouse
+   (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
+   {:write? true}
+   (fn [^java.sql.Connection conn]
+     (doseq [statement statements]
+       (println "Executing:" statement)
+       (with-open [jdbcStmt (.createStatement conn)]
+         (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
+               request (.getRequest clickhouseStmt)]
+           (when clickhouse-settings
+             (doseq [[k v] clickhouse-settings] (.set request k v)))
+           (with-open [_response (-> request
+                                     (.query ^String statement)
+                                     (.executeAndWait))]))))))))
 
 (defn do-with-test-db
   "Execute a test function using the test dataset"

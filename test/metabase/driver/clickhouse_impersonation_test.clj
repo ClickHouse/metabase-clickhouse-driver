@@ -2,12 +2,14 @@
   "SET ROLE (connection impersonation feature) tests on with single node or on-premise cluster setups."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.test :refer :all]
+            [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
             [metabase.driver :as driver]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models [database :refer [Database]]]
             [metabase.query-processor.store :as qp.store]
+            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.clickhouse :as ctd]
             [metabase.util :as u]
@@ -91,15 +93,15 @@
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8127}}]
            (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))
-       (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER 'test_cluster';"
-                         "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER 'test_cluster' (i Int32)
+       (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER '{cluster}';"
+                         "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER '{cluster}' (i Int32)
                           ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
                           ORDER BY (i);"
                          "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
-                         "CREATE ROLE IF NOT EXISTS `metabase_test_role` ON CLUSTER 'test_cluster';"
-                         "CREATE USER IF NOT EXISTS `metabase_test_user` ON CLUSTER 'test_cluster' NOT IDENTIFIED;"
-                         "GRANT ON CLUSTER 'test_cluster' SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`;"
-                         "GRANT ON CLUSTER 'test_cluster' `metabase_test_role` TO `metabase_test_user`;"]]
+                         "CREATE ROLE IF NOT EXISTS `metabase_test_role` ON CLUSTER '{cluster}';"
+                         "CREATE USER IF NOT EXISTS `metabase_test_user` ON CLUSTER '{cluster}' NOT IDENTIFIED;"
+                         "GRANT ON CLUSTER '{cluster}' SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`;"
+                         "GRANT ON CLUSTER '{cluster}' `metabase_test_role` TO `metabase_test_user`;"]]
          (ctd/exec-statements statements cluster-port-details)
          (do-with-new-metadata-provider
           cluster-details
@@ -111,3 +113,62 @@
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8124}}]
            (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))))))
+
+(deftest conn-impersonation-test-clickhouse
+  (mt/test-driver
+   :clickhouse
+   (mt/with-premium-features #{:advanced-permissions}
+     (let [table-name       (str "metabase_impersonation_test.test_" (System/currentTimeMillis))
+           select-query     (format "SELECT * FROM %s;" table-name)
+           cluster-port     {:port 8127}
+           cluster-details  {:engine :clickhouse
+                             :details {:user   "metabase_impersonation_test_user"
+                                       :dbname "metabase_impersonation_test"
+                                       :port   8127}}
+           ddl-statements   ["CREATE DATABASE IF NOT EXISTS metabase_impersonation_test ON CLUSTER '{cluster}';"
+                             (format "CREATE TABLE %s ON CLUSTER '{cluster}' (s String)
+                                      ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
+                                      ORDER BY (s);" table-name)]
+           insert-statements [(format "INSERT INTO %s VALUES ('a'), ('b'), ('c');" table-name)]
+           grant-statements  ["CREATE USER IF NOT EXISTS metabase_impersonation_test_user ON CLUSTER '{cluster}' NOT IDENTIFIED;"
+                              "CREATE ROLE IF NOT EXISTS row_a ON CLUSTER '{cluster}';"
+                              "CREATE ROLE IF NOT EXISTS row_b ON CLUSTER '{cluster}';"
+                              "CREATE ROLE IF NOT EXISTS row_c ON CLUSTER '{cluster}';"
+                              "GRANT ON CLUSTER '{cluster}' row_a, row_b, row_c TO metabase_impersonation_test_user;"
+                              (format "GRANT ON CLUSTER '{cluster}' SELECT ON %s TO metabase_impersonation_test_user;" table-name)
+                              (format "CREATE ROW POLICY OR REPLACE policy_row_a ON CLUSTER '{cluster}'
+                                       ON %s FOR SELECT USING s = 'a' TO row_a;" table-name)
+                              (format "CREATE ROW POLICY OR REPLACE policy_row_b ON CLUSTER '{cluster}'
+                                       ON %s FOR SELECT USING s = 'b' TO row_b;" table-name)
+                              (format "CREATE ROW POLICY OR REPLACE policy_row_c ON CLUSTER '{cluster}'
+                                       ON %s FOR SELECT USING s = 'c' TO row_c;" table-name)]]
+       (ctd/exec-statements ddl-statements    cluster-port {"wait_end_of_query" "1"})
+       (ctd/exec-statements insert-statements cluster-port {"wait_end_of_query" "1"
+                                                            "insert_quorum" "2"})
+       (ctd/exec-statements grant-statements  cluster-port {"wait_end_of_query" "1"})
+       (t2.with-temp/with-temp [Database db cluster-details]
+         (mt/with-db db (sync/sync-database! db)
+
+           (defn- check-impersonation
+             [roles expected]
+             (advanced-perms.api.tu/with-impersonations
+               {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                :attributes     {"impersonation_attr" roles}}
+               (is (= expected
+                      (-> {:query select-query}
+                          mt/native-query
+                          mt/process-query
+                          mt/rows)))))
+
+           (is (= [["a"] ["b"] ["c"]]
+                  (-> {:query select-query}
+                      mt/native-query
+                      mt/process-query
+                      mt/rows)))
+
+           (check-impersonation "row_a" [["a"]])
+           (check-impersonation "row_b" [["b"]])
+           (check-impersonation "row_c" [["c"]])
+           (check-impersonation "row_a,row_c" [["a"] ["c"]])
+           (check-impersonation "row_b,row_c" [["b"] ["c"]])
+           (check-impersonation "row_a,row_b,row_c" [["a"] ["b"] ["c"]])))))))
