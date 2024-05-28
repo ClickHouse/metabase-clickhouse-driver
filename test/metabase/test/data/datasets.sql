@@ -158,11 +158,6 @@ CREATE DATABASE `metabase_db_scan_test`;
 CREATE TABLE `metabase_db_scan_test`.`table1` (i Int32) ENGINE = Memory;
 CREATE TABLE `metabase_db_scan_test`.`table2` (i Int64) ENGINE = Memory;
 
--- SET ROLE tests
-CREATE ROLE IF NOT EXISTS `metabase_test_role`;
-CREATE USER IF NOT EXISTS `metabase_test_user` NOT IDENTIFIED;
-GRANT `metabase_test_role` TO `metabase_test_user`;
-
 -- Base type matching tests
 CREATE TABLE `metabase_test`.`enums_base_types` (
     c1 Nullable(Enum8('America/New_York')),
