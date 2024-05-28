@@ -54,6 +54,7 @@ jobs:
           services: |
             clickhouse
             clickhouse_tls
+            clickhouse_older_version
             clickhouse_cluster_node1
             clickhouse_cluster_node2
             nginx
@@ -124,9 +125,9 @@ jobs:
           # FIXME: We only need to run a few specific tests with `clickhouse_older_version`
           #        Currently, we run all tests with it, which is unnecessary.
           services: |
-            clickhouse_older_version
             clickhouse
             clickhouse_tls
+            clickhouse_older_version
             clickhouse_cluster_node1
             clickhouse_cluster_node2
             nginx
