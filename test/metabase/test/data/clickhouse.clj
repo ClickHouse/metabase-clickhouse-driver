@@ -18,7 +18,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import    [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
-(sql-jdbc.tx/add-test-extensions! :clickhouse)
+(tx/add-test-extensions! :clickhouse)
 
 (def default-connection-params
   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
@@ -32,7 +32,8 @@
    :product_name "metabase/1.5.0"
    :databaseTerm "schema"
    :remember_last_set_roles true
-   :http_connection_provider "HTTP_URL_CONNECTION"})
+   :http_connection_provider "HTTP_URL_CONNECTION"
+   :custom_http_params "allow_experimental_analyzer=0"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
@@ -118,6 +119,9 @@
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
 
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
+
+;; (defmethod tx/create-db!  :clickhouse [_driver _db] nil)
+;; (defmethod tx/destroy-db! :clickhouse [_driver _db] nil)
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"

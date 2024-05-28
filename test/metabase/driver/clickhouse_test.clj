@@ -13,7 +13,7 @@
             [metabase.driver.clickhouse-substitution-test]
             [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models [database :refer [Database]]]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.compile :as qp.compile]
             [metabase.query-processor.test-util :as qp.test]

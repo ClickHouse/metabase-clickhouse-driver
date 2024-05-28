@@ -71,7 +71,9 @@
       ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
       :databaseTerm "schema"
       :remember_last_set_roles true
-      :http_connection_provider "HTTP_URL_CONNECTION"}
+      :http_connection_provider "HTTP_URL_CONNECTION"
+      ;; See https://github.com/ClickHouse/ClickHouse/issues/64487
+      :custom_http_params "allow_experimental_analyzer=0"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
