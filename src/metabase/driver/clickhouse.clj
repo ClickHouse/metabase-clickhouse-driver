@@ -9,6 +9,7 @@
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.clickhouse-qp]
+            [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -25,9 +26,10 @@
 (driver/register! :clickhouse :parent :sql-jdbc)
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.4.1")
+(def ^:private product-name "metabase/1.5.0")
 
-(defmethod driver/prettify-native-form :clickhouse [_ native-form]
+(defmethod driver/prettify-native-form :clickhouse
+  [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
@@ -35,7 +37,6 @@
                               :set-timezone                    false
                               :convert-timezone                false
                               :test/jvm-timezone-setting       false
-                              :connection-impersonation        false
                               :schemas                         true
                               :datetime-diff                   true
                               :upload-with-auto-pk             false
@@ -64,7 +65,13 @@
       :ssl (boolean ssl)
       :use_no_proxy (boolean use-no-proxy)
       :use_server_time_zone_for_dates true
-      :product_name product-name}
+      :product_name product-name
+      ;; addresses breaking changes from the 0.5.0 JDBC driver release
+      ;; see https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.5.0
+      ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
+      :databaseTerm "schema"
+      :remember_last_set_roles true
+      :http_connection_provider "HTTP_URL_CONNECTION"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
@@ -79,8 +86,9 @@
       (fn [^java.sql.Connection conn]
         (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
                     rset (.executeQuery stmt)]
-          (when (.next rset)
-            (.getBoolean rset 1))))))
+          (if (.next rset)
+            (.getBoolean rset 1)
+            false)))))
    ;; cache the results for 48 hours; TTL is here only to eventually clear out old entries
    :ttl/threshold (* 48 60 60 1000)))
 
@@ -88,16 +96,16 @@
   [_ details]
   (cond-> (connection-details->spec* details)
     (try (cloud? details)
-      (catch java.sql.SQLException _e
-        false))
+         (catch java.sql.SQLException _e
+           false))
     ;; select_sequential_consistency guarantees that we can query data from any replica in CH Cloud
     ;; immediately after it is written
     (assoc :select_sequential_consistency true)))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (try (cloud? (:details db))
-    (catch java.sql.SQLException _e
-      false)))
+       (catch java.sql.SQLException _e
+         false)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
@@ -133,22 +141,11 @@
 
 (defmethod driver/db-start-of-week :clickhouse [_] :monday)
 
-(defmethod ddl.i/format-name :clickhouse [_ table-or-field-name]
+(defmethod ddl.i/format-name :clickhouse
+  [_ table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
-(def ^:private version-query
-  "WITH s AS (SELECT version() AS ver, splitByChar('.', ver) AS verSplit) SELECT s.ver, toInt32(verSplit[1]), toInt32(verSplit[2]) FROM s")
-(defmethod driver/dbms-version :clickhouse
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-    driver database nil
-    (fn [^java.sql.Connection conn]
-      (with-open [stmt (.prepareStatement conn version-query)
-                  rset (.executeQuery stmt)]
-        (when (.next rset)
-          {:version          (.getString rset 1)
-           :semantic-version {:major (.getInt rset 2)
-                              :minor (.getInt rset 3)}})))))
+;;; ------------------------------------------ Connection Impersonation ------------------------------------------
 
 (defmethod driver/upload-type->database-type :clickhouse
   [_driver upload-type]
@@ -230,6 +227,12 @@
            (doall (.executeBatch ps))))))))
 
 ;;; ------------------------------------------ User Impersonation ------------------------------------------
+
+(defmethod driver/database-supports? [:clickhouse :connection-impersonation]
+  [_driver _feature db]
+  (if db
+    (clickhouse-version/is-at-least? 24 4 db)
+    false))
 
 (defmethod driver.sql/set-role-statement :clickhouse
   [_ role]

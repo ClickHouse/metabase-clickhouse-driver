@@ -6,16 +6,17 @@
    [clojure.test :refer :all]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
    [metabase.models.database :refer [Database]]
    [metabase.query-processor.test-util :as qp.test]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
-   [toucan2.tools.with-temp :as t2.with-temp]))
+   [toucan2.tools.with-temp :as t2.with-temp])
+  (:import    [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
@@ -28,7 +29,10 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.4.1"})
+   :product_name "metabase/1.5.0"
+   :databaseTerm "schema"
+   :remember_last_set_roles true
+   :http_connection_provider "HTTP_URL_CONNECTION"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
@@ -74,8 +78,8 @@
   [field]
   (let [{:keys [field-name base-type pk?]} field
         ch-type  (if (map? base-type)
-                      (:native base-type)
-                      (sql.tx/field-base-type->sql-type :clickhouse base-type))
+                   (:native base-type)
+                   (sql.tx/field-base-type->sql-type :clickhouse base-type))
         col-name (quote-name field-name)
         fmt      (if (or pk? (disallowed-as-nullable? ch-type)) "%s %s" "%s Nullable(%s)")]
     (format fmt col-name ch-type)))
@@ -109,7 +113,7 @@
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
-(defmethod sql.tx/add-fk-sql :clickhouse [& _] nil) ; TODO - fix me
+(defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
 
@@ -126,19 +130,40 @@
   [f]
   (when (not @test-db-initialized?)
     (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})]
+      (println "Executing create-test-db! with details:" details)
       (jdbc/with-db-connection
-        [conn (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
+        [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
         (let [statements (as-> (slurp "modules/drivers/clickhouse/test/metabase/test/data/datasets.sql") s
                            (str/split s #";")
                            (map str/trim s)
                            (filter seq s))]
-          (jdbc/db-do-commands conn statements)
+          (jdbc/db-do-commands spec statements)
           (reset! test-db-initialized? true)))))
   (f))
 
+#_{:clj-kondo/ignore [:warn-on-reflection]}
+(defn exec-statements
+  ([statements details-map]
+   (exec-statements statements details-map nil))
+  ([statements details-map clickhouse-settings]
+   (sql-jdbc.execute/do-with-connection-with-options
+    :clickhouse
+    (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
+    {:write? true}
+    (fn [^java.sql.Connection conn]
+      (doseq [statement statements]
+        (println "Executing:" statement)
+        (with-open [jdbcStmt (.createStatement conn)]
+          (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
+                request (.getRequest clickhouseStmt)]
+            (when clickhouse-settings
+              (doseq [[k v] clickhouse-settings] (.set request k v)))
+            (with-open [_response (-> request
+                                      (.query ^String statement)
+                                      (.executeAndWait))]))))))))
+
 (defn do-with-test-db
   "Execute a test function using the test dataset"
-  {:style/indent 0}
   [f]
   (t2.with-temp/with-temp
     [Database database
