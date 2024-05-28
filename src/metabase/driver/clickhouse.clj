@@ -84,8 +84,9 @@
       (fn [^java.sql.Connection conn]
         (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
                     rset (.executeQuery stmt)]
-          (when (.next rset)
-            (.getBoolean rset 1))))))
+          (if (.next rset)
+            (.getBoolean rset 1)
+            false)))))
    ;; cache the results for 48 hours; TTL is here only to eventually clear out old entries
    :ttl/threshold (* 48 60 60 1000)))
 
@@ -93,16 +94,16 @@
   [_ details]
   (cond-> (connection-details->spec* details)
     (try (cloud? details)
-      (catch java.sql.SQLException _e
-        false))
+         (catch java.sql.SQLException _e
+           false))
     ;; select_sequential_consistency guarantees that we can query data from any replica in CH Cloud
     ;; immediately after it is written
     (assoc :select_sequential_consistency true)))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (try (cloud? (:details db))
-    (catch java.sql.SQLException _e
-      false)))
+       (catch java.sql.SQLException _e
+         false)))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
