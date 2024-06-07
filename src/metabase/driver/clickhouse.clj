@@ -77,16 +77,13 @@
    to the database, it throws a java.sql.SQLException."
   (memoize/ttl
    (fn [db-details]
-     (sql-jdbc.execute/do-with-connection-with-options
-      :clickhouse
-      (connection-details->spec* db-details)
-      nil
-      (fn [^java.sql.Connection conn]
-        (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
-                    rset (.executeQuery stmt)]
-          (if (.next rset)
-            (.getBoolean rset 1)
-            false)))))
+     (let [spec (connection-details->spec* db-details)]
+       (sql-jdbc.execute/do-with-connection-with-options
+        :clickhouse spec nil
+        (fn [^java.sql.Connection conn]
+          (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
+                      rset (.executeQuery stmt)]
+            (if (.next rset) (.getBoolean rset 1) false))))))
    ;; cache the results for 48 hours; TTL is here only to eventually clear out old entries
    :ttl/threshold (* 48 60 60 1000)))
 
@@ -101,9 +98,11 @@
     (assoc :select_sequential_consistency true)))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
-  (try (cloud? (:details db))
-       (catch java.sql.SQLException _e
-         false)))
+  (if (:details db)
+    (try (cloud? (:details db))
+         (catch java.sql.SQLException _e
+           false))
+    false))
 
 (defmethod driver/can-connect? :clickhouse
   [driver details]
@@ -229,7 +228,9 @@
 (defmethod driver/database-supports? [:clickhouse :connection-impersonation]
   [_driver _feature db]
   (if db
-    (clickhouse-version/is-at-least? 24 4 db)
+    (try (clickhouse-version/is-at-least? 24 4 db)
+         (catch Throwable _e
+           false))
     false))
 
 (defmethod driver.sql/set-role-statement :clickhouse
