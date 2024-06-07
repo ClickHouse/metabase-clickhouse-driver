@@ -265,9 +265,6 @@
        (->input-ldt
          [^LocalDateTime ldt]
          [(t/format "yyyy-MM-dd HH:mm:ss" ldt)])
-      ;;  (->input-odt
-      ;;    [^LocalDateTime ldt]
-      ;;    [(t/format "yyyy-MM-dd HH:mm:ss" ldt)])
        (->iso-str-ld
          [^LocalDate ld]
          (str (t/format "yyyy-MM-dd" ld) "T00:00:00Z"))

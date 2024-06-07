@@ -5,6 +5,7 @@ Metabase 0.49.14+ only.
 ### Bug fixes
 
 * Fixed the issue where the Metabase instance could end up broken if the ClickHouse instance was _stopped_ during the upgrade to 1.5.0. ([#242](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/242))
+* Fixed variables substitution with Nullable Date, Date32, DateTime, and DateTime64 columns, where the generated query could fail with NULL values in the database due to an incorrect cast call. ([#243](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/243))
 
 # 1.5.0
 
