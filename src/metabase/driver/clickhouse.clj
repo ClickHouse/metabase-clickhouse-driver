@@ -23,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :clickhouse :parent :sql-jdbc)
+(driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 (def ^:private product-name "metabase/1.5.0")

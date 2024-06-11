@@ -13,15 +13,15 @@
   (mt/test-driver
    :clickhouse
    (data/dataset
-    (tx/dataset-definition "metabase_tests_decimal"
-                           ["test-data-decimal"
+    (tx/dataset-definition "mbt"
+                           ["decimals"
                             [{:field-name "my_money"
                               :base-type {:native "Decimal(12,4)"}}]
                             [[1.0] [23.1337] [42.0] [42.0]]])
     (testing "simple division"
       (is
        (= 21.0
-          (-> (data/run-mbql-query test-data-decimal
+          (-> (data/run-mbql-query decimals
                                    {:expressions {:divided [:/ $my_money 2]}
                                     :filter [:> [:expression :divided] 1.0]
                                     :breakout [[:expression :divided]]
@@ -31,7 +31,7 @@
     (testing "divided decimal precision"
       (is
        (= 1.8155331831916208
-          (-> (data/run-mbql-query test-data-decimal
+          (-> (data/run-mbql-query decimals
                                    {:expressions {:divided [:/ 42 $my_money]}
                                     :filter [:= $id 2]
                                     :limit 1})

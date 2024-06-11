@@ -13,12 +13,14 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.util.log :as log]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import    [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
-(tx/add-test-extensions! :clickhouse)
+(sql-jdbc.tx/add-test-extensions! :clickhouse)
 
 (def default-connection-params
   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
@@ -65,6 +67,16 @@
   ([_ db-name]                       [db-name])
   ([_ db-name table-name]            [db-name table-name])
   ([_ db-name table-name field-name] [db-name table-name field-name]))
+
+(defmethod tx/create-db! :clickhouse
+  [driver {:keys [database-name], :as db-def} & options]
+  (let [database-name (ddl.i/format-name driver database-name)]
+    (log/infof "Creating ClickHouse database %s" (pr-str database-name))
+    ;; call the default impl for SQL JDBC drivers
+    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
+
+;; No-op
+(defmethod tx/destroy-db! :clickhouse [_driver _db] nil)
 
 (defn- quote-name
   [name]
@@ -119,10 +131,6 @@
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
 
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
-
-;; No-op
-(defmethod tx/create-db!  :clickhouse [_driver _db] nil)
-(defmethod tx/destroy-db! :clickhouse [_driver _db] nil)
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
