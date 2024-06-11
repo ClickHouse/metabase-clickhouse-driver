@@ -6,7 +6,7 @@
             [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data [interface :as tx]]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.clickhouse :as ctd]))
 
 (deftest ^:parallel clickhouse-decimals

@@ -5,7 +5,7 @@
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data [interface :as tx]]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.clickhouse :as ctd]
             [metabase.util :as u]
             [schema.core :as s])

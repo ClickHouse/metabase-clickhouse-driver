@@ -8,30 +8,37 @@
             [metabase.driver :as driver]
             [metabase.driver.clickhouse :as clickhouse]
             [metabase.driver.clickhouse-data-types-test]
+            [metabase.driver.clickhouse-impersonation-test]
             [metabase.driver.clickhouse-introspection-test]
             [metabase.driver.clickhouse-substitution-test]
             [metabase.driver.clickhouse-temporal-bucketing-test]
-            [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.compile :as qp.compile]
             [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data [interface :as tx]]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.clickhouse :as ctd]
-            [taoensso.nippy :as nippy]))
+            [taoensso.nippy :as nippy]
+            [toucan2.tools.with-temp :as t2.with-temp]))
 
 (set! *warn-on-reflection* true)
+
 (use-fixtures :once ctd/create-test-db!)
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver
    :clickhouse
-   (let [version (driver/dbms-version :clickhouse (mt/db))]
-     (is (number? (get-in version [:semantic-version :major])))
-     (is (number?  (get-in version [:semantic-version :minor])))
-     (is (string? (get version :version))))))
+   (t2.with-temp/with-temp
+     [Database db
+      {:engine  :clickhouse
+       :details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
+     (let [version (driver/dbms-version :clickhouse db)]
+       (is (number? (get-in version [:semantic-version :major])))
+       (is (number? (get-in version [:semantic-version :minor])))
+       (is (string? (get    version :version)))))))
 
 (deftest ^:parallel clickhouse-server-timezone
   (mt/test-driver
@@ -100,15 +107,19 @@
               {}))))))
 
 (deftest clickhouse-connection-fails-test
-  (mt/test-driver :clickhouse
-    (mt/with-temp [:model/Database db {:details (assoc (mt/db) :password "wrongpassword") :engine :clickhouse}]
-      (testing "Sense check that checking the cloud mode fails with a SQLException."
-        (is (thrown? java.sql.SQLException (#'clickhouse/cloud? (:details db)))))
-      (testing "`driver/database-supports?` succeeds even if the connection fails."
-        (is (false? (driver/database-supports? :clickhouse :uploads db))))
-      (testing (str "`sql-jdbc.conn/connection-details->spec` succeeds even if the connection fails, "
-                    "and doesn't include the `select_sequential_consistency` parameter.")
-        (is (nil? (:select_sequential_consistency (sql-jdbc.conn/connection-details->spec :clickhouse (:details db)))))))))
+  (mt/test-driver
+   :clickhouse
+   (let [details (merge (tx/dbdef->connection-details
+                         :clickhouse :db
+                         {:database-name "mb_test_connection_fails"})
+                        {:password "wrong"})]
+     (testing "sense check that checking the cloud mode fails with a SQLException."
+       (is (thrown? java.sql.SQLException (#'clickhouse/cloud? details))))
+     (testing "`driver/database-supports?` succeeds even if the connection fails."
+       (is (false? (driver/database-supports? :clickhouse :uploads details))))
+     (testing (str "`sql-jdbc.conn/connection-details->spec` succeeds even if the connection fails, "
+                   "and doesn't include the `select_sequential_consistency` parameter.")
+       (is (nil? (:select_sequential_consistency (sql-jdbc.conn/connection-details->spec :clickhouse details))))))))
 
 (deftest ^:parallel clickhouse-tls
   (mt/test-driver
@@ -154,39 +165,11 @@
      (let [value (com.clickhouse.data.value.UnsignedLong/valueOf "84467440737095")]
        (is (= value (nippy/thaw (nippy/freeze value))))))))
 
-(deftest clickhouse-set-role
-  (mt/test-driver
-   :clickhouse
-   (let [default-role (driver.sql/default-database-role :clickhouse nil)
-         details      (merge {:user "metabase_test_user"}
-                             (tx/dbdef->connection-details :clickhouse :db {:database-name "default"}))
-         spec         (sql-jdbc.conn/connection-details->spec :clickhouse details)]
-     (testing "default role is NONE"
-       (is (= default-role "NONE")))
-     (testing "does not throw with an existing role"
-       (sql-jdbc.execute/do-with-connection-with-options
-        :clickhouse spec nil
-        (fn [^java.sql.Connection conn]
-          (driver/set-role! :clickhouse conn "metabase_test_role")))
-       (is true))
-     (testing "does not throw with the default role"
-       (sql-jdbc.execute/do-with-connection-with-options
-        :clickhouse spec nil
-        (fn [^java.sql.Connection conn]
-          (driver/set-role! :clickhouse conn default-role)))
-       (is true))
-     (testing "throws when assigning a non-existent role"
-       (is (thrown? Exception
-                    (sql-jdbc.execute/do-with-connection-with-options
-                     :clickhouse spec nil
-                     (fn [^java.sql.Connection conn]
-                       (driver/set-role! :clickhouse conn "asdf")))))))))
-
 (deftest ^:parallel clickhouse-query-formatting
   (mt/test-driver
    :clickhouse
    (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
-         {compiled :query} (qp/compile-and-splice-parameters query)
+         {compiled :query} (qp.compile/compile-and-splice-parameters query)
          pretty            (driver/prettify-native-form :clickhouse compiled)]
      (testing "compiled"
        (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
