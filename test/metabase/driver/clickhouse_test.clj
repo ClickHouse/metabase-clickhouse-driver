@@ -109,17 +109,20 @@
 (deftest clickhouse-connection-fails-test
   (mt/test-driver
    :clickhouse
-   (let [details (merge (tx/dbdef->connection-details
-                         :clickhouse :db
-                         {:database-name "mb_test_connection_fails"})
-                        {:password "wrong"})]
+   (mt/with-temp [:model/Database db {:details (assoc (mt/db) :password "wrongpassword") :engine :clickhouse}]
      (testing "sense check that checking the cloud mode fails with a SQLException."
-       (is (thrown? java.sql.SQLException (#'clickhouse/cloud? details))))
-     (testing "`driver/database-supports?` succeeds even if the connection fails."
-       (is (false? (driver/database-supports? :clickhouse :uploads details))))
-     (testing (str "`sql-jdbc.conn/connection-details->spec` succeeds even if the connection fails, "
+       ;; nil arg isn't tested here, as it will pick up the defaults, which is the same as the Docker instance credentials.
+       (is (thrown? java.sql.SQLException (#'clickhouse/cloud? (:details db)))))
+     (testing "`driver/database-supports? :uploads` does not throw even if the connection fails."
+       (is (false? (driver/database-supports? :clickhouse :uploads db)))
+       (is (false? (driver/database-supports? :clickhouse :uploads nil))))
+     (testing "`driver/database-supports? :connection-impersonation` does not throw even if the connection fails."
+       (is (false? (driver/database-supports? :clickhouse :connection-impersonation db)))
+       (is (false? (driver/database-supports? :clickhouse :connection-impersonation nil))))
+     (testing (str "`sql-jdbc.conn/connection-details->spec` does not throw even if the connection fails, "
                    "and doesn't include the `select_sequential_consistency` parameter.")
-       (is (nil? (:select_sequential_consistency (sql-jdbc.conn/connection-details->spec :clickhouse details))))))))
+       (is (nil? (:select_sequential_consistency (sql-jdbc.conn/connection-details->spec :clickhouse db))))
+       (is (nil? (:select_sequential_consistency (sql-jdbc.conn/connection-details->spec :clickhouse nil))))))))
 
 (deftest ^:parallel clickhouse-tls
   (mt/test-driver

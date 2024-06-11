@@ -253,3 +253,68 @@
                 (testing "next12years"
                   (is (= [[(->iso-str row4)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next12years" db)))))))))))))))
+
+(deftest ^:parallel clickhouse-variables-field-filters-null-dates
+  (mt/test-driver
+   :clickhouse
+   (mt/with-clock clock
+     (letfn
+      [(->input-ld
+         [^LocalDate ld]
+         [(t/format "yyyy-MM-dd" ld)])
+       (->input-ldt
+         [^LocalDateTime ldt]
+         [(t/format "yyyy-MM-dd HH:mm:ss" ldt)])
+       (->iso-str-ld
+         [^LocalDate ld]
+         (str (t/format "yyyy-MM-dd" ld) "T00:00:00Z"))
+       (->iso-str-ldt
+         [^LocalDateTime ldt]
+         (t/format "yyyy-MM-dd'T'HH:mm:ss'Z'" ldt))]
+       (let [db         "metabase_tests_field_filters_null_dates"
+             now-ld     (local-date-now)
+             now-ldt    (local-date-time-now)
+             table      ["test_table"
+                         [{:field-name "d"
+                           :base-type {:native "Date"}}
+                          {:field-name "d32"
+                           :base-type {:native "Date32"}}
+                          {:field-name "dt"
+                           :base-type {:native "DateTime"}}
+                          {:field-name "dt64"
+                           :base-type {:native "DateTime64"}}]
+                         [;; row 1
+                          [(->input-ld now-ld) nil (->input-ldt now-ldt) nil]
+                          ;; row 2
+                          [nil (->input-ld now-ld) nil (->input-ldt now-ldt)]]]
+             first-row  [[(->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt) nil]]
+             second-row [[nil (->iso-str-ld now-ld) nil (->iso-str-ldt now-ldt)]]]
+         (data/dataset
+          (tx/dataset-definition db table)
+          (letfn
+           [(get-mbql*
+              [field value]
+              (let [uuid (str (java.util.UUID/randomUUID))]
+                {:database (mt/id)
+                 :type "native"
+                 :native {:collection "test-table"
+                          :template-tags
+                          {:x {:id uuid
+                               :name (str field)
+                               :display-name (str field)
+                               :type "dimension"
+                               :dimension ["field" (mt/id :test-table field) nil]
+                               :required true}}
+                          :query (format "SELECT * FROM `%s`.`test_table` WHERE {{x}}" db)}
+                 :parameters [{:type "date/all-options"
+                               :value value
+                               :target ["dimension" ["template-tag" "x"]]
+                               :id uuid}]}))]
+            (testing "first row (Date field match)"
+              (is (= first-row (ctd/rows-without-index (qp/process-query (get-mbql* :d "2019-11-30"))))))
+            (testing "first row (DateTime field match)"
+              (is (= first-row (ctd/rows-without-index (qp/process-query (get-mbql* :dt "2019-11-30T23:00:00"))))))
+            (testing "second row (Date32 field match)"
+              (is (= second-row (ctd/rows-without-index (qp/process-query (get-mbql* :d32 "2019-11-30"))))))
+            (testing "second row (DateTime64 field match)"
+              (is (= second-row (ctd/rows-without-index (qp/process-query (get-mbql* :dt64 "2019-11-30T23:00:00")))))))))))))

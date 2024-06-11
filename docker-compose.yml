@@ -113,7 +113,7 @@ services:
   ##########################################################################################################
 
   metabase:
-    image: metabase/metabase:v0.50.0-RC1
+    image: metabase/metabase-enterprise:v1.50.0
     container_name: metabase-with-clickhouse-driver
     hostname: metabase
     environment:
