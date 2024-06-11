@@ -75,9 +75,6 @@
     ;; call the default impl for SQL JDBC drivers
     (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
-;; No-op
-(defmethod tx/destroy-db! :clickhouse [_driver _db] nil)
-
 (defn- quote-name
   [name]
   (sql.u/quote-name :clickhouse :field (ddl.i/format-name :clickhouse name)))
