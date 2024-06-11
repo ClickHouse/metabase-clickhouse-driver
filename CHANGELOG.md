@@ -1,3 +1,21 @@
+# 1.6.0
+
+Metabase 0.50.x+ only.
+
+### New features
+
+* Added Metabase 0.50.x support.
+
+### Improvements
+
+* Bumped the JDBC driver to [0.6.1](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.6.1).
+
+### Bug fixes
+
+* Fixed the issue where the connection impersonation feature support could be incorrectly reported as disabled.
+
+###
+
 # 1.5.1
 
 Metabase 0.49.14+ only.

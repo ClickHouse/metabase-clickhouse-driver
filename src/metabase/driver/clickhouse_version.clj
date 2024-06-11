@@ -48,7 +48,7 @@
    ;; used from the Driver overrides; we have access to the DB object
    (let [version  (driver/dbms-version :clickhouse db)
          semantic (:semantic-version version)]
-     (driver.u/semantic-version-gte [major minor] [(:major semantic) (:minor semantic)]))))
+     (driver.u/semantic-version-gte [(:major semantic) (:minor semantic)] [major minor]))))
 
 (defn with-min
   "Execute `f` if the ClickHouse version is greater or equal to `major.minor` (e.g., 24.4);

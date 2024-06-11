@@ -120,8 +120,9 @@
 
 (defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
-;; (defmethod tx/create-db!  :clickhouse [_driver _db] nil)
-;; (defmethod tx/destroy-db! :clickhouse [_driver _db] nil)
+;; No-op
+(defmethod tx/create-db!  :clickhouse [_driver _db] nil)
+(defmethod tx/destroy-db! :clickhouse [_driver _db] nil)
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"

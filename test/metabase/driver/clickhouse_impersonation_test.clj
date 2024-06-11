@@ -74,7 +74,7 @@
        (testing "should support the impersonation feature"
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8123}}]
-           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))
+           (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` (i Int32) ENGINE = MergeTree ORDER BY (i);"
                          "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
@@ -92,7 +92,7 @@
        (testing "should support the impersonation feature"
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8127}}]
-           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))
+           (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER '{cluster}';"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER '{cluster}' (i Int32)
                           ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
@@ -112,7 +112,7 @@
        (testing "should NOT support the impersonation feature"
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8124}}]
-           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))))))
+           (is (false? (driver/database-supports? :clickhouse :connection-impersonation db)))))))))
 
 (deftest conn-impersonation-test-clickhouse
   (mt/test-driver
