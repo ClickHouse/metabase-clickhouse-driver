@@ -7,7 +7,7 @@
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.models [database :refer [Database]]]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor.store :as qp.store]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -74,7 +74,7 @@
        (testing "should support the impersonation feature"
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8123}}]
-           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))
+           (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` (i Int32) ENGINE = MergeTree ORDER BY (i);"
                          "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
@@ -92,7 +92,7 @@
        (testing "should support the impersonation feature"
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8127}}]
-           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))
+           (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER '{cluster}';"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER '{cluster}' (i Int32)
                           ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
@@ -112,7 +112,7 @@
        (testing "should NOT support the impersonation feature"
          (t2.with-temp/with-temp
            [Database db {:engine :clickhouse :details {:user "default" :port 8124}}]
-           (is (driver/database-supports? :clickhouse :connection-impersonation db) true)))))))
+           (is (false? (driver/database-supports? :clickhouse :connection-impersonation db)))))))))
 
 (deftest conn-impersonation-test-clickhouse
   (mt/test-driver
@@ -149,9 +149,9 @@
        (t2.with-temp/with-temp [Database db cluster-details]
          (mt/with-db db (sync/sync-database! db)
 
-           (defn- check-impersonation
+           (defn- check-impersonation!
              [roles expected]
-             (advanced-perms.api.tu/with-impersonations
+             (advanced-perms.api.tu/with-impersonations!
                {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                 :attributes     {"impersonation_attr" roles}}
                (is (= expected
@@ -166,9 +166,9 @@
                       mt/process-query
                       mt/rows)))
 
-           (check-impersonation "row_a" [["a"]])
-           (check-impersonation "row_b" [["b"]])
-           (check-impersonation "row_c" [["c"]])
-           (check-impersonation "row_a,row_c" [["a"] ["c"]])
-           (check-impersonation "row_b,row_c" [["b"] ["c"]])
-           (check-impersonation "row_a,row_b,row_c" [["a"] ["b"] ["c"]])))))))
+           (check-impersonation! "row_a" [["a"]])
+           (check-impersonation! "row_b" [["b"]])
+           (check-impersonation! "row_c" [["c"]])
+           (check-impersonation! "row_a,row_c" [["a"] ["c"]])
+           (check-impersonation! "row_b,row_c" [["b"] ["c"]])
+           (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]])))))))

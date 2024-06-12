@@ -5,7 +5,7 @@
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data [interface :as tx]]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.clickhouse :as ctd]
             [metabase.util :as u]
             [schema.core :as s])
@@ -56,7 +56,7 @@
        (doseq [base-type ["DateTime" "DateTime64"]]
          (testing base-type
            (testing "on specific"
-             (let [db    (format "metabase_tests_variables_replacement_on_specific_%s"
+             (let [db    (format "mb_vars_on_x_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-time-now)
                    row1  (.minusHours   now 14)
@@ -73,7 +73,7 @@
                   (is (= [[(->iso-str row2)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "2019-11-30T22:40:00" db)))))))))
            (testing "past/next minutes"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_minutes_%s"
+             (let [db    (format "mb_vars_m_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-time-now)
                    row1  (.minusHours   now 14)
@@ -90,7 +90,7 @@
                   (is (= [[(->iso-str row3)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next30minutes" db)))))))))
            (testing "past/next hours"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_hours_%s"
+             (let [db    (format "mb_vars__past_next_hours_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-time-now)
                    row1  (.minusHours now 14)
@@ -107,7 +107,7 @@
                   (is (= [[(->iso-str row4)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next12hours" db)))))))))
            (testing "past/next days"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_days_%s"
+             (let [db    (format "mb_vars_d_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-time-now)
                    row1  (.minusDays now 14)
@@ -124,7 +124,7 @@
                   (is (= [[(->iso-str row4)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next12days" db)))))))))
            (testing "past/next months/quarters"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_months_quarters_%s"
+             (let [db    (format "mb_vars_m_q_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-time-now)
                    row1  (.minusMonths now 14)
@@ -147,7 +147,7 @@
                   (is (= [[(->iso-str row4)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next3quarters" db)))))))))
            (testing "past/next years"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_years_%s"
+             (let [db    (format "mb_vars_y_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-time-now)
                    row1  (.minusYears now 14)
@@ -184,7 +184,7 @@
        (doseq [base-type ["Date" "Date32"]]
          (testing base-type
            (testing "on specific date"
-             (let [db    (format "metabase_tests_variables_replacement_on_specific_%s"
+             (let [db    (format "mb_vars_on_x_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-time-now)
                    row1  (.minusDays now 14)
@@ -197,7 +197,7 @@
                 (is (= [[(->iso-str row2)]]
                        (ctd/rows-without-index (qp/process-query (get-mbql "2019-11-30" db))))))))
            (testing "past/next days"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_days_%s"
+             (let [db    (format "mb_vars_d_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-now)
                    row1  (.minusDays now 14)
@@ -214,7 +214,7 @@
                   (is (= [[(->iso-str row4)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next12days" db)))))))))
            (testing "past/next months/quarters"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_months_quarters_%s"
+             (let [db    (format "mb_vars_m_q_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-now)
                    row1  (.minusMonths now 14)
@@ -237,7 +237,7 @@
                   (is (= [[(->iso-str row4)]]
                          (ctd/rows-without-index (qp/process-query (get-mbql "next3quarters" db)))))))))
            (testing "past/next years"
-             (let [db    (format "metabase_tests_variables_replacement_past_next_years_%s"
+             (let [db    (format "mb_vars_y_%s"
                                  (u/lower-case-en base-type))
                    now   (local-date-now)
                    row1  (.minusYears now 14)
@@ -271,7 +271,7 @@
        (->iso-str-ldt
          [^LocalDateTime ldt]
          (t/format "yyyy-MM-dd'T'HH:mm:ss'Z'" ldt))]
-       (let [db         "metabase_tests_field_filters_null_dates"
+       (let [db         "mb_vars_null_dates"
              now-ld     (local-date-now)
              now-ldt    (local-date-time-now)
              table      ["test_table"

@@ -8,16 +8,15 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.models [database :refer [Database]]]
+   [metabase.models.database :refer [Database]]
    [metabase.query-processor.test-util :as qp.test]
    [metabase.sync.sync-metadata :as sync-metadata]
-   [metabase.test.data
-    [interface :as tx]
-    [sql-jdbc :as sql-jdbc.tx]]
+   [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.test.data.sql-jdbc
-    [execute :as execute]
-    [load-data :as load-data]]
+   [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
+   [metabase.test.data.sql-jdbc.execute :as execute]
+   [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.util.log :as log]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import    [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
@@ -35,7 +34,8 @@
    :product_name "metabase/1.5.0"
    :databaseTerm "schema"
    :remember_last_set_roles true
-   :http_connection_provider "HTTP_URL_CONNECTION"})
+   :http_connection_provider "HTTP_URL_CONNECTION"
+   :custom_http_params "allow_experimental_analyzer=0"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
@@ -67,6 +67,13 @@
   ([_ db-name]                       [db-name])
   ([_ db-name table-name]            [db-name table-name])
   ([_ db-name table-name field-name] [db-name table-name field-name]))
+
+(defmethod tx/create-db! :clickhouse
+  [driver {:keys [database-name], :as db-def} & options]
+  (let [database-name (ddl.i/format-name driver database-name)]
+    (log/infof "Creating ClickHouse database %s" (pr-str database-name))
+    ;; call the default impl for SQL JDBC drivers
+    (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
 
 (defn- quote-name
   [name]
@@ -149,21 +156,21 @@
   ([statements details-map]
    (exec-statements statements details-map nil))
   ([statements details-map clickhouse-settings]
-  (sql-jdbc.execute/do-with-connection-with-options
-   :clickhouse
-   (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
-   {:write? true}
-   (fn [^java.sql.Connection conn]
-     (doseq [statement statements]
-       (println "Executing:" statement)
-       (with-open [jdbcStmt (.createStatement conn)]
-         (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
-               request (.getRequest clickhouseStmt)]
-           (when clickhouse-settings
-             (doseq [[k v] clickhouse-settings] (.set request k v)))
-           (with-open [_response (-> request
-                                     (.query ^String statement)
-                                     (.executeAndWait))]))))))))
+   (sql-jdbc.execute/do-with-connection-with-options
+    :clickhouse
+    (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
+    {:write? true}
+    (fn [^java.sql.Connection conn]
+      (doseq [statement statements]
+        (println "Executing:" statement)
+        (with-open [jdbcStmt (.createStatement conn)]
+          (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
+                request (.getRequest clickhouseStmt)]
+            (when clickhouse-settings
+              (doseq [[k v] clickhouse-settings] (.set request k v)))
+            (with-open [_response (-> request
+                                      (.query ^String statement)
+                                      (.executeAndWait))]))))))))
 
 (defn do-with-test-db
   "Execute a test function using the test dataset"

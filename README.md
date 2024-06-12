@@ -79,6 +79,9 @@ docker run -d -p 3000:3000 \
 | 0.48.x           | 1.3.4          |
 | 0.49.x           | 1.4.0          |
 | 0.49.14+         | 1.5.1          |
+| 0.50.x           | 1.50.0         |
+
+After Metabase 0.50.0, a new naming convention exists for the driver's releases. The new one is intended to reflect the Metabase version the driver is supposed to run on. For example, the driver version 1.50.0 means that it should be used with Metabase v0.50.x or Metabase EE 1.50.x _only_, and it is _not guaranteed_ that this particular version of the driver can work with the previous or the following versions of Metabase.
 
 ## Creating a Metabase Docker image with ClickHouse driver
 
