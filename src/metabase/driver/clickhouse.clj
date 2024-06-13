@@ -4,7 +4,7 @@
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
             [honey.sql :as sql]
-            [metabase [config :as config]]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
@@ -12,8 +12,8 @@
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
-            [metabase.driver.sql-jdbc [common :as sql-jdbc.common]
-             [connection :as sql-jdbc.conn]]
+            [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
@@ -23,7 +23,7 @@
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :clickhouse :parent :sql-jdbc)
+(driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
 (def ^:private product-name "metabase/1.5.0")
@@ -39,7 +39,9 @@
                               :test/jvm-timezone-setting       false
                               :schemas                         true
                               :datetime-diff                   true
-                              :upload-with-auto-pk             false}]
+                              :upload-with-auto-pk             false
+                              :window-functions/offset         false}]
+
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -69,7 +71,9 @@
       ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
       :databaseTerm "schema"
       :remember_last_set_roles true
-      :http_connection_provider "HTTP_URL_CONNECTION"}
+      :http_connection_provider "HTTP_URL_CONNECTION"
+      ;; See https://github.com/ClickHouse/ClickHouse/issues/64487
+      :custom_http_params "allow_experimental_analyzer=0"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?

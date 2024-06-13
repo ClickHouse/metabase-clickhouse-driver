@@ -1,4 +1,3 @@
-version: '3.8'
 services:
 
   ##########################################################################################################
@@ -6,7 +5,7 @@ services:
   ##########################################################################################################
 
   clickhouse:
-    image: 'clickhouse/clickhouse-server:24.4-alpine'
+    image: 'clickhouse/clickhouse-server:24.5-alpine'
     container_name: 'metabase-driver-clickhouse-server'
     ports:
       - '8123:8123'
@@ -65,7 +64,7 @@ services:
   ##########################################################################################################
 
   clickhouse_cluster_node1:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.4-alpine}'
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.5-alpine}'
     ulimits:
       nofile:
         soft: 262144
@@ -82,7 +81,7 @@ services:
       - './.docker/clickhouse/users.xml:/etc/clickhouse-server/users.xml'
 
   clickhouse_cluster_node2:
-    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.4-alpine}'
+    image: 'clickhouse/clickhouse-server:${CLICKHOUSE_VERSION-24.5-alpine}'
     ulimits:
       nofile:
         soft: 262144
@@ -114,8 +113,9 @@ services:
   ##########################################################################################################
 
   metabase:
-    image: metabase/metabase-enterprise:v1.49.14
+    image: metabase/metabase-enterprise:v1.50.0
     container_name: metabase-with-clickhouse-driver
+    hostname: metabase
     environment:
       'MB_HTTP_TIMEOUT': '5000'
       'JAVA_TIMEZONE':   'UTC'
@@ -124,3 +124,24 @@ services:
     volumes:
       - '../../../resources/modules/clickhouse.metabase-driver.jar:/plugins/clickhouse.jar'
       - './.docker/clickhouse/single_node_tls/certificates/ca.crt:/certs/ca.crt'
+    healthcheck:
+      test: curl --fail -X GET -I http://localhost:3000/api/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  setup:
+    build: .docker/setup/.
+    container_name: metabase-clickhouse-setup
+    volumes:
+      - .docker/setup/setup.py:/app/setup.py
+    depends_on:
+      metabase:
+        condition: service_healthy
+    command: python /app/setup.py
+    environment:
+      host: http://metabase
+      port: 3000
+      admin_email: 'admin@example.com'
+      user_email: 'user@example.com'
+      password: 'metabot1'

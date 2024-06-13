@@ -2,11 +2,14 @@
   (:require [taoensso.nippy :as nippy])
   (:import  [java.io DataInput DataOutput]))
 
+(set! *warn-on-reflection* false)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; com.clickhouse.data.value.UnsignedByte
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (nippy/extend-freeze com.clickhouse.data.value.UnsignedByte :clickhouse/UnsignedByte
                      [^com.clickhouse.data.value.UnsignedByte x ^DataOutput data-output]
+                     ;; can't enable *warn-on-reflection* because of this call
                      (nippy/freeze-to-out! data-output (.toString x)))
 
 (nippy/extend-thaw :clickhouse/UnsignedByte

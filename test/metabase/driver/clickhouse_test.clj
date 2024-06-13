@@ -13,12 +13,13 @@
             [metabase.driver.clickhouse-substitution-test]
             [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models [database :refer [Database]]]
+            [metabase.models.database :refer [Database]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.compile :as qp.compile]
             [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data [interface :as tx]]
+            [metabase.test.data.interface :as tx]
             [metabase.test.data.clickhouse :as ctd]
             [taoensso.nippy :as nippy]
             [toucan2.tools.with-temp :as t2.with-temp]))
@@ -171,7 +172,7 @@
   (mt/test-driver
    :clickhouse
    (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
-         {compiled :query} (qp/compile-and-splice-parameters query)
+         {compiled :query} (qp.compile/compile-and-splice-parameters query)
          pretty            (driver/prettify-native-form :clickhouse compiled)]
      (testing "compiled"
        (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
