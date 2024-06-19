@@ -50,10 +50,10 @@
     (normalize-db-type (subs db-type 9 (- (count db-type) 1)))
     ;; DateTime64
     (str/starts-with? db-type "DateTime64")
-    :type/DateTime ;; FIXME: should be type/DateTimeWithTZ (#200)
+    :type/DateTimeWithTZ
     ;; DateTime
     (str/starts-with? db-type "DateTime")
-    :type/DateTime ;; FIXME: should be type/DateTimeWithTZ (#200)
+    :type/DateTimeWithTZ
     ;; Enum*
     (str/starts-with? db-type "Enum")
     :type/Text

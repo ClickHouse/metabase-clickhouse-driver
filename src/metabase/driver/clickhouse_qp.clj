@@ -8,8 +8,10 @@
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.legacy-mbql.util :as mbql.u]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x]
@@ -29,86 +31,125 @@
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
-(defmethod sql.qp/date [:clickhouse :day-of-week]
-  [_ _ expr]
-  ;; a tick in the function name prevents HSQL2 to make the function call UPPERCASE
-  ;; https://cljdoc.org/d/com.github.seancorfield/honeysql/2.4.1011/doc/getting-started/other-databases#clickhouse
-  (sql.qp/adjust-day-of-week :clickhouse [:'dayOfWeek expr]))
+(defn- remove-low-cardinality-and-nullable
+  [db-type]
+  (when db-type
+    (let [lower            (u/lower-case-en db-type)
+          without-low-car  (if (str/starts-with? lower "lowcardinality(")
+                             (subs lower 15 (- (count lower) 1))
+                             lower)
+          without-nullable (if (str/starts-with? without-low-car "nullable(")
+                             (subs without-low-car 9 (- (count without-low-car) 1))
+                             without-low-car)]
+      without-nullable)))
+
+(defn- in-report-timezone
+  [expr]
+  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)
+        db-type         (remove-low-cardinality-and-nullable (h2x/database-type expr))]
+    (if (and report-timezone (string? db-type) (str/starts-with? db-type "datetime"))
+      (do
+        ;; (println "#########")
+        ;; (println "######### trying to convert to tz" report-timezone db-type expr)
+        [:'toTimeZone expr (h2x/literal report-timezone)])
+      expr)))
 
 (defmethod sql.qp/date [:clickhouse :default]
   [_ _ expr]
   expr)
 
-(defmethod sql.qp/date [:clickhouse :minute]
+;;; ------------------------------------------------------------------------------------
+;;; Extract functions
+;;; ------------------------------------------------------------------------------------
+
+(defn- date-extract
+  [ch-fn expr db-type]
+  ;; (println "########")
+  ;; (println "calling date-trunc" ch-fn expr db-type)
+  (-> [ch-fn (in-report-timezone expr)]
+      (h2x/with-database-type-info db-type)))
+
+(defmethod sql.qp/date [:clickhouse :day-of-week]
   [_ _ expr]
-  [:'toStartOfMinute expr])
-
-(defmethod sql.qp/date [:clickhouse :minute-of-hour]
-  [_ _ expr]
-  [:'toMinute expr])
-
-(defmethod sql.qp/date [:clickhouse :hour]
-  [_ _ expr]
-  [:'toStartOfHour expr])
-
-(defmethod sql.qp/date [:clickhouse :hour-of-day]
-  [_ _ expr]
-  [:'toHour expr])
-
-(defmethod sql.qp/date [:clickhouse :day-of-month]
-  [_ _ expr]
-  [:'toDayOfMonth expr])
-
-(defn- to-start-of-week
-  [expr]
-  [:'toMonday expr])
-
-(defn- to-start-of-year
-  [expr]
-  [:'toStartOfYear expr])
-
-(defn- to-relative-day-num
-  [expr]
-  [:'toRelativeDayNum expr])
-
-(defmethod sql.qp/date [:clickhouse :day-of-year]
-  [_ _ expr]
-  (h2x/+
-   (h2x/- (to-relative-day-num expr)
-          (to-relative-day-num (to-start-of-year expr)))
-   1))
-
-(defmethod sql.qp/date [:clickhouse :week-of-year-iso]
-  [_ _ expr]
-  [:'toISOWeek expr])
-
-(defmethod sql.qp/date [:clickhouse :month]
-  [_ _ expr]
-  [:'toStartOfMonth expr])
+  ;; a tick in the function name prevents HSQL2 to make the function call UPPERCASE
+  ;; https://cljdoc.org/d/com.github.seancorfield/honeysql/2.4.1011/doc/getting-started/other-databases#clickhouse
+  (sql.qp/adjust-day-of-week
+   :clickhouse (date-extract :'toDayOfWeek expr "uint8")))
 
 (defmethod sql.qp/date [:clickhouse :month-of-year]
   [_ _ expr]
-  [:'toMonth expr])
+  (date-extract :'toMonth expr "uint8"))
+
+(defmethod sql.qp/date [:clickhouse :minute-of-hour]
+  [_ _ expr]
+  (date-extract :'toMinute expr "uint8"))
+
+(defmethod sql.qp/date [:clickhouse :hour-of-day]
+  [_ _ expr]
+  (date-extract :'toHour expr "uint8"))
+
+(defmethod sql.qp/date [:clickhouse :day-of-month]
+  [_ _ expr]
+  (date-extract :'toDayOfMonth expr "uint8"))
+
+(defmethod sql.qp/date [:clickhouse :day-of-year]
+  [_ _ expr]
+  (date-extract :'toDayOfYear expr "uint16"))
+
+(defmethod sql.qp/date [:clickhouse :week-of-year-iso]
+  [_ _ expr]
+  (date-extract :'toISOWeek expr "uint8"))
 
 (defmethod sql.qp/date [:clickhouse :quarter-of-year]
   [_ _ expr]
-  [:'toQuarter expr])
+  (date-extract :'toQuarter expr "uint8"))
 
-(defmethod sql.qp/date [:clickhouse :year]
+;;; ------------------------------------------------------------------------------------
+;;; Truncate functions
+;;; ------------------------------------------------------------------------------------
+
+(defn- date-trunc
+  [ch-fn expr]
+  ;; (println "########")
+  ;; (println "calling date-trunc" ch-fn expr)
+  (-> [ch-fn (in-report-timezone expr)]
+      (h2x/with-database-type-info (h2x/database-type expr))))
+
+(defn- to-start-of-week
+  [expr]
+  (date-trunc :'toMonday expr))
+
+(defmethod sql.qp/date [:clickhouse :minute]
   [_ _ expr]
-  [:'toStartOfYear expr])
+  (date-trunc :'toStartOfMinute expr))
+
+(defmethod sql.qp/date [:clickhouse :hour]
+  [_ _ expr]
+  (date-trunc :'toStartOfHour expr))
 
 (defmethod sql.qp/date [:clickhouse :day]
   [_ _ expr]
-  [:'toDate expr])
+  (date-trunc :'toDate expr))
 
 (defmethod sql.qp/date [:clickhouse :week]
   [driver _ expr]
   (sql.qp/adjust-start-of-week driver to-start-of-week expr))
 
+(defmethod sql.qp/date [:clickhouse :month]
+  [_ _ expr]
+  (date-trunc :'toStartOfMonth expr))
+
 (defmethod sql.qp/date [:clickhouse :quarter]
   [_ _ expr]
-  [:'toStartOfQuarter expr])
+  (date-trunc :'toStartOfQuarter expr))
+
+(defmethod sql.qp/date [:clickhouse :year]
+  [_ _ expr]
+  (date-trunc :'toStartOfYear expr))
+
+;;; ------------------------------------------------------------------------------------
+;;; Unix timestamps functions
+;;; ------------------------------------------------------------------------------------
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :seconds]
   [_ _ expr]
@@ -118,18 +159,41 @@
   [_ _ expr]
   [:'toDateTime64 (h2x// expr 1000) 3])
 
+;; (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :microseconds]
+;;   [_ _ expr]
+;;   [:'toDateTime64 expr 6])
+
+;;; ------------------------------------------------------------------------------------
+;;; HoneySQL forms
+;;; ------------------------------------------------------------------------------------
+
 (defn- date-time-parse-fn
   [nano]
   (if (zero? nano) :'parseDateTimeBestEffort :'parseDateTime64BestEffort))
 
+;; without try, there might be test failures when QP is not yet initialized
+;; e.g., when a test is preparing the dataset
+(defn- get-report-timezone-id-safely
+  []
+  (try
+    (qp.timezone/report-timezone-id-if-supported)
+    (catch Throwable _e nil)))
+
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ ^java.time.LocalDateTime t]
-  (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
-        fn        (date-time-parse-fn (.getNano t))]
-    [fn formatted]))
+  ;; (println "#######")
+  ;; (println "formatting java.time.LocalDateTime" t)
+  ;; (println "report tz" (or (qp.timezone/report-timezone-id-if-supported) "UTC"))
+  (let [formatted       (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
+        report-timezone (h2x/literal(or (get-report-timezone-id-safely) "UTC"))]
+    (if (zero? (.getNano t))
+      [:'parseDateTimeBestEffort   formatted   report-timezone]
+      [:'parseDateTime64BestEffort formatted 3 report-timezone])))
 
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [_ ^java.time.ZonedDateTime t]
+  ;; (println "#######")
+  ;; (println "formatting ZonedDateTime" t)
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
         fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
@@ -137,6 +201,8 @@
 (defmethod sql.qp/->honeysql [:clickhouse OffsetDateTime]
   [_ ^java.time.OffsetDateTime t]
   ;; copy-paste due to reflection warnings
+  ;; (println "#######")
+  ;; (println "formatting OffsetDateTime" t)
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
         fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
@@ -323,14 +389,13 @@
       (:hour :minute :second)
       [:'age (h2x/literal unit) x y])))
 
-;; FIXME: there are still many failing tests that prevent us from turning this feature on
-;; (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
-;;   [driver [_ arg target-timezone source-timezone]]
-;;   (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
-;;         with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
-;;         _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
-;;         inner         (if (not with-tz-info?) [:'toTimeZone expr source-timezone] expr)]
-;;     [:'toTimeZone inner target-timezone]))
+(defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
+        with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
+        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
+        inner         (if (not with-tz-info?) [:'toTimeZone expr source-timezone] expr)]
+    [:'toTimeZone inner target-timezone]))
 
 ;; We do not have Time data types, so we cheat a little bit
 (defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/ISO8601->Time]
@@ -340,6 +405,10 @@
 (defmethod sql.qp/cast-temporal-byte [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
   expr)
+
+;;; ------------------------------------------------------------------------------------
+;;; JDBC-related functions
+;;; ------------------------------------------------------------------------------------
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TINYINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
@@ -371,18 +440,33 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (let [^java.time.LocalDateTime r (.getObject rs i LocalDateTime)]
-      (cond (nil? r) nil
-            (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
-            :else r))))
+    ;; (let [^java.time.LocalDateTime r (.getObject rs i LocalDateTime)]
+    ;;   (println "######")
+    ;;   (println "reading Types/TIMESTAMP" r)
+    ;;   (cond (nil? r) nil
+    ;;         (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
+    ;;         :else r))
+      ;; (fn []
+      ;;  (let [odt (.getObject rs i OffsetDateTime)]
+      ;;    (println "#######")
+      ;;    (println "Zone offset" (.getOffset odt))
+      ;;    (if (.equals (.getOffset odt) java.time.ZoneOffset/UTC)
+      ;;      (.toLocalDateTime odt)
+      ;;      odt))))
+    (let [^OffsetDateTime r (.getObject rs i OffsetDateTime)]
+      ;; (println "######")
+      ;; (println "reading Types/TIMESTAMP" r)
+      r)))
 
 ;; FIXME: should be just (.getObject rs i OffsetDateTime)
 ;; still blocked by many failing tests (see `sql.qp/->honeysql [:clickhouse :convert-timezone]` as well)
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (when-let [s (.getString rs i)]
-      (u.date/parse s))))
+    (let [odt (.getObject rs i OffsetDateTime)]
+      ;; (println "######")
+      ;; (println "reading TIMESTAMP_WITH_TIMEZONE" odt)
+      odt)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
@@ -451,14 +535,20 @@
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
   [_ t]
+  ;; (println "###############")
+  ;; (println "unprepare/unprepare-value [:clickhouse LocalDateTime]" t)
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
+  ;; (println "###############")
+  ;; (println "unprepare/unprepare-value [:clickhouse OffsetDateTime]" t)
   (format "%s('%s')"
           (if (zero? (.getNano t)) "parseDateTimeBestEffort" "parseDateTime64BestEffort")
           (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
+  ;; (println "###############")
+  ;; (println "unprepare/unprepare-value [:clickhouse ZonedDateTime]" t)
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))

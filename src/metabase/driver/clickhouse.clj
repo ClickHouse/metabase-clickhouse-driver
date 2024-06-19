@@ -34,8 +34,8 @@
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
                               :foreign-keys                    (not config/is-test?)
-                              :set-timezone                    false
-                              :convert-timezone                false
+                              :set-timezone                    true
+                              :convert-timezone                true
                               :test/jvm-timezone-setting       false
                               :schemas                         true
                               :datetime-diff                   true
@@ -158,8 +158,7 @@
     ::upload/boolean                  "Nullable(Boolean)"
     ::upload/date                     "Nullable(Date32)"
     ::upload/datetime                 "Nullable(DateTime64(3))"
-    ;; FIXME: should be `Nullable(DateTime64(3))`
-    ::upload/offset-datetime          nil))
+    ::upload/offset-datetime          "Nullable(DateTime64(3))"))
 
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
