@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  METABASE_VERSION: v0.50.0
+  METABASE_VERSION: v0.50.3
 
 jobs:
   check-local-current-version:
@@ -97,7 +97,7 @@ jobs:
         env:
           DRIVERS: clickhouse
         run: |
-          clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse
+          clojure -X:ci:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse
 
   check-local-older-version:
     runs-on: ubuntu-latest
@@ -162,7 +162,7 @@ jobs:
           DRIVERS: clickhouse
           MB_CLICKHOUSE_TEST_PORT: 8124
         run: |
-          clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse :only metabase.driver.clickhouse-test
+          clojure -X:ci:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse :only metabase.driver.clickhouse-test
 
   build-jar:
     runs-on: ubuntu-latest

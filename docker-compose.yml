@@ -7,6 +7,7 @@ services:
   clickhouse:
     image: 'clickhouse/clickhouse-server:24.5-alpine'
     container_name: 'metabase-driver-clickhouse-server'
+    hostname: clickhouse
     ports:
       - '8123:8123'
       - '9000:9000'
@@ -47,6 +48,7 @@ services:
   clickhouse_older_version:
     image: 'clickhouse/clickhouse-server:23.3-alpine'
     container_name: 'metabase-driver-clickhouse-server-older-version'
+    hostname: clickhouse.older
     ports:
       - '8124:8123'
       - '9001:9000'
@@ -113,7 +115,7 @@ services:
   ##########################################################################################################
 
   metabase:
-    image: metabase/metabase-enterprise:v1.50.0
+    image: metabase/metabase-enterprise:v1.50.3
     container_name: metabase-with-clickhouse-driver
     hostname: metabase
     environment:
