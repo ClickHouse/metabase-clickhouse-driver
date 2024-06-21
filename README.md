@@ -20,6 +20,15 @@
 
 [ClickHouse](https://clickhouse.com) ([GitHub](https://github.com/ClickHouse/ClickHouse)) database driver for the [Metabase](https://metabase.com) ([GitHub](https://github.com/metabase/metabase)) business intelligence front-end.
 
+## Compatibility with ClickHouse
+
+The driver aims to support the current stable and LTS releases (see [the related docs](https://clickhouse.com/docs/en/faq/operations/production#how-to-choose-between-clickhouse-releases)).
+
+| ClickHouse version      | Supported?  |
+|-------------------------|-------------|
+| 23.8+                   | ✔           |
+| 23.3-23.7               | Best effort |
+
 ## Installation
 
 ### Run using Metabase Jar
