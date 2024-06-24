@@ -50,10 +50,10 @@
     (normalize-db-type (subs db-type 9 (- (count db-type) 1)))
     ;; DateTime64
     (str/starts-with? db-type "DateTime64")
-    :type/DateTimeWithTZ
+    (if (> (count db-type) 13) :type/DateTimeWithTZ :type/DateTime)
     ;; DateTime
     (str/starts-with? db-type "DateTime")
-    :type/DateTimeWithTZ
+    (if (> (count db-type) 8) :type/DateTimeWithTZ :type/DateTime)
     ;; Enum*
     (str/starts-with? db-type "Enum")
     :type/Text
@@ -73,6 +73,7 @@
 ;; Nullable(DateTime) -> :type/DateTime, SimpleAggregateFunction(sum, Int64) -> :type/BigInteger, etc
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
+  ;; (println " ###### " database-type)
   (normalize-db-type (subs (str database-type) 1)))
 
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]

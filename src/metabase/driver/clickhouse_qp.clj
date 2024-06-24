@@ -47,6 +47,7 @@
   [expr]
   (let [report-timezone (qp.timezone/report-timezone-id-if-supported)
         db-type         (remove-low-cardinality-and-nullable (h2x/database-type expr))]
+    ;; (println "### report tz" report-timezone)
     (if (and report-timezone (string? db-type) (str/starts-with? db-type "datetime"))
       (do
         ;; (println "#########")
@@ -104,6 +105,10 @@
   [_ _ expr]
   (date-extract :'toQuarter expr "uint8"))
 
+(defmethod sql.qp/date [:clickhouse :year-of-era]
+  [_ _ expr]
+  (date-extract :'toYear expr "uint16"))
+
 ;;; ------------------------------------------------------------------------------------
 ;;; Truncate functions
 ;;; ------------------------------------------------------------------------------------
@@ -155,13 +160,20 @@
   [_ _ expr]
   (h2x/->datetime expr))
 
+(defn- unix-timestamp->datetime64
+  [expr precision]
+  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)]
+    (if report-timezone
+      [:'toDateTime64 (h2x// expr 1000) precision report-timezone]
+      [:'toDateTime64 (h2x// expr 1000) precision])))
+
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :milliseconds]
   [_ _ expr]
-  [:'toDateTime64 (h2x// expr 1000) 3])
+  (unix-timestamp->datetime64 expr 3))
 
-;; (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :microseconds]
-;;   [_ _ expr]
-;;   [:'toDateTime64 expr 6])
+(defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :microseconds]
+  [_ _ expr]
+  (unix-timestamp->datetime64 expr 6))
 
 ;;; ------------------------------------------------------------------------------------
 ;;; HoneySQL forms
@@ -185,7 +197,7 @@
   ;; (println "formatting java.time.LocalDateTime" t)
   ;; (println "report tz" (or (qp.timezone/report-timezone-id-if-supported) "UTC"))
   (let [formatted       (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
-        report-timezone (h2x/literal(or (get-report-timezone-id-safely) "UTC"))]
+        report-timezone (h2x/literal (or (get-report-timezone-id-safely) "UTC"))]
     (if (zero? (.getNano t))
       [:'parseDateTimeBestEffort   formatted   report-timezone]
       [:'parseDateTime64BestEffort formatted 3 report-timezone])))
@@ -437,36 +449,51 @@
   (fn []
     (with-null-check rs (.getInt rs i))))
 
-(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
-  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
-  (fn []
-    ;; (let [^java.time.LocalDateTime r (.getObject rs i LocalDateTime)]
-    ;;   (println "######")
-    ;;   (println "reading Types/TIMESTAMP" r)
-    ;;   (cond (nil? r) nil
-    ;;         (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
-    ;;         :else r))
-      ;; (fn []
-      ;;  (let [odt (.getObject rs i OffsetDateTime)]
-      ;;    (println "#######")
-      ;;    (println "Zone offset" (.getOffset odt))
-      ;;    (if (.equals (.getOffset odt) java.time.ZoneOffset/UTC)
-      ;;      (.toLocalDateTime odt)
-      ;;      odt))))
-    (let [^OffsetDateTime r (.getObject rs i OffsetDateTime)]
-      ;; (println "######")
-      ;; (println "reading Types/TIMESTAMP" r)
-      r)))
+(defn- offset-date-time->maybe-offset-time
+  [^OffsetDateTime r]
+  (cond (nil? r) nil
+        (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toOffsetTime r)
+        :else r))
 
-;; FIXME: should be just (.getObject rs i OffsetDateTime)
-;; still blocked by many failing tests (see `sql.qp/->honeysql [:clickhouse :convert-timezone]` as well)
-(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
-  [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+(defn- local-date-time->maybe-local-time
+  [^LocalDateTime r]
+  (cond (nil? r) nil
+        (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
+        :else r))
+
+(defn- get-date-or-time-type
+  [tz-check-fn ^ResultSet rs ^Integer i]
+  (if (tz-check-fn)
+    (offset-date-time->maybe-offset-time (.getObject rs i OffsetDateTime))
+    (local-date-time->maybe-local-time (.getObject rs i LocalDateTime))))
+
+(defn- read-timestamp-column
+  [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
+    ;; (println "#### reading ts with tz" db-type)
+    (cond
+      ;; DateTime64 with tz info
+      (str/starts-with? db-type "datetime64")
+      (get-date-or-time-type #(> (count db-type) 13) rs i)
+      ;; DateTime with tz info
+      (str/starts-with? db-type "datetime")
+      (get-date-or-time-type #(> (count db-type) 8) rs i)
+      ;; _
+      :else (.getObject rs i LocalDateTime))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
-    (let [odt (.getObject rs i OffsetDateTime)]
-      ;; (println "######")
-      ;; (println "reading TIMESTAMP_WITH_TIMEZONE" odt)
-      odt)))
+    (let [result (read-timestamp-column rs rsmeta i)]
+      ;; (println "###### Types/TIMESTAMP" result)
+      result)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (fn []
+    (let [result (read-timestamp-column rs rsmeta i)]
+      ;; (println "###### Types/TIMESTAMP_WITH_TIMEZONE" result)
+      result)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]

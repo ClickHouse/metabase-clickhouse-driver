@@ -78,11 +78,11 @@
    :clickhouse
    (testing "datetimes"
      (let [table-name "datetime_base_types"]
-       (is (= #{{:base-type :type/DateTime,
+       (is (= #{{:base-type :type/DateTimeWithTZ,
                  :database-required false,
                  :database-type "Nullable(DateTime('America/New_York'))",
                  :name "c1"}
-                {:base-type :type/DateTime,
+                {:base-type :type/DateTimeWithTZ,
                  :database-required true,
                  :database-type "DateTime('America/New_York')",
                  :name "c2"}
@@ -94,11 +94,11 @@
                  :database-required true,
                  :database-type "DateTime64(3)",
                  :name "c4"}
-                {:base-type :type/DateTime,
+                {:base-type :type/DateTimeWithTZ,
                  :database-required true,
                  :database-type "DateTime64(9, 'America/New_York')",
                  :name "c5"}
-                {:base-type :type/DateTime,
+                {:base-type :type/DateTimeWithTZ,
                  :database-required false,
                  :database-type "Nullable(DateTime64(6, 'America/New_York'))",
                  :name "c6"}

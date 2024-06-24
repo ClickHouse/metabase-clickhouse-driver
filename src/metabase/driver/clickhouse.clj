@@ -17,9 +17,14 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.lib.metadata :as lib.metadata]
+            [metabase.query-processor.store :as qp.store]
             [metabase.upload :as upload]
+            [metabase.util :as u]
             [metabase.util.log :as log])
-  (:import [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
+  (:import        [com.clickhouse.jdbc.internal ClickHouseStatementImpl])
+  ;; (:import-static com.clickhouse.jdbc.ClickHouseConnection PROP_CUSTOM_HTTP_PARAMS)
+  )
 
 (set! *warn-on-reflection* true)
 
@@ -47,6 +52,12 @@
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})
 
+;; (defn- get-report-timezone-id-safely
+;;   []
+;;   (try
+;;     (qp.timezone/report-timezone-id-if-supported)
+;;     (catch Throwable _e nil)))
+
 (defn- connection-details->spec* [details]
   (let [;; ensure defaults merge on top of nils
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
@@ -56,6 +67,7 @@
         ;; if multiple databases were specified for the connection,
         ;; use only the first dbname as the "main" one
         dbname (first (str/split (str/trim dbname) #" "))]
+    ;; (println "##### Report tz" (get-report-timezone-id-safely))
     (->
      {:classname "com.clickhouse.jdbc.ClickHouseDriver"
       :subprotocol "clickhouse"
@@ -75,6 +87,50 @@
       ;; See https://github.com/ClickHouse/ClickHouse/issues/64487
       :custom_http_params "allow_experimental_analyzer=0"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
+
+(defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
+  [driver db-or-id-or-spec {:keys [^String session-timezone write?] :as options} f]
+  (sql-jdbc.execute/do-with-resolved-connection
+   driver
+   db-or-id-or-spec
+   options
+   (fn [^java.sql.Connection conn]
+     (when-not (sql-jdbc.execute/recursive-connection?)
+       (let [settings (if session-timezone
+                        (format "allow_experimental_analyzer=0,session_timezone=%s" session-timezone)
+                        "allow_experimental_analyzer=0")]
+         (.setClientInfo conn com.clickhouse.jdbc.ClickHouseConnection/PROP_CUSTOM_HTTP_PARAMS settings))
+
+       (sql-jdbc.execute/set-best-transaction-level! driver conn)
+       (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
+       (when-let [db (cond
+                       ;; id?
+                       (integer? db-or-id-or-spec)
+                       (qp.store/with-metadata-provider db-or-id-or-spec
+                         (lib.metadata/database (qp.store/metadata-provider)))
+                       ;; db?
+                       (u/id db-or-id-or-spec)     db-or-id-or-spec
+                       ;; otherwise it's a spec and we can't get the db
+                       :else nil)]
+         (sql-jdbc.execute/set-role-if-supported! driver conn db))
+       (let [read-only? (not write?)]
+         (try
+           (log/trace (pr-str (list '.setReadOnly 'conn read-only?)))
+           (.setReadOnly conn read-only?)
+           (catch Throwable e
+             (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
+       (when-not write?
+         (try
+           (log/trace (pr-str '(.setAutoCommit conn true)))
+           (.setAutoCommit conn true)
+           (catch Throwable e
+             (log/debug e "Error enabling connection autoCommit"))))
+       (try
+         (log/trace (pr-str '(.setHoldability conn java.sql.ResultSet/CLOSE_CURSORS_AT_COMMIT)))
+         (.setHoldability conn java.sql.ResultSet/CLOSE_CURSORS_AT_COMMIT)
+         (catch Throwable e
+           (log/debug e "Error setting default holdability for connection"))))
+     (f conn))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
   "Returns true if the `db-details` are for a ClickHouse Cloud instance, and false otherwise. If it fails to connect

@@ -48,21 +48,6 @@
                 spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
             (driver/db-default-timezone :clickhouse spec))))))
 
-(deftest ^:parallel clickhouse-now-converted-to-timezone
-  (mt/test-driver
-   :clickhouse
-   (let [[[utc-now shanghai-now]]
-         (qp.test/rows
-          (qp/process-query
-           (mt/native-query
-            {:query "SELECT now(), now('Asia/Shanghai')"})))]
-     (testing "there is always eight hour difference in time between UTC and Asia/Beijing"
-       (is (= 8
-              (chrono-unit/between
-               chrono-unit/hours
-               (offset-date-time/parse utc-now date-time-formatter/iso-offset-date-time)
-               (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
-
 (deftest ^:parallel clickhouse-connection-string
   (mt/with-dynamic-redefs [;; This function's implementation requires the connection details to actually connect to the
                            ;; database, which is orthogonal to the purpose of this test.

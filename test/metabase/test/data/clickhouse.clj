@@ -37,17 +37,21 @@
    :http_connection_provider "HTTP_URL_CONNECTION"
    :custom_http_params "allow_experimental_analyzer=0"})
 
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]    [_ _] "Boolean")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger] [_ _] "Int64")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Char]       [_ _] "String")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]       [_ _] "Date")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]   [_ _] "DateTime64")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]      [_ _] "Float64")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]    [_ _] "Int32")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/IPAddress]  [_ _] "IPv4")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]       [_ _] "String")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]       [_ _] "UUID")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]       [_ _] "DateTime64")
+;; (def ^:private time-type-comment "COMMENT 'time'")
+;; (def ^:private time-type (format "DateTime64(3) %s" time-type-comment))
+
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]         [_ _] "Boolean")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Char]            [_ _] "String")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]            [_ _] "Date")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]        [_ _] "DateTime64")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTimeWithTZ]  [_ _] "DateTime64(3, 'UTC')")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]           [_ _] "Float64")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]         [_ _] "Int32")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/IPAddress]       [_ _] "IPv4")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Text]            [_ _] "String")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/UUID]            [_ _] "UUID")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Time]            [_ _] "Time")
 
 (defmethod tx/sorts-nil-first? :clickhouse [_ _] false)
 
@@ -91,8 +95,14 @@
                    (:native base-type)
                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
         col-name (quote-name field-name)
-        fmt      (if (or pk? (disallowed-as-nullable? ch-type)) "%s %s" "%s Nullable(%s)")]
-    (format fmt col-name ch-type)))
+        ch-col   (cond
+                   (or pk? (disallowed-as-nullable? ch-type))
+                   (format "%s %s" col-name ch-type)
+                   (= ch-type "Time")
+                   (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
+                   ; _
+                   :else (format "%s Nullable(%s)" col-name ch-type))]
+    ch-col))
 
 (defn- ->comma-separated-str
   [coll]

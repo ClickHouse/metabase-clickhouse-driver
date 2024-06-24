@@ -12,7 +12,7 @@
 ;; start_of_year == '2022-01-01 00:00:00'
 ;; mid_of_year   == '2022-06-20 06:32:54'
 ;; end_of_year   == '2022-12-31 23:59:59'
-(deftest ^:parallel clickhouse-temporal-bucketing-server-tz
+(deftest clickhouse-temporal-bucketing-server-tz
   (mt/test-driver
    :clickhouse
    (defn- start-of-year [unit]
@@ -102,7 +102,7 @@
        (is (= [[4]]
               (end-of-year :quarter-of-year)))))))
 
-(deftest ^:parallel clickhouse-temporal-bucketing-column-tz
+(deftest clickhouse-temporal-bucketing-column-tz
   (mt/test-driver
    :clickhouse
    (defn- start-of-year [unit]
@@ -131,12 +131,10 @@
             {:breakout [[:field %end_of_year {:temporal-unit unit}]]}))))))
    (testing "truncate to"
      (testing "minute"
-       ;; it's actually not in UTC as the suffix suggests
-       ;; however, it is still rendered correctly on the UI
-       (is (= [["2022-06-20T06:32:00Z"]]
+       (is (= [["2022-06-20T13:32:00Z"]]
               (mid-year :minute))))
      (testing "hour"
-       (is (= [["2022-06-20T06:00:00Z"]]
+       (is (= [["2022-06-20T13:00:00Z"]]
               (mid-year :hour))))
      (testing "day"
        (is (= [["2022-06-20T00:00:00Z"]]
