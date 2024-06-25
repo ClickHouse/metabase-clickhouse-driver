@@ -55,12 +55,8 @@
   [expr]
   (let [report-timezone (get-report-timezone-id-safely)
         db-type         (remove-low-cardinality-and-nullable (h2x/database-type expr))]
-    ;; (println "### report tz" report-timezone)
     (if (and report-timezone (string? db-type) (str/starts-with? db-type "datetime"))
-      (do
-        ;; (println "#########")
-        ;; (println "######### trying to convert to tz" report-timezone db-type expr)
-        [:'toTimeZone expr (h2x/literal report-timezone)])
+      [:'toTimeZone expr (h2x/literal report-timezone)]
       expr)))
 
 (defmethod sql.qp/date [:clickhouse :default]
@@ -73,8 +69,6 @@
 
 (defn- date-extract
   [ch-fn expr db-type]
-  ;; (println "########")
-  ;; (println "calling date-trunc" ch-fn expr db-type)
   (-> [ch-fn (in-report-timezone expr)]
       (h2x/with-database-type-info db-type)))
 
@@ -123,8 +117,6 @@
 
 (defn- date-trunc
   [ch-fn expr]
-  ;; (println "########")
-  ;; (println "calling date-trunc" ch-fn expr)
   (-> [ch-fn (in-report-timezone expr)]
       (h2x/with-database-type-info (h2x/database-type expr))))
 
@@ -178,7 +170,6 @@
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :microseconds]
   [_ _ expr]
-  ;; (println "##########" expr)
   (let [report-timezone (get-report-timezone-id-safely)
         inner-expr      [:'toInt64 (h2x// expr 1000)]]
     (if report-timezone
@@ -195,9 +186,6 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ ^java.time.LocalDateTime t]
-  ;; (println "#######")
-  ;; (println "formatting java.time.LocalDateTime" t)
-  ;; (println "report tz" (or (qp.timezone/report-timezone-id-if-supported) "UTC"))
   (let [formatted       (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
         report-timezone (h2x/literal (or (get-report-timezone-id-safely) "UTC"))]
     (if (zero? (.getNano t))
@@ -206,8 +194,6 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [_ ^java.time.ZonedDateTime t]
-  ;; (println "#######")
-  ;; (println "formatting ZonedDateTime" t)
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
         fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
@@ -215,8 +201,6 @@
 (defmethod sql.qp/->honeysql [:clickhouse OffsetDateTime]
   [_ ^java.time.OffsetDateTime t]
   ;; copy-paste due to reflection warnings
-  ;; (println "#######")
-  ;; (println "formatting OffsetDateTime" t)
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
         fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
@@ -403,14 +387,6 @@
       (:hour :minute :second)
       [:'age (h2x/literal unit) (in-report-timezone x) (in-report-timezone y)])))
 
-(defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
-  (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
-        with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
-        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
-        inner         (if (not with-tz-info?) [:'toTimeZone expr source-timezone] expr)]
-    [:'toTimeZone inner target-timezone]))
-
 ;; We do not have Time data types, so we cheat a little bit
 (defmethod sql.qp/cast-temporal-string [:clickhouse :Coercion/ISO8601->Time]
   [_driver _special_type expr]
@@ -472,7 +448,6 @@
 (defn- read-timestamp-column
   [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
-    ;; (println "#### reading ts with tz" db-type)
     (cond
       ;; DateTime64 with tz info
       (str/starts-with? db-type "datetime64")
@@ -486,16 +461,12 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
-    (let [result (read-timestamp-column rs rsmeta i)]
-      ;; (println "###### Types/TIMESTAMP" result)
-      result)))
+    (read-timestamp-column rs rsmeta i)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
-    (let [result (read-timestamp-column rs rsmeta i)]
-      ;; (println "###### Types/TIMESTAMP_WITH_TIMEZONE" result)
-      result)))
+    (read-timestamp-column rs rsmeta i)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
@@ -564,20 +535,14 @@
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
   [_ t]
-  ;; (println "###############")
-  ;; (println "unprepare/unprepare-value [:clickhouse LocalDateTime]" t)
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
-  ;; (println "###############")
-  ;; (println "unprepare/unprepare-value [:clickhouse OffsetDateTime]" t)
   (format "%s('%s')"
           (if (zero? (.getNano t)) "parseDateTimeBestEffort" "parseDateTime64BestEffort")
           (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
-  ;; (println "###############")
-  ;; (println "unprepare/unprepare-value [:clickhouse ZonedDateTime]" t)
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))

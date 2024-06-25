@@ -73,7 +73,6 @@
 ;; Nullable(DateTime) -> :type/DateTime, SimpleAggregateFunction(sum, Int64) -> :type/BigInteger, etc
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
-  ;; (println " ###### " database-type)
   (normalize-db-type (subs (str database-type) 1)))
 
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]

@@ -40,7 +40,7 @@
 (doseq [[feature supported?] {:standard-deviation-aggregations true
                               :foreign-keys                    (not config/is-test?)
                               :set-timezone                    true
-                              :convert-timezone                true
+                              :convert-timezone                false
                               :test/jvm-timezone-setting       false
                               :schemas                         true
                               :datetime-diff                   true
@@ -67,7 +67,6 @@
         ;; if multiple databases were specified for the connection,
         ;; use only the first dbname as the "main" one
         dbname (first (str/split (str/trim dbname) #" "))]
-    ;; (println "##### Report tz" (get-report-timezone-id-safely))
     (->
      {:classname "com.clickhouse.jdbc.ClickHouseDriver"
       :subprotocol "clickhouse"
