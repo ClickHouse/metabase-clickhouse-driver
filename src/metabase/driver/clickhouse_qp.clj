@@ -31,6 +31,14 @@
 
 (defmethod sql.qp/quote-style :clickhouse [_] :mysql)
 
+;; without try, there might be test failures when QP is not yet initialized
+;; e.g., when a test is preparing the dataset
+(defn- get-report-timezone-id-safely
+  []
+  (try
+    (qp.timezone/report-timezone-id-if-supported)
+    (catch Throwable _e nil)))
+
 (defn- remove-low-cardinality-and-nullable
   [db-type]
   (when db-type
@@ -45,7 +53,7 @@
 
 (defn- in-report-timezone
   [expr]
-  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)
+  (let [report-timezone (get-report-timezone-id-safely)
         db-type         (remove-low-cardinality-and-nullable (h2x/database-type expr))]
     ;; (println "### report tz" report-timezone)
     (if (and report-timezone (string? db-type) (str/starts-with? db-type "datetime"))
@@ -160,20 +168,22 @@
   [_ _ expr]
   (h2x/->datetime expr))
 
-(defn- unix-timestamp->datetime64
-  [expr precision]
-  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)]
-    (if report-timezone
-      [:'toDateTime64 (h2x// expr 1000) precision report-timezone]
-      [:'toDateTime64 (h2x// expr 1000) precision])))
-
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :milliseconds]
   [_ _ expr]
-  (unix-timestamp->datetime64 expr 3))
+  (let [report-timezone (get-report-timezone-id-safely)
+        inner-expr      (h2x// expr 1000)]
+    (if report-timezone
+      [:'toDateTime64 inner-expr 3 report-timezone]
+      [:'toDateTime64 inner-expr 3])))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:clickhouse :microseconds]
   [_ _ expr]
-  (unix-timestamp->datetime64 expr 6))
+  ;; (println "##########" expr)
+  (let [report-timezone (get-report-timezone-id-safely)
+        inner-expr      [:'toInt64 (h2x// expr 1000)]]
+    (if report-timezone
+      [:'fromUnixTimestamp64Milli inner-expr report-timezone]
+      [:'fromUnixTimestamp64Milli inner-expr])))
 
 ;;; ------------------------------------------------------------------------------------
 ;;; HoneySQL forms
@@ -182,14 +192,6 @@
 (defn- date-time-parse-fn
   [nano]
   (if (zero? nano) :'parseDateTimeBestEffort :'parseDateTime64BestEffort))
-
-;; without try, there might be test failures when QP is not yet initialized
-;; e.g., when a test is preparing the dataset
-(defn- get-report-timezone-id-safely
-  []
-  (try
-    (qp.timezone/report-timezone-id-if-supported)
-    (catch Throwable _e nil)))
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ ^java.time.LocalDateTime t]
@@ -393,13 +395,13 @@
     (case unit
       ;; Week: Metabase tests expect a bit different result from what `age` provides
       (:week)
-      [:'intDiv [:'dateDiff (h2x/literal :day) [:'toStartOfDay x] [:'toStartOfDay y]] [:raw 7]]
+      [:'intDiv [:'dateDiff (h2x/literal :day) (date-trunc :'toStartOfDay x) (date-trunc :'toStartOfDay y)] [:raw 7]]
       ;; -------------------------
       (:year :month :quarter :day)
-      [:'age (h2x/literal unit) [:'toStartOfDay x] [:'toStartOfDay y]]
+      [:'age (h2x/literal unit) (date-trunc :'toStartOfDay x) (date-trunc :'toStartOfDay y)]
       ;; -------------------------
       (:hour :minute :second)
-      [:'age (h2x/literal unit) x y])))
+      [:'age (h2x/literal unit) (in-report-timezone x) (in-report-timezone y)])))
 
 (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
