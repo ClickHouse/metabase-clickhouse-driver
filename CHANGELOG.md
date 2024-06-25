@@ -1,3 +1,13 @@
+# 1.50.1
+
+### New features
+
+* Enabled `:set-timezone` ([docs](https://www.metabase.com/docs/latest/configuring-metabase/localization#report-timezone)) and `:convert-timezone` ([docs](https://www.metabase.com/docs/latest/questions/query-builder/expressions/converttimezone)) Metabase features in the driver. ([#200](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/200))
+
+### Other
+
+* The driver now uses [`session_timezone` ClickHouse setting](https://clickhouse.com/docs/en/operations/settings/settings#session_timezone). This is necessary to fully support the timezones features; however, this setting [was introduced in 23.6](https://clickhouse.com/docs/en/whats-new/changelog/2023#236), which makes it the minimal required ClickHouse version to work with the driver.
+
 # 1.50.0
 
 After Metabase 0.50.0, a new naming convention exists for the driver's releases. The new one is intended to reflect the Metabase version the driver is supposed to run on. For example, the driver version 1.50.0 means that it should be used with Metabase v0.50.x or Metabase EE 1.50.x _only_, and it is _not guaranteed_ that this particular version of the driver can work with the previous or the following versions of Metabase.
