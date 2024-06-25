@@ -38,7 +38,6 @@ After 1.50.1:
 | 23.8+                   | ✔           |
 | 23.3 - 23.7             | Best effort |
 
-
 ## Installation
 
 ### Run using Metabase Jar
