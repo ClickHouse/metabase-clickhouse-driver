@@ -180,6 +180,10 @@
 ;;; HoneySQL forms
 ;;; ------------------------------------------------------------------------------------
 
+(defmethod sql.qp/current-datetime-honeysql-form :clickhouse
+  [_]
+  (h2x/with-database-type-info [:'now64 [:raw 9]] "DateTime64(9)"))
+
 (defn- date-time-parse-fn
   [nano]
   (if (zero? nano) :'parseDateTimeBestEffort :'parseDateTime64BestEffort))

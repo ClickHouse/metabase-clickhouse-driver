@@ -39,6 +39,7 @@
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
                               :foreign-keys                    (not config/is-test?)
+                              :now                             true
                               :set-timezone                    true
                               :convert-timezone                false
                               :test/jvm-timezone-setting       false
