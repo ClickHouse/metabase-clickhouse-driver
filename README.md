@@ -24,10 +24,20 @@
 
 The driver aims to support the current stable and LTS releases (see [the related docs](https://clickhouse.com/docs/en/faq/operations/production#how-to-choose-between-clickhouse-releases)).
 
+After 1.50.1:
+
 | ClickHouse version      | Supported?  |
 |-------------------------|-------------|
 | 23.8+                   | ✔           |
-| 23.3-23.7               | Best effort |
+| 23.6 - 23.7             | Best effort |
+
+1.50.0 and earlier:
+
+| ClickHouse version      | Supported?  |
+|-------------------------|-------------|
+| 23.8+                   | ✔           |
+| 23.3 - 23.7             | Best effort |
+
 
 ## Installation
 
