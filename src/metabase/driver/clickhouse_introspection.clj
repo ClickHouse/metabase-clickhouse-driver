@@ -12,59 +12,59 @@
 
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"Array"       :type/Array]
-    [#"Bool"        :type/Boolean]
-    [#"DateTime64"  :type/DateTime]
-    [#"DateTime"    :type/DateTime]
-    [#"Date"        :type/Date]
-    [#"Date32"      :type/Date]
-    [#"Decimal"     :type/Decimal]
-    [#"Enum8"       :type/Text]
-    [#"Enum16"      :type/Text]
-    [#"FixedString" :type/TextLike]
-    [#"Float32"     :type/Float]
-    [#"Float64"     :type/Float]
-    [#"Int8"        :type/Integer]
-    [#"Int16"       :type/Integer]
-    [#"Int32"       :type/Integer]
-    [#"Int64"       :type/BigInteger]
-    [#"IPv4"        :type/IPAddress]
-    [#"IPv6"        :type/IPAddress]
-    [#"Map"         :type/Dictionary]
-    [#"String"      :type/Text]
-    [#"Tuple"       :type/*]
-    [#"UInt8"       :type/Integer]
-    [#"UInt16"      :type/Integer]
-    [#"UInt32"      :type/Integer]
-    [#"UInt64"      :type/BigInteger]
-    [#"UUID"        :type/UUID]]))
+   [[#"array"       :type/Array]
+    [#"bool"        :type/Boolean]
+    [#"datetime64"  :type/DateTime]
+    [#"datetime"    :type/DateTime]
+    [#"date"        :type/Date]
+    [#"date32"      :type/Date]
+    [#"decimal"     :type/Decimal]
+    [#"enum8"       :type/Text]
+    [#"enum16"      :type/Text]
+    [#"fixedstring" :type/TextLike]
+    [#"float32"     :type/Float]
+    [#"float64"     :type/Float]
+    [#"int8"        :type/Integer]
+    [#"int16"       :type/Integer]
+    [#"int32"       :type/Integer]
+    [#"int64"       :type/BigInteger]
+    [#"ipv4"        :type/IPAddress]
+    [#"ipv6"        :type/IPAddress]
+    [#"map"         :type/Dictionary]
+    [#"string"      :type/Text]
+    [#"tuple"       :type/*]
+    [#"uint8"       :type/Integer]
+    [#"uint16"      :type/Integer]
+    [#"uint32"      :type/Integer]
+    [#"uint64"      :type/BigInteger]
+    [#"uuid"        :type/UUID]]))
 
 (defn- normalize-db-type
   [db-type]
   (cond
     ;; LowCardinality
-    (str/starts-with? db-type "LowCardinality")
+    (str/starts-with? db-type "lowcardinality")
     (normalize-db-type (subs db-type 15 (- (count db-type) 1)))
     ;; Nullable
-    (str/starts-with? db-type "Nullable")
+    (str/starts-with? db-type "nullable")
     (normalize-db-type (subs db-type 9 (- (count db-type) 1)))
     ;; DateTime64
-    (str/starts-with? db-type "DateTime64")
+    (str/starts-with? db-type "datetime64")
     (if (> (count db-type) 13) :type/DateTimeWithTZ :type/DateTime)
     ;; DateTime
-    (str/starts-with? db-type "DateTime")
+    (str/starts-with? db-type "datetime")
     (if (> (count db-type) 8) :type/DateTimeWithTZ :type/DateTime)
     ;; Enum*
-    (str/starts-with? db-type "Enum")
+    (str/starts-with? db-type "enum")
     :type/Text
     ;; Map
-    (str/starts-with? db-type "Map")
+    (str/starts-with? db-type "map")
     :type/Dictionary
     ;; Tuple
-    (str/starts-with? db-type "Tuple")
+    (str/starts-with? db-type "tuple")
     :type/*
     ;; SimpleAggregateFunction
-    (str/starts-with? db-type "SimpleAggregateFunction")
+    (str/starts-with? db-type "simpleaggregatefunction")
     (normalize-db-type (subs db-type (+ (str/index-of db-type ",") 2) (- (count db-type) 1)))
     ;; _
     :else (or (database-type->base-type (keyword db-type)) :type/*)))
@@ -73,7 +73,10 @@
 ;; Nullable(DateTime) -> :type/DateTime, SimpleAggregateFunction(sum, Int64) -> :type/BigInteger, etc
 (defmethod sql-jdbc.sync/database-type->base-type :clickhouse
   [_ database-type]
-  (normalize-db-type (subs (str database-type) 1)))
+  (let [db-type (if (keyword? database-type)
+                  (subs (str database-type) 1)
+                  database-type)]
+    (normalize-db-type (u/lower-case-en db-type))))
 
 (defmethod sql-jdbc.sync/excluded-schemas :clickhouse [_]
   #{"system" "information_schema" "INFORMATION_SCHEMA"})
