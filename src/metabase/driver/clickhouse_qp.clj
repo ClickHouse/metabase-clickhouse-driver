@@ -149,7 +149,7 @@
 
 (defmethod sql.qp/date [:clickhouse :day]
   [_ _ expr]
-  (date-trunc :'toDate expr))
+  (date-trunc :'toStartOfDay expr))
 
 (defmethod sql.qp/date [:clickhouse :week]
   [driver _ expr]
