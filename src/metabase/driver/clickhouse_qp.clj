@@ -8,12 +8,10 @@
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
-            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.legacy-mbql.util :as mbql.u]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x]
             [metabase.util.log :as log])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
@@ -39,13 +37,26 @@
     (qp.timezone/report-timezone-id-if-supported)
     (catch Throwable _e nil)))
 
+;; datetime('europe/amsterdam') -> europe/amsterdam
+(defn- extract-datetime-timezone
+  [db-type]
+  (when (and db-type (string? db-type))
+    (cond
+      ;; e.g. DateTime64(3, 'Europe/Amsterdam')
+      (str/starts-with? db-type "datetime64")
+      (if (> (count db-type) 17) (subs db-type 15 (- (count db-type) 2)) nil)
+      ;; e.g. DateTime('Europe/Amsterdam')
+      (str/starts-with? db-type "datetime")
+      (if (> (count db-type) 12) (subs db-type 10 (- (count db-type) 2)) nil)
+      ;; _
+      :else nil)))
+
 (defn- remove-low-cardinality-and-nullable
   [db-type]
-  (when db-type
-    (let [lower            (u/lower-case-en db-type)
-          without-low-car  (if (str/starts-with? lower "lowcardinality(")
-                             (subs lower 15 (- (count lower) 1))
-                             lower)
+  (when (and db-type (string? db-type))
+    (let [without-low-car  (if (str/starts-with? db-type "lowcardinality(")
+                             (subs db-type 15 (- (count db-type) 1))
+                             db-type)
           without-nullable (if (str/starts-with? without-low-car "nullable(")
                              (subs without-low-car 9 (- (count without-low-car) 1))
                              without-low-car)]
@@ -54,9 +65,13 @@
 (defn- in-report-timezone
   [expr]
   (let [report-timezone (get-report-timezone-id-safely)
-        db-type         (remove-low-cardinality-and-nullable (h2x/database-type expr))]
+        lower           (u/lower-case-en (h2x/database-type expr))
+        db-type         (remove-low-cardinality-and-nullable lower)]
     (if (and report-timezone (string? db-type) (str/starts-with? db-type "datetime"))
-      [:'toTimeZone expr (h2x/literal report-timezone)]
+      (let [timezone (extract-datetime-timezone db-type)]
+        (if (not (= timezone (u/lower-case-en report-timezone)))
+          [:'toTimeZone expr (h2x/literal report-timezone)]
+          expr))
       expr)))
 
 (defmethod sql.qp/date [:clickhouse :default]
@@ -184,19 +199,19 @@
 ;; There are several failing assertions in metabase.query-processor-test.date-time-zone-functions-test
 ;; See also: https://github.com/ClickHouse/metabase-clickhouse-driver/issues/254
 #_(defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
-  (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
-        with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
-        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
-        inner         (if (not with-tz-info?)
-                        [:'plus
-                         expr
-                         [:'toIntervalSecond
-                          [:'minus
-                           [:'timeZoneOffset [:'now target-timezone]]
-                           [:'timeZoneOffset [:'now source-timezone]]]]]
-                        [:'toTimeZone expr target-timezone])]
-    inner))
+    [driver [_ arg target-timezone source-timezone]]
+    (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
+          with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
+          _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
+          inner         (if (not with-tz-info?)
+                          [:'plus
+                           expr
+                           [:'toIntervalSecond
+                            [:'minus
+                             [:'timeZoneOffset [:'now target-timezone]]
+                             [:'timeZoneOffset [:'now source-timezone]]]]]
+                          [:'toTimeZone expr target-timezone])]
+      inner))
 
 (defmethod sql.qp/current-datetime-honeysql-form :clickhouse
   [_]

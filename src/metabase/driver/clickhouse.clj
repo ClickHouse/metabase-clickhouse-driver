@@ -22,9 +22,7 @@
             [metabase.upload :as upload]
             [metabase.util :as u]
             [metabase.util.log :as log])
-  (:import        [com.clickhouse.jdbc.internal ClickHouseStatementImpl])
-  ;; (:import-static com.clickhouse.jdbc.ClickHouseConnection PROP_CUSTOM_HTTP_PARAMS)
-  )
+  (:import  [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
 
 (set! *warn-on-reflection* true)
 
@@ -47,7 +45,6 @@
                               :datetime-diff                   true
                               :upload-with-auto-pk             false
                               :window-functions/offset         false}]
-
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
