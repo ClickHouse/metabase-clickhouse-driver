@@ -41,7 +41,7 @@
                               :foreign-keys                    (not config/is-test?)
                               :now                             true
                               :set-timezone                    true
-                              :convert-timezone                false
+                              :convert-timezone                false ;; https://github.com/ClickHouse/metabase-clickhouse-driver/issues/254
                               :test/jvm-timezone-setting       false
                               :schemas                         true
                               :datetime-diff                   true

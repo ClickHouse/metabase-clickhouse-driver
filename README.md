@@ -38,6 +38,9 @@ After 1.50.1:
 | 23.8+                   | ✔           |
 | 23.3 - 23.7             | Best effort |
 
+For [connection impersonation feature](https://www.metabase.com/learn/permissions/impersonation), the minimal required ClickHouse version is 24.4; otherwise, the feature is disabled by the driver.
+
+The [CSV Uploads feature](https://www.metabase.com/docs/latest/databases/uploads) currently works only with ClickHouse Cloud (see [this issue](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/230) for more details).
 
 ## Installation
 
