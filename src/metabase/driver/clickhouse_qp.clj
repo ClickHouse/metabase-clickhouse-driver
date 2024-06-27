@@ -8,10 +8,12 @@
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
+            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.legacy-mbql.util :as mbql.u]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x]
             [metabase.util.log :as log])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
@@ -195,23 +197,20 @@
 ;;; HoneySQL forms
 ;;; ------------------------------------------------------------------------------------
 
-;; Commented out until we enable :convert-timezone feature - this implementation is still not correct
-;; There are several failing assertions in metabase.query-processor-test.date-time-zone-functions-test
-;; See also: https://github.com/ClickHouse/metabase-clickhouse-driver/issues/254
-#_(defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
-    [driver [_ arg target-timezone source-timezone]]
-    (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
-          with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
-          _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
-          inner         (if (not with-tz-info?)
-                          [:'plus
-                           expr
-                           [:'toIntervalSecond
-                            [:'minus
-                             [:'timeZoneOffset [:'now target-timezone]]
-                             [:'timeZoneOffset [:'now source-timezone]]]]]
-                          [:'toTimeZone expr target-timezone])]
-      inner))
+(defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
+  [driver [_ arg target-timezone source-timezone]]
+  (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
+        with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
+        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
+        inner         (if (not with-tz-info?)
+                        [:'plus
+                         expr
+                         [:'toIntervalSecond
+                          [:'minus
+                           [:'timeZoneOffset [:'toTimeZone expr target-timezone]]
+                           [:'timeZoneOffset [:'toTimeZone expr source-timezone]]]]]
+                        [:'toTimeZone expr target-timezone])]
+    inner))
 
 (defmethod sql.qp/current-datetime-honeysql-form :clickhouse
   [_]
