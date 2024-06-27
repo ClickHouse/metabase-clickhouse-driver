@@ -39,7 +39,7 @@
                               :foreign-keys                    (not config/is-test?)
                               :now                             true
                               :set-timezone                    true
-                              :convert-timezone                false ;; https://github.com/ClickHouse/metabase-clickhouse-driver/issues/254
+                              :convert-timezone                true
                               :test/jvm-timezone-setting       false
                               :schemas                         true
                               :datetime-diff                   true
@@ -49,12 +49,6 @@
 
 (def ^:private default-connection-details
   {:user "default" :password "" :dbname "default" :host "localhost" :port "8123"})
-
-;; (defn- get-report-timezone-id-safely
-;;   []
-;;   (try
-;;     (qp.timezone/report-timezone-id-if-supported)
-;;     (catch Throwable _e nil)))
 
 (defn- connection-details->spec* [details]
   (let [;; ensure defaults merge on top of nils
