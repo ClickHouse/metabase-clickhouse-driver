@@ -201,16 +201,15 @@
   [driver [_ arg target-timezone source-timezone]]
   (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
         with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
-        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
-        inner         (if (not with-tz-info?)
-                        [:'plus
-                         expr
-                         [:'toIntervalSecond
-                          [:'minus
-                           [:'timeZoneOffset [:'toTimeZone expr target-timezone]]
-                           [:'timeZoneOffset [:'toTimeZone expr source-timezone]]]]]
-                        [:'toTimeZone expr target-timezone])]
-    inner))
+        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)]
+    (if (not with-tz-info?)
+      [:'plus
+       expr
+       [:'toIntervalSecond
+        [:'minus
+         [:'timeZoneOffset [:'toTimeZone expr target-timezone]]
+         [:'timeZoneOffset [:'toTimeZone expr source-timezone]]]]]
+      [:'toTimeZone expr target-timezone])))
 
 (defmethod sql.qp/current-datetime-honeysql-form :clickhouse
   [_]
@@ -226,11 +225,10 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ ^java.time.LocalDateTime t]
-  (let [formatted       (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
-        report-timezone (h2x/literal (or (get-report-timezone-id-safely) "UTC"))]
+  (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)]
     (if (zero? (.getNano t))
-      [:'parseDateTimeBestEffort   formatted   report-timezone]
-      [:'parseDateTime64BestEffort formatted 3 report-timezone])))
+      [:'parseDateTimeBestEffort   formatted]
+      [:'parseDateTime64BestEffort formatted 3])))
 
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [_ ^java.time.ZonedDateTime t]
