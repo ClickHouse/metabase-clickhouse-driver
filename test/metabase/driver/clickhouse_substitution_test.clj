@@ -1,4 +1,4 @@
-(ns metabase.driver.clickhouse-test
+(ns metabase.driver.clickhouse-substitution-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.test :refer :all]
             [java-time.api :as t]

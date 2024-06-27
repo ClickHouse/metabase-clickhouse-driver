@@ -1,4 +1,4 @@
-(ns metabase.driver.clickhouse-test
+(ns metabase.driver.clickhouse-temporal-bucketing-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
@@ -6,6 +6,8 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.clickhouse :as ctd]))
+
+(use-fixtures :once ctd/create-test-db!)
 
 ;; See temporal_bucketing table definition
 ;; Fields values are (both in server and column timezones):

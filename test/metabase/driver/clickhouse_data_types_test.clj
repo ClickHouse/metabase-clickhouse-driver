@@ -1,4 +1,4 @@
-(ns metabase.driver.clickhouse-test
+(ns metabase.driver.clickhouse-data-types-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [cljc.java-time.local-date :as local-date]
             [cljc.java-time.offset-date-time :as offset-date-time]
@@ -8,6 +8,8 @@
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.clickhouse :as ctd]))
+
+(use-fixtures :once ctd/create-test-db!)
 
 (deftest ^:parallel clickhouse-decimals
   (mt/test-driver
