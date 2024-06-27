@@ -24,10 +24,23 @@
 
 The driver aims to support the current stable and LTS releases (see [the related docs](https://clickhouse.com/docs/en/faq/operations/production#how-to-choose-between-clickhouse-releases)).
 
+After 1.50.1:
+
 | ClickHouse version      | Supported?  |
 |-------------------------|-------------|
 | 23.8+                   | ✔           |
-| 23.3-23.7               | Best effort |
+| 23.6 - 23.7             | Best effort |
+
+1.50.0 and earlier:
+
+| ClickHouse version      | Supported?  |
+|-------------------------|-------------|
+| 23.8+                   | ✔           |
+| 23.3 - 23.7             | Best effort |
+
+For [connection impersonation feature](https://www.metabase.com/learn/permissions/impersonation), the minimal required ClickHouse version is 24.4; otherwise, the feature is disabled by the driver.
+
+The [CSV Uploads feature](https://www.metabase.com/docs/latest/databases/uploads) currently works only with ClickHouse Cloud (see [this issue](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/230) for more details).
 
 ## Installation
 

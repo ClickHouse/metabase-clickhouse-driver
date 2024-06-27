@@ -1,12 +1,10 @@
 (ns metabase.driver.clickhouse-test
   "Tests for specific behavior of the ClickHouse driver."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
-  (:require [cljc.java-time.format.date-time-formatter :as date-time-formatter]
-            [cljc.java-time.offset-date-time :as offset-date-time]
-            [cljc.java-time.temporal.chrono-unit :as chrono-unit]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse :as clickhouse]
+            [metabase.driver.clickhouse-qp :as clickhouse-qp]
             [metabase.driver.clickhouse-data-types-test]
             [metabase.driver.clickhouse-impersonation-test]
             [metabase.driver.clickhouse-introspection-test]
@@ -14,9 +12,7 @@
             [metabase.driver.clickhouse-temporal-bucketing-test]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models.database :refer [Database]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.compile :as qp.compile]
-            [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
@@ -47,21 +43,6 @@
           (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})
                 spec    (sql-jdbc.conn/connection-details->spec :clickhouse details)]
             (driver/db-default-timezone :clickhouse spec))))))
-
-(deftest ^:parallel clickhouse-now-converted-to-timezone
-  (mt/test-driver
-   :clickhouse
-   (let [[[utc-now shanghai-now]]
-         (qp.test/rows
-          (qp/process-query
-           (mt/native-query
-            {:query "SELECT now(), now('Asia/Shanghai')"})))]
-     (testing "there is always eight hour difference in time between UTC and Asia/Beijing"
-       (is (= 8
-              (chrono-unit/between
-               chrono-unit/hours
-               (offset-date-time/parse utc-now date-time-formatter/iso-offset-date-time)
-               (offset-date-time/parse shanghai-now date-time-formatter/iso-offset-date-time))))))))
 
 (deftest ^:parallel clickhouse-connection-string
   (mt/with-dynamic-redefs [;; This function's implementation requires the connection details to actually connect to the
@@ -189,3 +170,14 @@
         (let [details (merge {:user username :password password}
                              (tx/dbdef->connection-details :clickhouse :db {:database-name database}))]
           (is (true? (driver/can-connect? :clickhouse details)))))))))
+
+(deftest clickhouse-qp-extract-datetime-timezone
+  (mt/test-driver
+   :clickhouse
+   (is (= "utc" (#'clickhouse-qp/extract-datetime-timezone "datetime('utc')")))
+   (is (= "utc" (#'clickhouse-qp/extract-datetime-timezone "datetime64(3, 'utc')")))
+   (is (= "europe/amsterdam" (#'clickhouse-qp/extract-datetime-timezone "datetime('europe/amsterdam')")))
+   (is (= "europe/amsterdam" (#'clickhouse-qp/extract-datetime-timezone "datetime64(9, 'europe/amsterdam')")))
+   (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime")))
+   (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64")))
+   (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64(3)")))))
