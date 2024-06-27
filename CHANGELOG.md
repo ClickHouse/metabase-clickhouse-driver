@@ -3,10 +3,11 @@
 ### New features
 
 * Enabled `:set-timezone` ([docs](https://www.metabase.com/docs/latest/configuring-metabase/localization#report-timezone)) Metabase feature in the driver. ([#200](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/200))
+* Enabled `:convert-timezone` ([docs](https://www.metabase.com/docs/latest/questions/query-builder/expressions/converttimezone)) Metabase feature in the driver. ([#254](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/254))
 
 ### Other
 
-* The driver now uses [`session_timezone` ClickHouse setting](https://clickhouse.com/docs/en/operations/settings/settings#session_timezone). This is necessary to support the `:set-timezone` feature; however, this setting [was introduced in 23.6](https://clickhouse.com/docs/en/whats-new/changelog/2023#236), which makes it the minimal required ClickHouse version to work with the driver.
+* The driver now uses [`session_timezone` ClickHouse setting](https://clickhouse.com/docs/en/operations/settings/settings#session_timezone). This is necessary to support the `:set-timezone` and `:convert-timezone` features; however, this setting [was introduced in 23.6](https://clickhouse.com/docs/en/whats-new/changelog/2023#236), which makes it the minimal required ClickHouse version to work with the driver.
 
 # 1.50.0
 
