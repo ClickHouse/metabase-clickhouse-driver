@@ -131,6 +131,21 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[true, false, true]"], ["[]"]] result)))))
 
+(deftest ^:parallel clickhouse-array-of-nullable-booleans
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list true false nil))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_nullable_booleans"
+                                              ["test-data-array-of-booleans"
+                                               [{:field-name "my_array_of_nullable_booleans"
+                                                 :base-type {:native "Array(Nullable(Boolean))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-booleans {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[true, false, null]"], ["[]"]] result)))))
+
 (deftest ^:parallel clickhouse-array-of-uint8
   (mt/test-driver
    :clickhouse
@@ -521,3 +536,16 @@
                   (data/run-mbql-query
                    sum_if_test_float
                    {:aggregation [[:sum-where $float_value [:= $discriminator "qaz"]]]}))))))))))
+
+(deftest ^:parallel clickhouse-array-inner-types
+  (mt/test-driver
+   :clickhouse
+   (is (= [["[a, b, c]"
+            "[null, d, e]"
+            "[1.0000, 2.0000, 3.0000]"
+            "[4.0000, null, 5.0000]"]]
+          (ctd/do-with-test-db
+           (fn [db]
+             (data/with-db db
+               (->> (data/run-mbql-query arrays_inner_types {})
+                    (mt/formatted-rows [str str str str])))))))))

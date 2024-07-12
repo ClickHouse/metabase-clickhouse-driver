@@ -245,3 +245,19 @@ DROP DATABASE IF EXISTS `Special@Characters~`;
 CREATE DATABASE `Special@Characters~`;
 DROP DATABASE IF EXISTS `'Escaping'`;
 CREATE DATABASE `'Escaping'`;
+
+-- arrays inner types test
+CREATE TABLE `metabase_test`.`arrays_inner_types`
+(
+    `arr_str`  Array(String),
+    `arr_nstr` Array(Nullable(String)),
+    `arr_dec`  Array(Decimal(18, 4)),
+    `arr_ndec` Array(Nullable(Decimal(18, 4)))
+)
+ENGINE Memory;
+INSERT INTO `metabase_test`.`arrays_inner_types` VALUES (
+    ['a', 'b', 'c'],
+    [NULL, 'd', 'e'],
+    [1, 2, 3],
+    [4, NULL, 5]
+);
