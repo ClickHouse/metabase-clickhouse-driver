@@ -1,3 +1,9 @@
+# 1.50.2
+
+### Bug fixes
+
+* Fixed Array inner type introspection, which could cause reduced performance when querying tables containing arrays. ([#257](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/257))
+
 # 1.50.1
 
 ### New features
