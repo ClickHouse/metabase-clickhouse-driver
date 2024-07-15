@@ -521,25 +521,17 @@
       (.getLong rs i)
       (.getBigDecimal rs i))))
 
-(defn- get-array-base-type
-  [^ResultSetMetaData rsmeta ^Integer i]
-  (try
-    (-> (.columns rsmeta)
-        (.get i)
-        (.arrayBaseColumn)
-        (.originalTypeName))
-    (catch Exception e
-      (log/error e "Failed to get the inner type of the array column"))))
-
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/ARRAY]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
     (when-let [arr (.getArray rs i)]
-      (let [array-base-type (get-array-base-type rsmeta i)
-            inner           (.getArray arr)]
+      (let [col-type-name (.getColumnTypeName rsmeta i)
+            inner         (.getArray arr)]
         (cond
-          (= array-base-type "Bool")
+          (= "Bool" col-type-name)
           (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
+          (= "Nullable(Bool)" col-type-name)
+          (str "[" (str/join ", " (map #(cond (= 1 %) "true" (= 0 %) "false" :else "null") inner)) "]")
           ;; All other primitives
           (.isPrimitive (.getComponentType (.getClass inner)))
           (Arrays/toString inner)

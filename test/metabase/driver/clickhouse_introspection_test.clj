@@ -1,4 +1,4 @@
-(ns metabase.driver.clickhouse-test
+(ns metabase.driver.clickhouse-introspection-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
@@ -12,6 +12,8 @@
    [metabase.test.data.clickhouse :as ctd]
    [metabase.test.data.interface :as tx]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(use-fixtures :once ctd/create-test-db!)
 
 (defn- desc-table
   [table-name]
