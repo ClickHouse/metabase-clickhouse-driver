@@ -9,6 +9,7 @@
             [metabase.driver.clickhouse-introspection]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.clickhouse-qp]
+            [metabase.driver.clickhouse-timezone]
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
@@ -90,6 +91,8 @@
        (let [settings (if session-timezone
                         (format "allow_experimental_analyzer=0,session_timezone=%s" session-timezone)
                         "allow_experimental_analyzer=0")]
+        ;;  (println "### Session TZ" session-timezone)
+        ;;  (println "### Settings with tz" settings session-timezone)
          (.setClientInfo conn com.clickhouse.jdbc.ClickHouseConnection/PROP_CUSTOM_HTTP_PARAMS settings))
 
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
@@ -176,16 +179,6 @@
         false))
     ;; During normal usage, fall back to the default implementation
     (sql-jdbc.conn/can-connect? driver details)))
-
-(defmethod driver/db-default-timezone :clickhouse
-  [driver database]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver database nil
-   (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "SELECT timezone() AS tz")
-                 rset (.executeQuery stmt)]
-       (when (.next rset)
-         (.getString rset 1))))))
 
 (defmethod driver/db-start-of-week :clickhouse [_] :monday)
 

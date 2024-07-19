@@ -5,6 +5,7 @@
             [honey.sql :as sql]
             [java-time.api :as t]
             [metabase.driver.clickhouse-nippy]
+            [metabase.driver.clickhouse-timezone :as clickhouse-timezone]
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
@@ -14,8 +15,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honey-sql-2 :as h2x]
-            [metabase.util.log :as log])
+            [metabase.util.honey-sql-2 :as h2x])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
@@ -199,6 +199,7 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
+  ;; (println "###### :convert-timezone" arg target-timezone source-timezone)
   (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
         with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
         _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)]
@@ -486,6 +487,7 @@
 (defn- read-timestamp-column
   [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
+    ;; (println "#### read-timestamp-column: db-type" db-type)
     (cond
       ;; DateTime64 with tz info
       (str/starts-with? db-type "datetime64")
@@ -496,15 +498,32 @@
       ;; _
       :else (.getObject rs i LocalDateTime))))
 
+(defn- to-local-date-time-in-report-timezone
+  [value]
+  (if (instance? java.time.LocalDateTime value)
+    (let [report-tz (get-report-timezone-id-safely)]
+      (if report-tz
+        (let [server-tz     (clickhouse-timezone/get-default-timezone)
+              zone-id       (java.time.ZoneId/of server-tz)
+              odt           (.toOffsetDateTime (java.time.ZonedDateTime/of value zone-id))
+              odt-report-tz (.atZoneSameInstant odt (java.time.ZoneId/of report-tz))]
+          (.toLocalDateTime odt-report-tz))
+        value))
+    value))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
-    (read-timestamp-column rs rsmeta i)))
+    (let [r (read-timestamp-column rs rsmeta i)]
+      ;; (println "### Types/TIMESTAMP" r (.getClass r) " ### converted" (to-local-date-time-in-report-timezone r))
+      (to-local-date-time-in-report-timezone r))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
-    (read-timestamp-column rs rsmeta i)))
+    (let [r (read-timestamp-column rs rsmeta i)]
+      ;; (println "### Types/TIMESTAMP_WITH_TIMEZONE" r)
+      r)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
