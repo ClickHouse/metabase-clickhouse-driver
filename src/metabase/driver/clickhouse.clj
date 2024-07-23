@@ -289,7 +289,7 @@
                           (if (re-matches #".*\".*\".*" r)
                             r
                             (format "\"%s\"" r)))
-        quoted-role (->> (clojure.string/split role1 #",")
+        quoted-role (->> (clojure.string/split role #",")
                            (map quote-if-needed)
                            (clojure.string/join ","))]
     (format "SET ROLE %s;" quoted-role)))
