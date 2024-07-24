@@ -14,8 +14,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honey-sql-2 :as h2x]
-            [metabase.util.log :as log])
+            [metabase.util.honey-sql-2 :as h2x])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
@@ -471,30 +470,15 @@
         (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toOffsetTime r)
         :else r))
 
-(defn- local-date-time->maybe-local-time
-  [^LocalDateTime r]
-  (cond (nil? r) nil
-        (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
-        :else r))
-
-(defn- get-date-or-time-type
-  [tz-check-fn ^ResultSet rs ^Integer i]
-  (if (tz-check-fn)
-    (offset-date-time->maybe-offset-time (.getObject rs i OffsetDateTime))
-    (local-date-time->maybe-local-time (.getObject rs i LocalDateTime))))
-
 (defn- read-timestamp-column
   [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
     (cond
-      ;; DateTime64 with tz info
-      (str/starts-with? db-type "datetime64")
-      (get-date-or-time-type #(> (count db-type) 13) rs i)
       ;; DateTime with tz info
       (str/starts-with? db-type "datetime")
-      (get-date-or-time-type #(> (count db-type) 8) rs i)
+      (offset-date-time->maybe-offset-time (.getObject rs i OffsetDateTime))
       ;; _
-      :else (.getObject rs i LocalDateTime))))
+      :else (.getObject rs i OffsetDateTime))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
