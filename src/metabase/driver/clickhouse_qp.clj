@@ -19,12 +19,14 @@
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
+            Instant
             LocalDate
             LocalDateTime
             LocalTime
             OffsetDateTime
             OffsetTime
-            ZonedDateTime]
+            ZonedDateTime
+            ZoneId]
            java.util.Arrays))
 
 ;; (set! *warn-on-reflection* true) ;; isn't enabled because of Arrays/toString call
@@ -67,13 +69,20 @@
 (defn- in-report-timezone
   [expr]
   (let [report-timezone (get-report-timezone-id-safely)
-        lower           (u/lower-case-en (h2x/database-type expr))
-        db-type         (remove-low-cardinality-and-nullable lower)]
+        db-type         (remove-low-cardinality-and-nullable (u/lower-case-en (h2x/database-type expr)))]
+    ;; (println "####### expr" expr "report-timezone" report-timezone "db-type" db-type "condition"
+    ;;          (and report-timezone (string? db-type) (str/starts-with? db-type "datetime")))
     (if (and report-timezone (string? db-type) (str/starts-with? db-type "datetime"))
-      (let [timezone (extract-datetime-timezone db-type)]
-        (if (not (= timezone (u/lower-case-en report-timezone)))
-          [:'toTimeZone expr (h2x/literal report-timezone)]
-          expr))
+      (let [timezone   (extract-datetime-timezone db-type)
+            inner-expr (if (or (nil? timezone) (not (= timezone (u/lower-case-en report-timezone))))
+                         [:'plus
+                          expr
+                          [:'toIntervalSecond
+                           [:'minus
+                            [:'timeZoneOffset expr]
+                            [:'timeZoneOffset [:'toTimeZone expr [:'timezone]]]]]]
+                         expr)]
+        [:'toTimeZone inner-expr (h2x/literal report-timezone)])
       expr)))
 
 (defmethod sql.qp/date [:clickhouse :default]
@@ -86,6 +95,7 @@
 
 (defn- date-extract
   [ch-fn expr db-type]
+  ;;  (println "##### date-extract" ch-fn)
   (-> [ch-fn (in-report-timezone expr)]
       (h2x/with-database-type-info db-type)))
 
@@ -134,6 +144,7 @@
 
 (defn- date-trunc
   [ch-fn expr]
+  ;; (println "##### date-trunc" ch-fn)
   (-> [ch-fn (in-report-timezone expr)]
       (h2x/with-database-type-info (h2x/database-type expr))))
 
@@ -196,21 +207,26 @@
 ;;; ------------------------------------------------------------------------------------
 ;;; HoneySQL forms
 ;;; ------------------------------------------------------------------------------------
-
 (defmethod sql.qp/->honeysql [:clickhouse :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
-  ;; (println "###### :convert-timezone" arg target-timezone source-timezone)
+  ;; (println "###### :convert-timezone" arg target-timezone source-timezone (string? arg) (mbql.u/is-clause? :absolute-datetime arg))
   (let [expr          (sql.qp/->honeysql driver (cond-> arg (string? arg) u.date/parse))
         with-tz-info? (h2x/is-of-type? expr #"(?:nullable\(|lowcardinality\()?(datetime64\(\d, {0,1}'.*|datetime\(.*)")
-        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)]
-    (if (not with-tz-info?)
-      [:'plus
-       expr
-       [:'toIntervalSecond
-        [:'minus
-         [:'timeZoneOffset [:'toTimeZone expr target-timezone]]
-         [:'timeZoneOffset [:'toTimeZone expr source-timezone]]]]]
-      [:'toTimeZone expr target-timezone])))
+        is-absolute?  (mbql.u/is-clause? :absolute-datetime arg)
+        _             (sql.u/validate-convert-timezone-args with-tz-info? target-timezone source-timezone)
+        inner-expr    (if (and (not with-tz-info?) (not is-absolute?))
+                        [:'plus
+                         expr
+                         [:'toIntervalSecond
+                          [:'minus
+                           [:'timeZoneOffset [:'toTimeZone expr (clickhouse-timezone/get-default-timezone)]]
+                           [:'timeZoneOffset [:'toTimeZone expr source-timezone]]]]]
+                        expr)]
+    [:'toTimeZone inner-expr target-timezone]
+    ;; (h2x/with-database-type-info
+    ;;   [:'toTimeZone inner-expr target-timezone]
+    ;;   (format "datetime('%s')" target-timezone))
+    ))
 
 (defmethod sql.qp/current-datetime-honeysql-form :clickhouse
   [_]
@@ -482,48 +498,43 @@
   [tz-check-fn ^ResultSet rs ^Integer i]
   (if (tz-check-fn)
     (offset-date-time->maybe-offset-time (.getObject rs i OffsetDateTime))
-    (local-date-time->maybe-local-time (.getObject rs i LocalDateTime))))
+    (local-date-time->maybe-local-time   (.getObject rs i LocalDateTime))))
 
-(defn- read-timestamp-column
-  [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
-    ;; (println "#### read-timestamp-column: db-type" db-type)
-    (cond
-      ;; DateTime64 with tz info
-      (str/starts-with? db-type "datetime64")
-      (get-date-or-time-type #(> (count db-type) 13) rs i)
-      ;; DateTime with tz info
-      (str/starts-with? db-type "datetime")
-      (get-date-or-time-type #(> (count db-type) 8) rs i)
-      ;; _
-      :else (.getObject rs i LocalDateTime))))
+(defn- get-tz-offset-seconds
+  [^OffsetDateTime odt]
+  (.getTotalSeconds (.getOffset odt)))
 
-(defn- to-local-date-time-in-report-timezone
-  [value]
-  (if (instance? java.time.LocalDateTime value)
-    (let [report-tz (get-report-timezone-id-safely)]
-      (if report-tz
-        (let [server-tz     (clickhouse-timezone/get-default-timezone)
-              zone-id       (java.time.ZoneId/of server-tz)
-              odt           (.toOffsetDateTime (java.time.ZonedDateTime/of value zone-id))
-              odt-report-tz (.atZoneSameInstant odt (java.time.ZoneId/of report-tz))]
-          (.toLocalDateTime odt-report-tz))
-        value))
-    value))
+(defn- ts-millis->offset-date-time
+  [ts tz]
+  (OffsetDateTime/ofInstant (Instant/ofEpochMilli ts) (ZoneId/of tz)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
-  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  [_ ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
   (fn []
-    (let [r (read-timestamp-column rs rsmeta i)]
-      ;; (println "### Types/TIMESTAMP" r (.getClass r) " ### converted" (to-local-date-time-in-report-timezone r))
-      (to-local-date-time-in-report-timezone r))))
+    (local-date-time->maybe-local-time
+     (let [ts         (.getTime (.getTimestamp rs i))
+           server-tz  (clickhouse-timezone/get-default-timezone)
+           odt-server (ts-millis->offset-date-time ts server-tz)]
+       (if-let [report-tz (get-report-timezone-id-safely)]
+         (let [odt-report  (ts-millis->offset-date-time ts report-tz)
+               offset-diff (- (get-tz-offset-seconds odt-server) (get-tz-offset-seconds odt-report))
+               odt-result  (.plusSeconds odt-report offset-diff)]
+           (.toLocalDateTime odt-result))
+         (.toLocalDateTime odt-server))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
-    (let [r (read-timestamp-column rs rsmeta i)]
-      ;; (println "### Types/TIMESTAMP_WITH_TIMEZONE" r)
-      r)))
+    (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
+      (cond
+        ;; DateTime64 with tz info
+        (str/starts-with? db-type "datetime64")
+        (get-date-or-time-type #(> (count db-type) 13) rs i)
+        ;; DateTime with tz info
+        (str/starts-with? db-type "datetime")
+        (get-date-or-time-type #(> (count db-type) 8) rs i)
+        ;; _
+        :else (.getObject rs i LocalDateTime)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
