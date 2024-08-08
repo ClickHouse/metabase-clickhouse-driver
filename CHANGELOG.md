@@ -1,3 +1,9 @@
+# 1.50.3
+
+### Improvements
+
+* The driver no longer explicitly sets `allow_experimental_analyzer=0` settings on the connection level; the [new ClickHouse analyzer](https://clickhouse.com/docs/en/operations/analyzer) is now enabled by default.
+
 # 1.50.2
 
 ### Bug fixes
