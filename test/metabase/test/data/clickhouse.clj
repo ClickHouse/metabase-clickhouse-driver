@@ -34,8 +34,7 @@
    :product_name "metabase/1.50.2"
    :databaseTerm "schema"
    :remember_last_set_roles true
-   :http_connection_provider "HTTP_URL_CONNECTION"
-   :custom_http_params "allow_experimental_analyzer=0"})
+   :http_connection_provider "HTTP_URL_CONNECTION"})
 
 ;; (def ^:private time-type-comment "COMMENT 'time'")
 ;; (def ^:private time-type (format "DateTime64(3) %s" time-type-comment))
