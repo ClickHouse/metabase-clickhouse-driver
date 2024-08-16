@@ -286,7 +286,7 @@
 (defmethod driver.sql/set-role-statement :clickhouse
   [_ role]
   (let [quote-if-needed (fn [r]
-                          (if (or (re-matches #".*\".*\".*" r) (= role "NONE"))
+                          (if (or (re-matches #"\".*\"" r) (= role "NONE"))
                             r
                             (format "\"%s\"" r)))
         quoted-role (->> (clojure.string/split role #",")
