@@ -29,7 +29,7 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.50.2")
+(def ^:private product-name "metabase/1.50.3")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -74,9 +74,7 @@
       ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
       :databaseTerm "schema"
       :remember_last_set_roles true
-      :http_connection_provider "HTTP_URL_CONNECTION"
-      ;; See https://github.com/ClickHouse/ClickHouse/issues/64487
-      :custom_http_params "allow_experimental_analyzer=0"}
+      :http_connection_provider "HTTP_URL_CONNECTION"}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
@@ -87,10 +85,9 @@
    options
    (fn [^java.sql.Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
-       (let [settings (if session-timezone
-                        (format "allow_experimental_analyzer=0,session_timezone=%s" session-timezone)
-                        "allow_experimental_analyzer=0")]
-         (.setClientInfo conn com.clickhouse.jdbc.ClickHouseConnection/PROP_CUSTOM_HTTP_PARAMS settings))
+       (when session-timezone
+         (.setClientInfo conn com.clickhouse.jdbc.ClickHouseConnection/PROP_CUSTOM_HTTP_PARAMS
+                         (format "session_timezone=%s" session-timezone)))
 
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
