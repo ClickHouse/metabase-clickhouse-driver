@@ -202,7 +202,7 @@
     ::upload/boolean                  "Nullable(Boolean)"
     ::upload/date                     "Nullable(Date32)"
     ::upload/datetime                 "Nullable(DateTime64(3))"
-    ::upload/offset-datetime          "Nullable(DateTime64(3))"))
+    ::upload/offset-datetime          nil))
 
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
@@ -266,6 +266,7 @@
                    java.math.BigInteger     (.setObject ps idx v)
                    java.time.LocalDate      (.setObject ps idx v)
                    java.time.LocalDateTime  (.setObject ps idx v)
+                   java.time.OffsetDateTime (.setObject ps idx v)
                    (.setString ps idx v)))
                (.addBatch ps)))
            (doall (.executeBatch ps))))))))
