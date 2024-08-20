@@ -1,3 +1,9 @@
+# 1.50.4
+
+### Bug fixes
+
+* Fixed an error while uploading a CSV with an offset datetime column ([#263](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/263), [crisptrutski](https://github.com/crisptrutski)).
+
 # 1.50.3
 
 ### Improvements
