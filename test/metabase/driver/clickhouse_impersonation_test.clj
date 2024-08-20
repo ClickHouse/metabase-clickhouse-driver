@@ -29,6 +29,12 @@
        (fn [^java.sql.Connection conn]
          (driver/set-role! :clickhouse conn "metabase_test_role")))
       (is true))
+    (testing "does not throw with a role containing hyphens"
+      (sql-jdbc.execute/do-with-connection-with-options
+        :clickhouse spec nil
+        (fn [^java.sql.Connection conn]
+          (driver/set-role! :clickhouse conn "metabase-test-role")))
+      (is true))
     (testing "does not throw with the default role"
       (sql-jdbc.execute/do-with-connection-with-options
        :clickhouse spec nil
@@ -79,9 +85,10 @@
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` (i Int32) ENGINE = MergeTree ORDER BY (i);"
                          "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
                          "CREATE ROLE IF NOT EXISTS `metabase_test_role`;"
+                         "CREATE ROLE IF NOT EXISTS `metabase-test-role`;"
                          "CREATE USER IF NOT EXISTS `metabase_test_user` NOT IDENTIFIED;"
-                         "GRANT SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`;"
-                         "GRANT `metabase_test_role` TO `metabase_test_user`;"]]
+                         "GRANT SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`,`metabase-test-role`;"
+                         "GRANT `metabase_test_role`, `metabase-test-role` TO `metabase_test_user`;"]]
          (ctd/exec-statements statements single-node-port-details)
          (do-with-new-metadata-provider
           single-node-details
@@ -99,9 +106,10 @@
                           ORDER BY (i);"
                          "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
                          "CREATE ROLE IF NOT EXISTS `metabase_test_role` ON CLUSTER '{cluster}';"
+                         "CREATE ROLE IF NOT EXISTS `metabase-test-role` ON CLUSTER '{cluster}';"
                          "CREATE USER IF NOT EXISTS `metabase_test_user` ON CLUSTER '{cluster}' NOT IDENTIFIED;"
-                         "GRANT ON CLUSTER '{cluster}' SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`;"
-                         "GRANT ON CLUSTER '{cluster}' `metabase_test_role` TO `metabase_test_user`;"]]
+                         "GRANT ON CLUSTER '{cluster}' SELECT ON `metabase_test_role_db`.* TO `metabase_test_role`, `metabase-test-role`;"
+                         "GRANT ON CLUSTER '{cluster}' `metabase_test_role`, `metabase-test-role` TO `metabase_test_user`;"]]
          (ctd/exec-statements statements cluster-port-details)
          (do-with-new-metadata-provider
           cluster-details
