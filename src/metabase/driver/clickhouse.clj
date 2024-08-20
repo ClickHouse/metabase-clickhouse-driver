@@ -29,7 +29,7 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.50.3")
+(def ^:private product-name "metabase/1.50.4")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -202,7 +202,7 @@
     ::upload/boolean                  "Nullable(Boolean)"
     ::upload/date                     "Nullable(Date32)"
     ::upload/datetime                 "Nullable(DateTime64(3))"
-    ::upload/offset-datetime          "Nullable(DateTime64(3))"))
+    ::upload/offset-datetime          nil))
 
 (defmethod driver/table-name-length-limit :clickhouse
   [_driver]
@@ -266,7 +266,8 @@
                    java.math.BigInteger     (.setObject ps idx v)
                    java.time.LocalDate      (.setObject ps idx v)
                    java.time.LocalDateTime  (.setObject ps idx v)
-                   (.setString ps idx v)))
+                   java.time.OffsetDateTime (.setObject ps idx v)
+                   (.setString ps idx (.toString v))))
                (.addBatch ps)))
            (doall (.executeBatch ps))))))))
 
