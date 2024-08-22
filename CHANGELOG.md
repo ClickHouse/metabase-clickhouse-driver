@@ -1,3 +1,9 @@
+# 1.50.5
+
+### Bug fixes
+
+* Fixed an error that could occur while setting roles containing hyphens for connection impersonation ([#266](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/266), [sharankow](https://github.com/sharankow)).
+
 # 1.50.4
 
 ### Bug fixes
