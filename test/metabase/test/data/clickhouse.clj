@@ -31,7 +31,7 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.50.4"
+   :product_name "metabase/1.50.5"
    :databaseTerm "schema"
    :remember_last_set_roles true
    :http_connection_provider "HTTP_URL_CONNECTION"})
