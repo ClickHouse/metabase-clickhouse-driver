@@ -1,3 +1,9 @@
+# 1.50.6
+
+### Bug fixes
+
+* Fixed null pointer exception on CSV insert ([#268](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/268), [crisptrutski](https://github.com/crisptrutski)).
+
 # 1.50.5
 
 ### Bug fixes
