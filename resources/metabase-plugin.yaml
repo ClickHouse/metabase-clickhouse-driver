@@ -1,6 +1,6 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 1.50.5
+  version: 1.50.6
   description: Allows Metabase to connect to ClickHouse databases.
 contact-info:
   name: ClickHouse
