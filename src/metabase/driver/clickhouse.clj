@@ -267,7 +267,7 @@
                    java.time.LocalDate      (.setObject ps idx v)
                    java.time.LocalDateTime  (.setObject ps idx v)
                    java.time.OffsetDateTime (.setObject ps idx v)
-                   (.setString ps idx (.toString v))))
+                   (.setString ps idx (str v))))
                (.addBatch ps)))
            (doall (.executeBatch ps))))))))
 
