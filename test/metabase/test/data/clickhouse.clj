@@ -31,13 +31,11 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.50.6"
+   :product_name "metabase/1.50.7"
    :databaseTerm "schema"
    :remember_last_set_roles true
-   :http_connection_provider "HTTP_URL_CONNECTION"})
-
-;; (def ^:private time-type-comment "COMMENT 'time'")
-;; (def ^:private time-type (format "DateTime64(3) %s" time-type-comment))
+   :http_connection_provider "HTTP_URL_CONNECTION"
+   :custom_http_params ""})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]         [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")

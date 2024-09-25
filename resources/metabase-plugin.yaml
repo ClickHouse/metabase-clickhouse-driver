@@ -1,6 +1,6 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 1.50.6
+  version: 1.50.7
   description: Allows Metabase to connect to ClickHouse databases.
 contact-info:
   name: ClickHouse
@@ -36,9 +36,14 @@ driver:
       type: boolean
       visible-if:
         advanced-options: true
+    - name: clickhouse-settings
+      display-name: ClickHouse settings (comma-separated)
+      placeholder: "allow_experimental_analyzer=1,max_result_rows=100"
+      visible-if:
+        advanced-options: true
     - merge:
         - additional-options
-        - placeholder: "connection_timeout=1000&max_rows_to_group_by=42"
+        - placeholder: "connection_timeout=1000&socket_timeout=300000"
     - default-advanced-options
   connection-properties-include-tunnel-config: true
 init:

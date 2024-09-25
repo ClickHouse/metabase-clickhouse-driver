@@ -1,3 +1,9 @@
+# 1.50.7
+
+### Improvements
+
+* Added a configuration field (under the "advanced options", hidden by default) to override certain ClickHouse settings ([#272](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/272)).
+
 # 1.50.6
 
 ### Bug fixes

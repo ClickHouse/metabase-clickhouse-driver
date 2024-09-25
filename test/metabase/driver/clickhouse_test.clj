@@ -55,7 +55,8 @@
                :user "bob"
                :password "qaz"
                :use_no_proxy true
-               :ssl true})
+               :ssl true
+               :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
              (sql-jdbc.conn/connection-details->spec
               :clickhouse
               {:host "myclickhouse"
@@ -65,7 +66,8 @@
                :dbname "foo"
                :use-no-proxy true
                :additional-options "sessionTimeout=42"
-               :ssl true}))))
+               :ssl true
+               :clickhouse-settings "max_threads=42,allow_experimental_analyzer=0"}))))
     (testing "nil dbname handling"
       (is (= ctd/default-connection-params
              (sql-jdbc.conn/connection-details->spec

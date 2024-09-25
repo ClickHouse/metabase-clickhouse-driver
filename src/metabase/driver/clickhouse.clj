@@ -29,7 +29,7 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.50.6")
+(def ^:private product-name "metabase/1.50.7")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -55,7 +55,7 @@
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
-        {:keys [user password dbname host port ssl use-no-proxy]} details
+        {:keys [user password dbname host port ssl use-no-proxy clickhouse-settings]} details
         ;; if multiple databases were specified for the connection,
         ;; use only the first dbname as the "main" one
         dbname (first (str/split (str/trim dbname) #" "))]
@@ -74,7 +74,9 @@
       ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
       :databaseTerm "schema"
       :remember_last_set_roles true
-      :http_connection_provider "HTTP_URL_CONNECTION"}
+      :http_connection_provider "HTTP_URL_CONNECTION"
+      ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
+      :custom_http_params (or clickhouse-settings "")}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
