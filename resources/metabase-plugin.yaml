@@ -1,6 +1,6 @@
 info:
   name: Metabase ClickHouse Driver
-  version: 1.50.6
+  version: 1.50.7
   description: Allows Metabase to connect to ClickHouse databases.
 contact-info:
   name: ClickHouse
@@ -34,6 +34,11 @@ driver:
       display-name: Disable system wide proxy settings
       default: false
       type: boolean
+      visible-if:
+        advanced-options: true
+    - name: clickhouse-settings
+      display-name: ClickHouse settings (comma-separated)
+      placeholder: "allow_experimental_analyzer=1,max_result_rows=100"
       visible-if:
         advanced-options: true
     - merge:
