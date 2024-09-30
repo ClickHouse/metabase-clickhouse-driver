@@ -218,21 +218,32 @@
   (let [parts (str/split (name s) #"\.")]
     (str/join "." (map #(str "`" % "`") parts))))
 
+
+(defmacro ^:private with-quoting [driver & body]
+  `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
+             sql/*quoted*  true]
+     ~@body))
+
+(defn- quote-identifier [ref]
+  [:raw (sql/format-entity ref)])
+
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
    so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
   [driver table-name column-definitions & {:keys [primary-key]}]
-  (str/join "\n"
-            [(first (sql/format {:create-table (keyword table-name)
-                                 :with-columns (mapv (fn [[name type-spec]]
-                                                       (vec (cons name [[:raw type-spec]])))
-                                                     column-definitions)}
-                                :quoted true
-                                :dialect (sql.qp/quote-style driver)))
-             "ENGINE = MergeTree"
-             (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
-             ;; disable insert idempotency to allow duplicate inserts
-             "SETTINGS replicated_deduplication_window = 0"]))
+  (with-quoting driver
+    (str/join "\n"
+              [(first (sql/format {:create-table (keyword table-name)
+                                   :with-columns (mapv (fn [[col-name type-spec]]
+                                                         (vec (cons (quote-identifier col-name)
+                                                                    [[:raw type-spec]])))
+                                                       column-definitions)}
+                                  :quoted true
+                                  :dialect (sql.qp/quote-style driver)))
+               "ENGINE = MergeTree"
+               (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
+               ;; disable insert idempotency to allow duplicate inserts
+               "SETTINGS replicated_deduplication_window = 0"])))
 
 (defmethod driver/create-table! :clickhouse
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
