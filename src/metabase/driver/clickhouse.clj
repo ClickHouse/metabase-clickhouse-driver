@@ -41,6 +41,7 @@
                               :set-timezone                    true
                               :convert-timezone                true
                               :test/jvm-timezone-setting       false
+                              :test/time-type                  false
                               :schemas                         true
                               :datetime-diff                   true
                               :upload-with-auto-pk             false
@@ -190,7 +191,8 @@
 
 (defmethod ddl.i/format-name :clickhouse
   [_ table-or-field-name]
-  (str/replace table-or-field-name #"-" "_"))
+  (when table-or-field-name
+    (str/replace table-or-field-name #"-" "_")))
 
 ;;; ------------------------------------------ Connection Impersonation ------------------------------------------
 
@@ -261,6 +263,7 @@
              (when (seq row)
                (doseq [[idx v] (map-indexed (fn [x y] [(inc x) y]) row)]
                  (condp isa? (type v)
+                   nil                      (.setString ps idx nil)
                    java.lang.String         (.setString ps idx v)
                    java.lang.Boolean        (.setBoolean ps idx v)
                    java.lang.Long           (.setLong ps idx v)

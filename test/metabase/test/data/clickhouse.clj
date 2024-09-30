@@ -125,16 +125,14 @@
 (defmethod execute/execute-sql! :clickhouse [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defmethod load-data/load-data! :clickhouse [& args]
-  (apply load-data/load-data-maybe-add-ids-chunked! args))
+(defmethod load-data/row-xform :clickhouse [_driver _dbdef tabledef]
+  (apply load-data/maybe-add-ids-xform tabledef))
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
-
-(defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
