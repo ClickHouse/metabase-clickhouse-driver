@@ -238,7 +238,9 @@
               [(first (sql/format {:create-table (keyword table-name)
                                    :with-columns (mapv (fn [[col-name type-spec]]
                                                          (vec (cons (quote-identifier col-name)
-                                                                    [[:raw type-spec]])))
+                                                                    (if (string? type-spec)
+                                                                      [[:raw type-spec]]
+                                                                      type-spec))))
                                                        column-definitions)}
                                   :quoted true
                                   :dialect (sql.qp/quote-style driver)))
