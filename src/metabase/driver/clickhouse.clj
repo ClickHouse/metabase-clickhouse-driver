@@ -262,35 +262,6 @@
                                    (.query ^String (create-table!-sql driver table-name column-definitions :primary-key primary-key))
                                    (.executeAndWait))]))))))
 
-(defmethod driver/add-columns! :clickhouse
-  [driver db-id table-name column-definitions & {:as _opts}]
-  (with-quoting driver
-    (let [sql (first (sql/format
-                      {:alter-table (keyword table-name)
-                       :add-column (map (fn [[column-name type-and-constraints]]
-                                          (vec (cons (quote-identifier column-name)
-                                                     (if (string? type-and-constraints)
-                                                       [[:raw type-and-constraints]]
-                                                       type-and-constraints))))
-                                        column-definitions)}
-                      :quoted true
-                      :dialect (sql.qp/quote-style driver)))]
-      (qp.writeback/execute-write-sql! db-id sql))))
-
-
-(defmethod sql-jdbc.sync/alter-columns-sql :clickhouse
-  [driver table-name column-definitions]
-  (with-quoting driver
-    (first (sql/format {:alter-table  (keyword table-name)
-                        :alter-column (map (fn [[column-name type-and-constraints]]
-                                             (vec (cons (quote-identifier column-name)
-                                                        (if (string? type-and-constraints)
-                                                          [[:raw type-and-constraints]]
-                                                          type-and-constraints))))
-                                           column-definitions)}
-                       :quoted true
-                       :dialect (sql.qp/quote-style driver)))))
-
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
   (when (seq values)
