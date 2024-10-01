@@ -262,7 +262,7 @@
                                    (.query ^String (create-table!-sql driver table-name column-definitions :primary-key primary-key))
                                    (.executeAndWait))]))))))
 
-(defmethod driver/add-columns! :sql-jdbc
+(defmethod driver/add-columns! :clickhouse
   [driver db-id table-name column-definitions & {:as _opts}]
   (with-quoting driver
     (let [sql (first (sql/format
