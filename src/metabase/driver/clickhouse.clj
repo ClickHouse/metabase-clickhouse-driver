@@ -3,7 +3,6 @@
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
-            [honey.sql :as sql]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
@@ -12,15 +11,13 @@
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
+            [metabase.driver.sql-jdbc :as sql-jdbc]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.lib.metadata :as lib.metadata]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.writeback :as qp.writeback]
             [metabase.upload :as upload]
             [metabase.util :as u]
             [metabase.util.log :as log])
@@ -220,34 +217,16 @@
   (let [parts (str/split (name s) #"\.")]
     (str/join "." (map #(str "`" % "`") parts))))
 
-
-(defmacro ^:private with-quoting [driver & body]
-  `(binding [sql/*dialect* (sql/get-dialect (sql.qp/quote-style ~driver))
-             sql/*quoted*  true]
-     ~@body))
-
-(defn- quote-identifier [ref]
-  [:raw (sql/format-entity ref)])
-
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
    so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
-  [driver table-name column-definitions & {:keys [primary-key]}]
-  (with-quoting driver
-    (str/join "\n"
-              [(first (sql/format {:create-table (keyword table-name)
-                                   :with-columns (mapv (fn [[col-name type-spec]]
-                                                         (vec (cons (quote-identifier col-name)
-                                                                    (if (string? type-spec)
-                                                                      [[:raw type-spec]]
-                                                                      type-spec))))
-                                                       column-definitions)}
-                                  :quoted true
-                                  :dialect (sql.qp/quote-style driver)))
+  [driver table-name column-definitions & {:keys [primary-key] :as opts}]
+  (str/join "\n"
+              [(#'sql-jdbc/create-table!-sql :sql-jdbc table-name column-definitions opts)
                "ENGINE = MergeTree"
                (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
                ;; disable insert idempotency to allow duplicate inserts
-               "SETTINGS replicated_deduplication_window = 0"])))
+               "SETTINGS replicated_deduplication_window = 0"]))
 
 (defmethod driver/create-table! :clickhouse
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
