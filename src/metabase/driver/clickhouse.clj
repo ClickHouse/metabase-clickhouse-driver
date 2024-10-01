@@ -220,13 +220,13 @@
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
    so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
-  [driver table-name column-definitions & {:keys [primary-key] :as opts}]
+  [_driver table-name column-definitions & {:keys [primary-key] :as opts}]
   (str/join "\n"
-              [(#'sql-jdbc/create-table!-sql :sql-jdbc table-name column-definitions opts)
-               "ENGINE = MergeTree"
-               (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
-               ;; disable insert idempotency to allow duplicate inserts
-               "SETTINGS replicated_deduplication_window = 0"]))
+            [(#'sql-jdbc/create-table!-sql :sql-jdbc table-name column-definitions opts)
+             "ENGINE = MergeTree"
+             (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
+             ;; disable insert idempotency to allow duplicate inserts
+             "SETTINGS replicated_deduplication_window = 0"]))
 
 (defmethod driver/create-table! :clickhouse
   [driver db-id table-name column-definitions & {:keys [primary-key]}]
@@ -290,8 +290,7 @@
         quoted-role (->> (clojure.string/split role #",")
                          (map quote-if-needed)
                          (clojure.string/join ","))]
-    (format "SET ROLE %s;" quoted-role))
-  )
+    (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
