@@ -126,7 +126,7 @@
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod load-data/row-xform :clickhouse [_driver _dbdef tabledef]
-  (apply load-data/maybe-add-ids-xform tabledef))
+  (load-data/maybe-add-ids-xform tabledef))
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
