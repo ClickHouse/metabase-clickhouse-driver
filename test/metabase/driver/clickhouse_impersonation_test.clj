@@ -31,9 +31,9 @@
       (is true))
     (testing "does not throw with a role containing hyphens"
       (sql-jdbc.execute/do-with-connection-with-options
-        :clickhouse spec nil
-        (fn [^java.sql.Connection conn]
-          (driver/set-role! :clickhouse conn "metabase-test-role")))
+       :clickhouse spec nil
+       (fn [^java.sql.Connection conn]
+         (driver/set-role! :clickhouse conn "metabase-test-role")))
       (is true))
     (testing "does not throw with the default role"
       (sql-jdbc.execute/do-with-connection-with-options
