@@ -124,8 +124,8 @@
 (defmethod execute/execute-sql! :clickhouse [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defmethod load-data/load-data! :clickhouse [& args]
-  (apply load-data/load-data-maybe-add-ids-chunked! args))
+(defmethod load-data/row-xform :clickhouse [_driver _dbdef tabledef]
+  (load-data/maybe-add-ids-xform tabledef))
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
