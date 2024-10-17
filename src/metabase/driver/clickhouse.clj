@@ -29,7 +29,7 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.50.7")
+(def ^:private product-name "metabase/1.51.0")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -290,9 +290,9 @@
                           (if (or (re-matches #"\".*\"" r) (= role default-role))
                             r
                             (format "\"%s\"" r)))
-        quoted-role (->> (clojure.string/split role #",")
+        quoted-role (->> (str/split role #",")
                          (map quote-if-needed)
-                         (clojure.string/join ","))]
+                         (str/join ","))]
     (format "SET ROLE %s;" quoted-role))
   )
 

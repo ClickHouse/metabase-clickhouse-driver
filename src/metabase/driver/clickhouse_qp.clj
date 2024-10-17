@@ -9,13 +9,11 @@
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp :refer [add-interval-honeysql-form]]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.legacy-mbql.util :as mbql.u]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honey-sql-2 :as h2x]
-            [metabase.util.log :as log])
+            [metabase.util.honey-sql-2 :as h2x])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
@@ -551,28 +549,28 @@
       (str/starts-with? (.getColumnTypeName rsmeta i) "IPv") (ip-column->string rs i)
       :else (.getString rs i))))
 
-(defmethod unprepare/unprepare-value [:clickhouse LocalDate]
+(defmethod sql.qp/inline-value [:clickhouse LocalDate]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse LocalTime]
+(defmethod sql.qp/inline-value [:clickhouse LocalTime]
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSS" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse OffsetTime]
+(defmethod sql.qp/inline-value [:clickhouse OffsetTime]
   [_ t]
   (format "'%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
+(defmethod sql.qp/inline-value [:clickhouse LocalDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
+(defmethod sql.qp/inline-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
   (format "%s('%s')"
           (if (zero? (.getNano t)) "parseDateTimeBestEffort" "parseDateTime64BestEffort")
           (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
-(defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
+(defmethod sql.qp/inline-value [:clickhouse ZonedDateTime]
   [_ t]
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))

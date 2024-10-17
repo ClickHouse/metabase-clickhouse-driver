@@ -1,3 +1,7 @@
+# 1.51.0
+
+Adds Metabase 51 support.
+
 # 1.50.7
 
 ### Improvements

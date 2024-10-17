@@ -15,7 +15,6 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
-   [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.util.log :as log]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import    [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
@@ -31,7 +30,7 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.50.7"
+   :product_name "metabase/1.51.0"
    :databaseTerm "schema"
    :remember_last_set_roles true
    :http_connection_provider "HTTP_URL_CONNECTION"
@@ -133,8 +132,6 @@
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
-
-(defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
