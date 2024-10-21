@@ -10,7 +10,7 @@ on:
   pull_request:
 
 env:
-  METABASE_VERSION: v0.50.6
+  METABASE_VERSION: v0.50.30.1
 
 jobs:
   check-local-current-version:
