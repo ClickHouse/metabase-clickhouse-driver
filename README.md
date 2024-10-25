@@ -54,11 +54,11 @@ The [CSV Uploads feature](https://www.metabase.com/docs/latest/databases/uploads
 6. Make sure you are the in the directory where your `metabase.jar` lives.
 7. Run `MB_PLUGINS_DIR=./plugins; java -jar metabase.jar`.
 
-For example [(using Metabase v0.49.3 and ClickHouse driver 1.4.0)](#choosing-the-right-version):
+For example [(using Metabase v0.51.1.2 and ClickHouse driver 1.51.0)](#choosing-the-right-version):
 
 ```bash
-export METABASE_VERSION=v0.49.3
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.4.0
+export METABASE_VERSION=v0.51.1.2
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.51.0
 
 mkdir -p mb/plugins && cd mb
 curl -o metabase.jar https://downloads.metabase.com/$METABASE_VERSION/metabase.jar
@@ -71,8 +71,8 @@ MB_PLUGINS_DIR=./plugins; java -jar metabase.jar
 Alternatively, if you don't want to run Metabase Jar, you can use a Docker image:
 
 ```bash
-export METABASE_DOCKER_VERSION=v0.49.3
-export METABASE_CLICKHOUSE_DRIVER_VERSION=1.4.0
+export METABASE_VERSION=v0.51.1.2
+export METABASE_CLICKHOUSE_DRIVER_VERSION=1.51.0
 
 mkdir -p mb/plugins && cd mb
 curl -L -o plugins/ch.jar https://github.com/ClickHouse/metabase-clickhouse-driver/releases/download/$METABASE_CLICKHOUSE_DRIVER_VERSION/clickhouse.metabase-driver.jar
@@ -101,7 +101,8 @@ docker run -d -p 3000:3000 \
 | 0.48.x           | 1.3.4          |
 | 0.49.x           | 1.4.0          |
 | 0.49.14+         | 1.5.1          |
-| 0.50.x           | 1.50.2         |
+| 0.50.x           | 1.50.7         |
+| 0.51.x           | 1.51.0         |
 
 After Metabase 0.50.0, a new naming convention exists for the driver's releases. The new one is intended to reflect the Metabase version the driver is supposed to run on. For example, the driver version 1.50.0 means that it should be used with Metabase v0.50.x or Metabase EE 1.50.x _only_, and it is _not guaranteed_ that this particular version of the driver can work with the previous or the following versions of Metabase.
 
@@ -110,10 +111,10 @@ After Metabase 0.50.0, a new naming convention exists for the driver's releases.
 You can use a convenience script `build_docker_image.sh`, which takes three arguments: Metabase version, ClickHouse driver version, and the desired final Docker image tag.
 
 ```bash
-./build_docker_image.sh v0.49.3 1.4.0 my-metabase-with-clickhouse:v0.0.1
+./build_docker_image.sh v0.51.1.2 1.51.0 my-metabase-with-clickhouse:v0.0.1
 ```
 
-where `v0.49.3` is Metabase version, `1.4.0` is ClickHouse driver version, and `my-metabase-with-clickhouse:v0.0.1` being the tag.
+where `v0.51.1.2` is Metabase version, `1.51.0` is ClickHouse driver version, and `my-metabase-with-clickhouse:v0.0.1` being the tag.
 
 Then you should be able to run it:
 
@@ -127,7 +128,7 @@ or use it with Docker compose, for example:
 version: '3.8'
 services:
   clickhouse:
-    image: 'clickhouse/clickhouse-server:24.3-alpine'
+    image: 'clickhouse/clickhouse-server:24.8-alpine'
     container_name: 'metabase-clickhouse-server'
     ports:
       - '8123:8123'
