@@ -28,14 +28,13 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.50.7")
+(def ^:private product-name "metabase/1.51.0")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
-                              :foreign-keys                    (not config/is-test?)
                               :now                             true
                               :set-timezone                    true
                               :convert-timezone                true
@@ -45,7 +44,10 @@
                               :datetime-diff                   true
                               :upload-with-auto-pk             false
                               :window-functions/offset         false
-                              :left-join                       false}]
+                              :window-functions/cumulative     (not config/is-test?)
+                              :left-join                       (not config/is-test?)
+                              :describe-fks                    false
+                              :metadata/key-constraints        false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
