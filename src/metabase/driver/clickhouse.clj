@@ -44,7 +44,8 @@
                               :schemas                         true
                               :datetime-diff                   true
                               :upload-with-auto-pk             false
-                              :window-functions/offset         false}]
+                              :window-functions/offset         false
+                              :left-join                       false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
