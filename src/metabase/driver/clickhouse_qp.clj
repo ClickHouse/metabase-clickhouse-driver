@@ -14,8 +14,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honey-sql-2 :as h2x]
-            [metabase.util.log :as log])
+            [metabase.util.honey-sql-2 :as h2x])
   (:import [com.clickhouse.data.value ClickHouseArrayValue]
            [java.sql ResultSet ResultSetMetaData Types]
            [java.time
@@ -134,8 +133,7 @@
 
 (defn- date-trunc
   [ch-fn expr]
-  (-> [ch-fn (in-report-timezone expr)]
-      (h2x/with-database-type-info (h2x/database-type expr))))
+  [ch-fn (in-report-timezone expr)])
 
 (defn- to-start-of-week
   [expr]

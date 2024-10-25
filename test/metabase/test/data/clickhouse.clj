@@ -31,7 +31,7 @@
    :ssl false
    :use_no_proxy false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.50.7"
+   :product_name "metabase/1.51.0"
    :databaseTerm "schema"
    :remember_last_set_roles true
    :http_connection_provider "HTTP_URL_CONNECTION"
@@ -125,16 +125,14 @@
 (defmethod execute/execute-sql! :clickhouse [& args]
   (apply execute/sequentially-execute-sql! args))
 
-(defmethod load-data/load-data! :clickhouse [& args]
-  (apply load-data/load-data-maybe-add-ids-chunked! args))
+(defmethod load-data/row-xform :clickhouse [_driver _dbdef tabledef]
+  (load-data/maybe-add-ids-xform tabledef))
 
 (defmethod sql.tx/pk-sql-type :clickhouse [_] "Int32")
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
-
-(defmethod tx/supports-time-type? :clickhouse [_driver] false)
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
@@ -147,7 +145,7 @@
   [f]
   (when (not @test-db-initialized?)
     (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})]
-      (println "Executing create-test-db! with details:" details)
+      ;; (println "Executing create-test-db! with details:" details)
       (jdbc/with-db-connection
         [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
         (let [statements (as-> (slurp "modules/drivers/clickhouse/test/metabase/test/data/datasets.sql") s
@@ -169,7 +167,7 @@
     {:write? true}
     (fn [^java.sql.Connection conn]
       (doseq [statement statements]
-        (println "Executing:" statement)
+        ;; (println "Executing:" statement)
         (with-open [jdbcStmt (.createStatement conn)]
           (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
                 request (.getRequest clickhouseStmt)]
@@ -188,3 +186,22 @@
       :details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})}]
     (sync-metadata/sync-db-metadata! database)
     (f database)))
+
+(defmethod tx/dataset-already-loaded? :clickhouse
+  [driver dbdef]
+  (let [tabledef       (first (:table-definitions dbdef))
+        db-name        (ddl.i/format-name :clickhouse (:database-name dbdef))
+        table-name     (ddl.i/format-name :clickhouse (:table-name tabledef))
+        details        (tx/dbdef->connection-details :clickhouse :db {:database-name db-name})]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (sql-jdbc.conn/connection-details->spec driver details)
+     {:write? false}
+     (fn [^java.sql.Connection conn]
+       (with-open [rset (.getTables (.getMetaData conn)
+                                    #_catalog        nil
+                                    #_schema-pattern db-name
+                                    #_table-pattern  table-name
+                                    #_types          (into-array String ["TABLE"]))]
+         ;; if the ResultSet returns anything we know the table is already loaded.
+         (.next rset))))))

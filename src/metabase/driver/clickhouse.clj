@@ -3,7 +3,6 @@
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.core.memoize :as memoize]
             [clojure.string :as str]
-            [honey.sql :as sql]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.clickhouse-introspection]
@@ -12,10 +11,10 @@
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql :as driver.sql]
+            [metabase.driver.sql-jdbc :as sql-jdbc]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.lib.metadata :as lib.metadata]
             [metabase.query-processor.store :as qp.store]
@@ -29,22 +28,26 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.50.7")
+(def ^:private product-name "metabase/1.51.0")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
   (sql.u/format-sql-and-fix-params :mysql native-form))
 
 (doseq [[feature supported?] {:standard-deviation-aggregations true
-                              :foreign-keys                    (not config/is-test?)
                               :now                             true
                               :set-timezone                    true
                               :convert-timezone                true
                               :test/jvm-timezone-setting       false
+                              :test/time-type                  false
                               :schemas                         true
                               :datetime-diff                   true
                               :upload-with-auto-pk             false
-                              :window-functions/offset         false}]
+                              :window-functions/offset         false
+                              :window-functions/cumulative     (not config/is-test?)
+                              :left-join                       (not config/is-test?)
+                              :describe-fks                    false
+                              :metadata/key-constraints        false}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -190,7 +193,8 @@
 
 (defmethod ddl.i/format-name :clickhouse
   [_ table-or-field-name]
-  (str/replace table-or-field-name #"-" "_"))
+  (when table-or-field-name
+    (str/replace table-or-field-name #"-" "_")))
 
 ;;; ------------------------------------------ Connection Impersonation ------------------------------------------
 
@@ -219,14 +223,9 @@
 (defn- create-table!-sql
   "Creates a ClickHouse table with the given name and column definitions. It assumes the engine is MergeTree,
    so it only works with Clickhouse Cloud and single node on-premise deployments at the moment."
-  [driver table-name column-definitions & {:keys [primary-key]}]
+  [_driver table-name column-definitions & {:keys [primary-key] :as opts}]
   (str/join "\n"
-            [(first (sql/format {:create-table (keyword table-name)
-                                 :with-columns (mapv (fn [[name type-spec]]
-                                                       (vec (cons name [[:raw type-spec]])))
-                                                     column-definitions)}
-                                :quoted true
-                                :dialect (sql.qp/quote-style driver)))
+            [(#'sql-jdbc/create-table!-sql :sql-jdbc table-name column-definitions opts)
              "ENGINE = MergeTree"
              (format "ORDER BY (%s)" (str/join ", " (map quote-name primary-key)))
              ;; disable insert idempotency to allow duplicate inserts
@@ -261,6 +260,7 @@
              (when (seq row)
                (doseq [[idx v] (map-indexed (fn [x y] [(inc x) y]) row)]
                  (condp isa? (type v)
+                   nil                      (.setString ps idx nil)
                    java.lang.String         (.setString ps idx v)
                    java.lang.Boolean        (.setBoolean ps idx v)
                    java.lang.Long           (.setLong ps idx v)
@@ -293,8 +293,7 @@
         quoted-role (->> (clojure.string/split role #",")
                          (map quote-if-needed)
                          (clojure.string/join ","))]
-    (format "SET ROLE %s;" quoted-role))
-  )
+    (format "SET ROLE %s;" quoted-role)))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]

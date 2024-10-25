@@ -150,7 +150,7 @@
   (mt/test-driver
    :clickhouse
    (let [query             (data/mbql-query venues {:fields [$id] :order-by [[:asc $id]] :limit 5})
-         {compiled :query} (qp.compile/compile-and-splice-parameters query)
+         {compiled :query} (qp.compile/compile-with-inline-parameters query)
          pretty            (driver/prettify-native-form :clickhouse compiled)]
      (testing "compiled"
        (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
