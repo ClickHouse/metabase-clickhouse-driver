@@ -21,10 +21,11 @@
             [metabase.upload :as upload]
             [metabase.util :as u]
             [metabase.util.log :as log])
-  (:import  [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
+  (:import  [com.clickhouse.client.api.query QuerySettings]))
 
 (set! *warn-on-reflection* true)
 
+(System/setProperty "clickhouse.jdbc.v2" "true")
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
@@ -79,7 +80,8 @@
       :remember_last_set_roles true
       :http_connection_provider "HTTP_URL_CONNECTION"
       ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-      :custom_http_params (or clickhouse-settings "")}
+      :custom_http_params (or clickhouse-settings "")
+      }
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
@@ -91,8 +93,10 @@
    (fn [^java.sql.Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
        (when session-timezone
-         (.setClientInfo conn com.clickhouse.jdbc.ClickHouseConnection/PROP_CUSTOM_HTTP_PARAMS
-                         (format "session_timezone=%s" session-timezone)))
+         (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+               query-settings  (new QuerySettings)]
+           (.setOption query-settings "session_timezone" session-timezone)
+           (.setDefaultQuerySettings clickhouse-conn query-settings)))
 
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
@@ -239,12 +243,7 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (let [^ClickHouseStatementImpl stmt (.unwrap stmt ClickHouseStatementImpl)
-             request (.getRequest stmt)]
-         (.set request "wait_end_of_query" "1")
-         (with-open [_response (-> request
-                                   (.query ^String (create-table!-sql driver table-name column-definitions :primary-key primary-key))
-                                   (.executeAndWait))]))))))
+       (.execute stmt (create-table!-sql driver table-name column-definitions :primary-key primary-key))))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]

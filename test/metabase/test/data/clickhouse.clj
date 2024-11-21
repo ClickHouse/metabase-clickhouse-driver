@@ -17,8 +17,7 @@
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.util.log :as log]
-   [toucan2.tools.with-temp :as t2.with-temp])
-  (:import    [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
 
@@ -157,25 +156,31 @@
   (f))
 
 #_{:clj-kondo/ignore [:warn-on-reflection]}
+;; (defn exec-statements
+;;   ([statements details-map]
+;;    (exec-statements statements details-map nil))
+;;   ([statements details-map clickhouse-settings]
+;;    (sql-jdbc.execute/do-with-connection-with-options
+;;     :clickhouse
+;;     (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
+;;     {:write? true}
+;;     (fn [^java.sql.Connection conn]
+;;       (doseq [statement statements]
+;;         ;; (println "Executing:" statement)
+;;         (with-open [jdbcStmt (.createStatement conn)]
+;;           (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
+;;                 request (.getRequest clickhouseStmt)]
+;;             (when clickhouse-settings
+;;               (doseq [[k v] clickhouse-settings] (.set request k v)))
+;;             (with-open [_response (-> request
+;;                                       (.query ^String statement)
+;;                                       (.executeAndWait))]))))))))
+
 (defn exec-statements
   ([statements details-map]
    (exec-statements statements details-map nil))
   ([statements details-map clickhouse-settings]
-   (sql-jdbc.execute/do-with-connection-with-options
-    :clickhouse
-    (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
-    {:write? true}
-    (fn [^java.sql.Connection conn]
-      (doseq [statement statements]
-        ;; (println "Executing:" statement)
-        (with-open [jdbcStmt (.createStatement conn)]
-          (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
-                request (.getRequest clickhouseStmt)]
-            (when clickhouse-settings
-              (doseq [[k v] clickhouse-settings] (.set request k v)))
-            (with-open [_response (-> request
-                                      (.query ^String statement)
-                                      (.executeAndWait))]))))))))
+   nil))
 
 (defn do-with-test-db
   "Execute a test function using the test dataset"
