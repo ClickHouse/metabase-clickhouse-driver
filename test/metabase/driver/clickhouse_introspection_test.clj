@@ -80,35 +80,35 @@
    :clickhouse
    (testing "datetimes"
      (let [table-name "datetime_base_types"]
-       (is (= #{{:base-type :type/DateTimeWithTZ,
+       (is (= #{{:base-type :type/DateTimeWithLocalTZ,
                  :database-required false,
                  :database-type "Nullable(DateTime('America/New_York'))",
                  :name "c1"}
-                {:base-type :type/DateTimeWithTZ,
+                {:base-type :type/DateTimeWithLocalTZ,
                  :database-required true,
                  :database-type "DateTime('America/New_York')",
                  :name "c2"}
-                {:base-type :type/DateTime,
+                {:base-type :type/DateTimeWithLocalTZ,
                  :database-required true,
                  :database-type "DateTime",
                  :name "c3"}
-                {:base-type :type/DateTime,
+                {:base-type :type/DateTimeWithLocalTZ,
                  :database-required true,
                  :database-type "DateTime64(3)",
                  :name "c4"}
-                {:base-type :type/DateTimeWithTZ,
+                {:base-type :type/DateTimeWithLocalTZ,
                  :database-required true,
                  :database-type "DateTime64(9, 'America/New_York')",
                  :name "c5"}
-                {:base-type :type/DateTimeWithTZ,
+                {:base-type :type/DateTimeWithLocalTZ,
                  :database-required false,
                  :database-type "Nullable(DateTime64(6, 'America/New_York'))",
                  :name "c6"}
-                {:base-type :type/DateTime,
+                {:base-type :type/DateTimeWithLocalTZ,
                  :database-required false,
                  :database-type "Nullable(DateTime64(0))",
                  :name "c7"}
-                {:base-type :type/DateTime,
+                {:base-type :type/DateTimeWithLocalTZ,
                  :database-required false,
                  :database-type "Nullable(DateTime)",
                  :name "c8"}}
@@ -383,6 +383,7 @@
                 (data/run-mbql-query
                  aggregate_functions_filter_test
                  {})))))))))
+
 (def ^:private test-tables
   #{{:description nil,
      :name "table1",

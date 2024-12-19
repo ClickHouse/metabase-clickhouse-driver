@@ -1,6 +1,6 @@
 {:paths ["src" "resources"]
- :mvn/repos {"clickhouse-java" {:url "https://s01.oss.sonatype.org/content/repositories/snapshots"}}
  :deps
- {com.clickhouse/jdbc-v2 {:mvn/version "0.7.1-SNAPSHOT"}
+ {
   com.widdindustries/cljc.java-time {:mvn/version "0.1.21"}
+  com.clickhouse/clickhouse-jdbc {:mvn/version "0.7.1-SNAPSHOT" :outdated true}
   org.lz4/lz4-java {:mvn/version "1.8.0"}}}

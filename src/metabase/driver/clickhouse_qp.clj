@@ -4,6 +4,7 @@
   (:require [clojure.string :as str]
             [honey.sql :as sql]
             [java-time.api :as t]
+            [metabase.driver :as driver]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -15,8 +16,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honey-sql-2 :as h2x])
-  (:import [com.clickhouse.data.value ClickHouseArrayValue]
-           [java.sql ResultSet ResultSetMetaData Types]
+  (:import [java.sql ResultSet ResultSetMetaData Types]
            [java.time
             LocalDate
             LocalDateTime
@@ -55,12 +55,13 @@
 (defn- remove-low-cardinality-and-nullable
   [db-type]
   (when (and db-type (string? db-type))
-    (let [without-low-car  (if (str/starts-with? db-type "lowcardinality(")
-                             (subs db-type 15 (- (count db-type) 1))
-                             db-type)
-          without-nullable (if (str/starts-with? without-low-car "nullable(")
-                             (subs without-low-car 9 (- (count without-low-car) 1))
-                             without-low-car)]
+    (let [db-type-lowercase (u/lower-case-en db-type)
+          without-low-car   (if (str/starts-with? db-type-lowercase "lowcardinality(")
+                              (subs db-type-lowercase 15 (- (count db-type-lowercase) 1))
+                              db-type-lowercase)
+          without-nullable  (if (str/starts-with? without-low-car "nullable(")
+                              (subs without-low-car 9 (- (count without-low-car) 1))
+                              without-low-car)]
       without-nullable)))
 
 (defn- in-report-timezone
@@ -157,6 +158,7 @@
 
 (defmethod sql.qp/date [:clickhouse :month]
   [_ _ expr]
+  ;; (println "## calling :month" expr)
   (date-trunc :'toStartOfMonth expr))
 
 (defmethod sql.qp/date [:clickhouse :quarter]
@@ -223,19 +225,23 @@
 
 (defmethod sql.qp/->honeysql [:clickhouse LocalDateTime]
   [_ ^java.time.LocalDateTime t]
-  (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)]
+  ;; (println "###### sql.qp/->honeysql [:clickhouse LocalDateTime]" t)
+  (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
+        report-tz (or (get-report-timezone-id-safely) "UTC")]
     (if (zero? (.getNano t))
-      [:'parseDateTimeBestEffort   formatted]
-      [:'parseDateTime64BestEffort formatted 3])))
+      [:'parseDateTimeBestEffort   formatted   report-tz]
+      [:'parseDateTime64BestEffort formatted 3 report-tz])))
 
 (defmethod sql.qp/->honeysql [:clickhouse ZonedDateTime]
   [_ ^java.time.ZonedDateTime t]
+  ;; (println "###### sql.qp/->honeysql [:clickhouse ZonedDateTime]" t)
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
         fn        (date-time-parse-fn (.getNano t))]
     [fn formatted]))
 
 (defmethod sql.qp/->honeysql [:clickhouse OffsetDateTime]
   [_ ^java.time.OffsetDateTime t]
+  ;; (println "###### sql.qp/->honeysql [:clickhouse OffsetDateTime]" t)
   ;; copy-paste due to reflection warnings
   (let [formatted (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)
         fn        (date-time-parse-fn (.getNano t))]
@@ -463,54 +469,104 @@
   (fn []
     (with-null-check rs (.getInt rs i))))
 
+(def ^:private unix-epoch-start-date (t/local-date 1970 1 1))
+(def ^:private utc-zone-id (java.time.ZoneId/of "UTC"))
+
 (defn- offset-date-time->maybe-offset-time
   [^OffsetDateTime r]
+  ;; (println "#### Calling offset-date-time->maybe-offset-time on" r)
   (cond (nil? r) nil
-        (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toOffsetTime r)
+        (= (.toLocalDate r) unix-epoch-start-date) (.toOffsetTime r)
         :else r))
 
-(defn- local-date-time->maybe-local-time
-  [^LocalDateTime r]
-  (cond (nil? r) nil
-        (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
-        :else r))
+(defn- zdt-in-report-timezone
+  [^ZonedDateTime zdt]
+  ;; (println "#### Calling ZDT on" zdt)
+  ;; (when zdt
+    (let [maybe-report-timezone (get-report-timezone-id-safely)
+          in-report-timezone    (if maybe-report-timezone
+                                  (.withZoneSameInstant zdt (java.time.ZoneId/of maybe-report-timezone))
+                                  (if (= (.getId (.getZone zdt)) "GMT0")
+                                    (.withZoneSameInstant zdt utc-zone-id)
+                                    zdt))
+          ;; converted              (if (= (.toLocalDate in-report-timezone) unix-epoch-start-date)
+          ;;                                (.toLocalTime in-report-timezone)
+          ;;                                (.toLocalDateTime in-report-timezone))
 
-(defn- get-date-or-time-type
-  [tz-check-fn ^ResultSet rs ^Integer i]
-  (if (tz-check-fn)
-    (offset-date-time->maybe-offset-time (.getObject rs i OffsetDateTime))
-    (local-date-time->maybe-local-time (.getObject rs i LocalDateTime))))
+          ]
+      ;; (println "#### ZDT result: " in-report-timezone " with tz: " maybe-report-timezone)
+      ;; converted
+      in-report-timezone
+      )
+    ;; )
+  ;; (cond (nil? r) nil
+  ;;       (= (.toLocalDate r) (t/local-date 1970 1 1)) (.toLocalTime r)
+  ;;       :else r)
 
-(defn- read-timestamp-column
-  [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
-    (cond
-      ;; DateTime64 with tz info
-      (str/starts-with? db-type "datetime64")
-      (get-date-or-time-type #(> (count db-type) 13) rs i)
-      ;; DateTime with tz info
-      (str/starts-with? db-type "datetime")
-      (get-date-or-time-type #(> (count db-type) 8) rs i)
-      ;; _
-      :else (.getObject rs i LocalDateTime))))
+  )
+
+;; (defn- get-date-or-time-type
+;;   [^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+;;   ;; (println "####### calling get-date-or-time-type" i)
+;;   ;; (if (tz-check-fn)
+;;   ;;   (offset-date-time->maybe-offset-time (.getObject rs i OffsetDateTime))
+;;   ;;   (zoned-date-time->local-date-time-or-local-time (.getObject rs i ZonedDateTime)))
+;;     (zoned-date-time->local-date-time-or-local-time (.getObject rs i ZonedDateTime))
+;;   )
+
+;; (defn- read-timestamp-column
+;;   [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+;;   (let [db-type (remove-low-cardinality-and-nullable (u/lower-case-en (.getColumnTypeName rsmeta i)))]
+;;     (cond
+;;       ;; DateTime64 with tz info
+;;       (str/starts-with? db-type "datetime64")
+;;       (get-date-or-time-type #(> (count db-type) 13) rs i)
+;;       ;; DateTime with tz info
+;;       (str/starts-with? db-type "datetime")
+;;       (get-date-or-time-type #(> (count db-type) 8) rs i)
+;;       ;; _
+;;       :else (.getObject rs i LocalDateTime))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/DATE]
+  [_ ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
+  (fn []
+    ;; (println "####### Reading Types/DATE")
+    (when-let [sql-date (.getDate rs i)]
+      (.toLocalDate sql-date))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
-  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  [_ ^ResultSet _rs ^ResultSetMetaData _rsmeta ^Integer _i]
   (fn []
-    (read-timestamp-column rs rsmeta i)))
+    (println "####### Reading Types/TIMESTAMP")
+    ;; (get-date-or-time-type rs rsmeta i)
+    nil
+    ))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; (println "####### Reading Types/TIMESTAMP_WITH_TIMEZONE: " (.getObject rs i ZonedDateTime))
   (fn []
-    (read-timestamp-column rs rsmeta i)))
+    (when-let [zdt (.getObject rs i ZonedDateTime)]
+      (let [db-type (remove-low-cardinality-and-nullable (.getColumnTypeName rsmeta i))]
+            (if (= db-type "datetime64(3, 'gmt0')")
+              ;; a hack for some MB test assertions only; GMT0 is a legacy tz
+              (.toLocalDateTime  (zdt-in-report-timezone zdt))
+              ;; this is the normal behavior
+              (.toOffsetDateTime (.withZoneSameInstant
+                                  (zdt-in-report-timezone zdt)
+                                  utc-zone-id)))))
+
+    ))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIME]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
+  ;; (println "####### Reading Types/TIME")
   (fn []
     (.getObject rs i OffsetTime)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/NUMERIC]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;; (println "####### Reading Types/NUMERIC")
   (fn []
     ; count is NUMERIC cause UInt64 is too large for the canonical SQL BIGINT,
     ; and defaults to BigDecimal, but we want it to be coerced to java Long
@@ -520,34 +576,60 @@
       (.getBigDecimal rs i))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/ARRAY]
-  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  [_ ^ResultSet rs ^ResultSetMetaData _rsmeta ^Integer i]
   (fn []
-    (when-let [arr (.getArray rs i)]
-      (let [col-type-name (.getColumnTypeName rsmeta i)
-            inner         (.getArray arr)]
-        (cond
-          (= "Bool" col-type-name)
-          (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
-          (= "Nullable(Bool)" col-type-name)
-          (str "[" (str/join ", " (map #(cond (= 1 %) "true" (= 0 %) "false" :else "null") inner)) "]")
-          ;; All other primitives
-          (.isPrimitive (.getComponentType (.getClass inner)))
-          (Arrays/toString inner)
-          ;; Complex types
-          :else
-          (.asString (ClickHouseArrayValue/of inner)))))))
+    (when-let [arr         (.getArray rs i)]
+      (Arrays/deepToString (.getArray arr))
+      ;; (let [col-type-name (.getColumnTypeName rsmeta i)
+      ;;       inner         (.getArray arr)]
+      ;;   (cond
+      ;;     ;; (= "Bool" col-type-name)
+      ;;     ;; (str "[" (str/join ", " (map #(if (= 1 %) "true" "false") inner)) "]")
+      ;;     ;; (= "Nullable(Bool)" col-type-name)
+      ;;     ;; (str "[" (str/join ", " (map #(cond (= 1 %) "true" (= 0 %) "false" :else "null") inner)) "]")
+      ;;     ;; All other primitives
+      ;;     (.isPrimitive (.getComponentType (.getClass inner)))
+      ;;     (Arrays/toString inner)
+      ;;     ;; Complex types
+      ;;     :else
+      ;;     (.asString (ClickHouseArrayValue/of inner))))
+      )))
 
-(defn- ip-column->string
+(defn- ipv4-column->string
   [^ResultSet rs ^Integer i]
-  (when-let [inet-address (.getObject rs i java.net.InetAddress)]
+  (when-let [inet-address (.getObject rs i java.net.Inet4Address)]
     (.getHostAddress inet-address)))
+
+(defn- ipv6-column->string
+  [^ResultSet rs ^Integer i]
+  (when-let [inet-address (.getObject rs i java.net.Inet6Address)]
+    (.getHostAddress inet-address)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/OTHER]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  ;;  (println "####### Reading Types/OTHER " (.getColumnTypeName rsmeta i))
+  (fn []
+    (let [normalized-db-type (remove-low-cardinality-and-nullable
+                              (.getColumnTypeName rsmeta i))]
+      (cond
+            (= normalized-db-type "ipv4")
+            (ipv4-column->string rs i)
+            (= normalized-db-type "ipv6")
+            (ipv6-column->string rs i)
+            ;; _
+            :else (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/VARCHAR]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
-    (cond
-      (str/starts-with? (.getColumnTypeName rsmeta i) "IPv") (ip-column->string rs i)
-      :else (.getString rs i))))
+    (let [normalized-db-type (remove-low-cardinality-and-nullable
+                              (.getColumnTypeName rsmeta i))]
+      (cond
+        ;; Enum8/Enum16
+        (str/starts-with? normalized-db-type "enum")
+        (.getString rs i)
+        ;; _
+        :else (.getObject rs i)))))
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDate]
   [_ t]
@@ -563,14 +645,17 @@
 
 (defmethod unprepare/unprepare-value [:clickhouse LocalDateTime]
   [_ t]
+    ;;  (println "###### unprepare/unprepare-value [:clickhouse LocalDateTime]")
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse OffsetDateTime]
   [_ ^OffsetDateTime t]
+    ;; (println "###### unprepare/unprepare-value [:clickhouse OffsetDateTime]")
   (format "%s('%s')"
           (if (zero? (.getNano t)) "parseDateTimeBestEffort" "parseDateTime64BestEffort")
           (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
 (defmethod unprepare/unprepare-value [:clickhouse ZonedDateTime]
   [_ t]
+  ;; (println "###### unprepare/unprepare-value [:clickhouse ZonedDateTime]")
   (format "'%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))

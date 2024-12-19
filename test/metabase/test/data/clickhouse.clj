@@ -4,10 +4,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.db.query :as mdb.query]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.database :refer [Database]]
    [metabase.query-processor.test-util :as qp.test]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -16,7 +18,9 @@
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
+   [metabase.test.data.sql.ddl :as ddl]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
@@ -28,10 +32,11 @@
    :user "default"
    :password ""
    :ssl false
-   :use_no_proxy false
    :use_server_time_zone_for_dates true
    :product_name "metabase/1.51.0"
-   :databaseTerm "schema"
+   :jdbc_ignore_unsupported_values "true"
+   :jdbc_schema_term "schema",
+   :max_open_connections 100
    :remember_last_set_roles true
    :http_connection_provider "HTTP_URL_CONNECTION"
    :custom_http_params ""})
@@ -40,8 +45,8 @@
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Char]            [_ _] "String")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Date]            [_ _] "Date")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]        [_ _] "DateTime64")
-(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTimeWithTZ]  [_ _] "DateTime64(3, 'UTC')")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTime]        [_ _] "DateTime64(3, 'GMT0')")
+(defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/DateTimeWithLocalTZ]  [_ _] "DateTime64(3, 'UTC')")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Float]           [_ _] "Float64")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Integer]         [_ _] "Int32")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/IPAddress]       [_ _] "IPv4")
@@ -74,6 +79,33 @@
     (log/infof "Creating ClickHouse database %s" (pr-str database-name))
     ;; call the default impl for SQL JDBC drivers
     (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver db-def options)))
+
+(mu/defmethod load-data/do-insert! :clickhouse
+  [driver                    :- :keyword
+   ^java.sql.Connection conn :- (lib.schema.common/instance-of-class java.sql.Connection)
+   table-identifier
+   rows]
+  ;; (println "###### calling load-data/do-insert!")
+  (let [statements (ddl/insert-rows-dml-statements driver table-identifier rows)]
+    (doseq [sql-args statements
+            :let     [sql-args (if (string? sql-args)
+                                 [sql-args]
+                                 sql-args)]]
+      (assert (string? (first sql-args))
+              (format "Bad sql-args: %s" (pr-str sql-args)))
+      (log/tracef "[insert] %s" (pr-str sql-args))
+      (try
+        ;; (println "#### do-insert! statement: " statements)
+        (jdbc/execute! {:connection conn :transaction? false}
+                       sql-args
+                       {:set-parameters (fn [stmt params]
+                                          (sql-jdbc.execute/set-parameters! driver stmt params))})
+        (catch Throwable e
+          (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
+                          {:driver   driver
+                           :sql-args (into [(str/split-lines (mdb.query/format-sql (first sql-args)))]
+                                           (rest sql-args))}
+                          e)))))))
 
 (defn- quote-name
   [name]
@@ -144,15 +176,18 @@
   [f]
   (when (not @test-db-initialized?)
     (let [details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})]
-      ;; (println "Executing create-test-db! with details:" details)
+      ;; (println "### Executing create-test-db! with details:" details)
       (jdbc/with-db-connection
         [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
         (let [statements (as-> (slurp "modules/drivers/clickhouse/test/metabase/test/data/datasets.sql") s
                            (str/split s #";")
                            (map str/trim s)
                            (filter seq s))]
-          (jdbc/db-do-commands spec statements)
-          (reset! test-db-initialized? true)))))
+          ;; (println "## Executing statements " statements)
+          (jdbc/db-do-commands spec false statements)
+          (reset! test-db-initialized? true)))
+      ;; (println "### Done with executing create-test-db! with details:" details)
+))
   (f))
 
 #_{:clj-kondo/ignore [:warn-on-reflection]}

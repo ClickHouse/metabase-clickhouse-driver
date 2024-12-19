@@ -27,8 +27,8 @@
       (sql-jdbc.conn/connection-details->spec :clickhouse db-details)
       nil
       (fn [^java.sql.Connection conn]
-        (with-open [stmt (.prepareStatement conn clickhouse-version-query)
-                    rset (.executeQuery stmt)]
+        (with-open [stmt (.createStatement conn)
+                    rset (.executeQuery stmt clickhouse-version-query)]
           (when (.next rset)
             {:version          (.getString rset 1)
              :semantic-version {:major (.getInt rset 2)

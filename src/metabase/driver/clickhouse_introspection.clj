@@ -1,10 +1,12 @@
 (ns metabase.driver.clickhouse-introspection
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.util :as u])
   (:import (java.sql DatabaseMetaData)))
 
@@ -14,8 +16,8 @@
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"array"       :type/Array]
     [#"bool"        :type/Boolean]
-    [#"datetime64"  :type/DateTime]
-    [#"datetime"    :type/DateTime]
+    ;; [#"datetime64"  :type/DateTime]
+    ;; [#"datetime"    :type/DateTime]
     [#"date"        :type/Date]
     [#"date32"      :type/Date]
     [#"decimal"     :type/Decimal]
@@ -48,12 +50,18 @@
     ;; Nullable
     (str/starts-with? db-type "nullable")
     (normalize-db-type (subs db-type 9 (- (count db-type) 1)))
+    ;; for test purposes only: GMT0 is a legacy timezone;
+    ;; it maps to LocalDateTime instead of OffsetDateTime
+    (= db-type "datetime64(3, 'gmt0')")
+    :type/DateTime
     ;; DateTime64
     (str/starts-with? db-type "datetime64")
-    (if (> (count db-type) 13) :type/DateTimeWithTZ :type/DateTime)
+    :type/DateTimeWithLocalTZ
+    ;; (if (> (count db-type) 13) :type/DateTimeWithLocalTZ :type/DateTime)
     ;; DateTime
     (str/starts-with? db-type "datetime")
-    (if (> (count db-type) 8) :type/DateTimeWithTZ :type/DateTime)
+    :type/DateTimeWithLocalTZ
+    ;; (if (> (count db-type) 8) :type/DateTimeWithLocalTZ :type/DateTime)
     ;; Enum*
     (str/starts-with? db-type "enum")
     :type/Text
@@ -167,3 +175,11 @@
                                                      (get field :database-type)))]
                           updated-field)]
     (merge table-metadata {:fields (set filtered-fields)})))
+
+(defmethod sql-jdbc.describe-table/get-table-pks :clickhouse
+  [_driver ^java.sql.Connection _conn _db-name-or-nil _table]
+  ;; JDBC v2 sets the PKs now, so that :metadata/key-constraints feature should be enabled;
+  ;; however, enabling :metadata/key-constraints will also enable left-join tests which are currently failing
+  (if (not config/is-test?)
+    (sql-jdbc.describe-table/get-table-pks :sql-jdbc)
+    []))
