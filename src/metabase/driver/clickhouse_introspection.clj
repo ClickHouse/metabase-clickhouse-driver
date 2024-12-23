@@ -16,8 +16,6 @@
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"array"       :type/Array]
     [#"bool"        :type/Boolean]
-    ;; [#"datetime64"  :type/DateTime]
-    ;; [#"datetime"    :type/DateTime]
     [#"date"        :type/Date]
     [#"date32"      :type/Date]
     [#"decimal"     :type/Decimal]
@@ -57,11 +55,9 @@
     ;; DateTime64
     (str/starts-with? db-type "datetime64")
     :type/DateTimeWithLocalTZ
-    ;; (if (> (count db-type) 13) :type/DateTimeWithLocalTZ :type/DateTime)
     ;; DateTime
     (str/starts-with? db-type "datetime")
     :type/DateTimeWithLocalTZ
-    ;; (if (> (count db-type) 8) :type/DateTimeWithLocalTZ :type/DateTime)
     ;; Enum*
     (str/starts-with? db-type "enum")
     :type/Text
@@ -177,9 +173,9 @@
     (merge table-metadata {:fields (set filtered-fields)})))
 
 (defmethod sql-jdbc.describe-table/get-table-pks :clickhouse
-  [_driver ^java.sql.Connection _conn _db-name-or-nil _table]
+  [_driver ^java.sql.Connection conn db-name-or-nil table]
   ;; JDBC v2 sets the PKs now, so that :metadata/key-constraints feature should be enabled;
   ;; however, enabling :metadata/key-constraints will also enable left-join tests which are currently failing
   (if (not config/is-test?)
-    (sql-jdbc.describe-table/get-table-pks :sql-jdbc)
+    (sql-jdbc.describe-table/get-table-pks :sql-jdbc conn db-name-or-nil table)
     []))

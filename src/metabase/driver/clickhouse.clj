@@ -61,7 +61,7 @@
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
-        {:keys [user password dbname host port ssl clickhouse-settings]} details
+        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
         ;; if multiple databases were specified for the connection,
         ;; use only the first dbname as the "main" one
         dbname (first (str/split (str/trim dbname) #" "))]
@@ -78,13 +78,13 @@
       :http_connection_provider "HTTP_URL_CONNECTION"
       :jdbc_ignore_unsupported_values "true"
       :jdbc_schema_term "schema"
-      :max_open_connections 100
+      :max_open_connections (or max-open-connections 100)
       ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
       :custom_http_params (or clickhouse-settings "")}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
-  [driver db-or-id-or-spec {:keys [^String session-timezone write?] :as options} f]
+  [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
   (sql-jdbc.execute/do-with-resolved-connection
    driver
    db-or-id-or-spec
@@ -234,7 +234,6 @@
      db-id
      {:write? true}
      (fn [^java.sql.Connection conn]
-      ;;  (println "#### Calling driver/insert-into!")
        (let [sql (format "INSERT INTO %s (%s)" (quote-name table-name) (str/join ", " (map quote-name column-names)))]
          (with-open [ps (.prepareStatement conn sql)]
            (doseq [row values]
@@ -252,7 +251,6 @@
                    java.time.OffsetDateTime (.setObject ps idx v)
                    (.setString ps idx (str v))))
                (.addBatch ps)))
-                  ;; (println "#### Calling driver/insert-into! doall")
            (doall (.executeBatch ps))))))))
 
 ;;; ------------------------------------------ User Impersonation ------------------------------------------
@@ -272,10 +270,11 @@
                           (if (or (re-matches #"\".*\"" r) (= role default-role))
                             r
                             (format "\"%s\"" r)))
-        quoted-role (->> (clojure.string/split role #",")
+        quoted-role (->> (str/split role #",")
                          (map quote-if-needed)
-                         (clojure.string/join ","))]
-    (format "SET ROLE %s;" quoted-role)))
+                         (str/join ","))
+        statement   (format "SET ROLE %s" quoted-role)]
+    statement))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]

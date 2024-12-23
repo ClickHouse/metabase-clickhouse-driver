@@ -191,31 +191,24 @@
   (f))
 
 #_{:clj-kondo/ignore [:warn-on-reflection]}
-;; (defn exec-statements
-;;   ([statements details-map]
-;;    (exec-statements statements details-map nil))
-;;   ([statements details-map clickhouse-settings]
-;;    (sql-jdbc.execute/do-with-connection-with-options
-;;     :clickhouse
-;;     (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
-;;     {:write? true}
-;;     (fn [^java.sql.Connection conn]
-;;       (doseq [statement statements]
-;;         ;; (println "Executing:" statement)
-;;         (with-open [jdbcStmt (.createStatement conn)]
-;;           (let [^ClickHouseStatementImpl clickhouseStmt (.unwrap jdbcStmt ClickHouseStatementImpl)
-;;                 request (.getRequest clickhouseStmt)]
-;;             (when clickhouse-settings
-;;               (doseq [[k v] clickhouse-settings] (.set request k v)))
-;;             (with-open [_response (-> request
-;;                                       (.query ^String statement)
-;;                                       (.executeAndWait))]))))))))
-
 (defn exec-statements
   ([statements details-map]
    (exec-statements statements details-map nil))
   ([statements details-map clickhouse-settings]
-   nil))
+   (sql-jdbc.execute/do-with-connection-with-options
+    :clickhouse
+    (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details-map))
+    {:write? true}
+    (fn [^java.sql.Connection conn]
+      (doseq [statement statements]
+        ;; (println "Executing:" statement)
+          (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+                query-settings  (new com.clickhouse.client.api.query.QuerySettings)]
+            (with-open [jdbcStmt (.createStatement conn)]
+              (when clickhouse-settings
+                (doseq [[k v] clickhouse-settings] (.setOption query-settings k v)))
+              (.setDefaultQuerySettings clickhouse-conn query-settings)
+              (.execute jdbcStmt statement))))))))
 
 (defn do-with-test-db
   "Execute a test function using the test dataset"
