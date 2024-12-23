@@ -1,13 +1,13 @@
 (ns metabase.driver.clickhouse-data-types-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [cljc.java-time.local-date :as local-date]
-            [cljc.java-time.offset-date-time :as offset-date-time]
+            [cljc.java-time.local-date-time :as local-date-time]
             [clojure.test :refer :all]
             [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.clickhouse :as ctd]))
+            [metabase.test.data.clickhouse :as ctd]
+            [metabase.test.data.interface :as tx]))
 
 (use-fixtures :once ctd/create-test-db!)
 
@@ -39,230 +39,232 @@
                                     :limit 1})
               qp.test/first-row last double)))))))
 
-;; (deftest ^:parallel clickhouse-array-string
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (is
-;;     (= "[foo, bar]"
-;;        (-> (data/dataset
-;;             (tx/dataset-definition "metabase_tests_array_string"
-;;                                    ["test-data-array-string"
-;;                                     [{:field-name "my_array"
-;;                                       :base-type {:native "Array(String)"}}]
-;;                                     [[(into-array (list "foo" "bar"))]]])
-;;             (data/run-mbql-query test-data-array-string {:limit 1}))
-;;            qp.test/first-row
-;;            last)))))
+(deftest ^:parallel clickhouse-array-string
+  (mt/test-driver
+   :clickhouse
+   (is
+    (= "[foo, bar]"
+       (-> (data/dataset
+            (tx/dataset-definition "metabase_tests_array_string"
+                                   ["test-data-array-string"
+                                    [{:field-name "my_array"
+                                      :base-type {:native "Array(String)"}}]
+                                    [[(into-array (list "foo" "bar"))]]])
+            (data/run-mbql-query test-data-array-string {:limit 1}))
+           qp.test/first-row
+           last)))))
 
-;; (deftest ^:parallel clickhouse-array-uint64
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (is
-;;     (= "[23, 42]"
-;;        (-> (data/dataset
-;;             (tx/dataset-definition "metabase_tests_array_uint"
-;;                                    ["test-data-array-uint64"
-;;                                     [{:field-name "my_array"
-;;                                       :base-type {:native "Array(UInt64)"}}]
-;;                                     [[(into-array (list 23 42))]]])
-;;             (data/run-mbql-query test-data-array-uint64 {:limit 1}))
-;;            qp.test/first-row
-;;            last)))))
+(deftest ^:parallel clickhouse-array-uint64
+  (mt/test-driver
+   :clickhouse
+   (is
+    (= "[23, 42]"
+       (-> (data/dataset
+            (tx/dataset-definition "metabase_tests_array_uint"
+                                   ["test-data-array-uint64"
+                                    [{:field-name "my_array"
+                                      :base-type {:native "Array(UInt64)"}}]
+                                    [[(into-array (list 23 42))]]])
+            (data/run-mbql-query test-data-array-uint64 {:limit 1}))
+           qp.test/first-row
+           last)))))
 
-;; (deftest ^:parallel clickhouse-array-of-arrays
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list
-;;                            (into-array (list "foo" "bar"))
-;;                            (into-array (list "qaz" "qux"))))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_arrays"
-;;                                               ["test-data-array-of-arrays"
-;;                                                [{:field-name "my_array_of_arrays"
-;;                                                  :base-type {:native "Array(Array(String))"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-arrays {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[[foo, bar], [qaz, qux]]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-arrays
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list
+                           (into-array (list "foo" "bar"))
+                           (into-array (list "qaz" "qux"))))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_arrays"
+                                              ["test-data-array-of-arrays"
+                                               [{:field-name "my_array_of_arrays"
+                                                 :base-type {:native "Array(Array(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-arrays {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[[foo, bar], [qaz, qux]]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-low-cardinality-array
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list "foo" "bar"))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_low_cardinality_array"
-;;                                               ["test-data-low-cardinality-array"
-;;                                                [{:field-name "my_low_card_array"
-;;                                                  :base-type {:native "Array(LowCardinality(String))"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-low-cardinality-array {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[foo, bar]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-low-cardinality-array
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "foo" "bar"))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_low_cardinality_array"
+                                              ["test-data-low-cardinality-array"
+                                               [{:field-name "my_low_card_array"
+                                                 :base-type {:native "Array(LowCardinality(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-low-cardinality-array {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[foo, bar]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-nullables
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list "foo" nil "bar"))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_nullables"
-;;                                               ["test-data-array-of-nullables"
-;;                                                [{:field-name "my_array_of_nullables"
-;;                                                  :base-type {:native "Array(Nullable(String))"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-nullables {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[foo, null, bar]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-nullables
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "foo" nil "bar"))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_nullables"
+                                              ["test-data-array-of-nullables"
+                                               [{:field-name "my_array_of_nullables"
+                                                 :base-type {:native "Array(Nullable(String))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-nullables {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[foo, null, bar]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-booleans
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list true false true))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_booleans"
-;;                                               ["test-data-array-of-booleans"
-;;                                                [{:field-name "my_array_of_booleans"
-;;                                                  :base-type {:native "Array(Boolean)"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-booleans {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[true, false, true]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-booleans
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list true false true))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_booleans"
+                                              ["test-data-array-of-booleans"
+                                               [{:field-name "my_array_of_booleans"
+                                                 :base-type {:native "Array(Boolean)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-booleans {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[true, false, true]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-nullable-booleans
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list true false nil))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_nullable_booleans"
-;;                                               ["test-data-array-of-booleans"
-;;                                                [{:field-name "my_array_of_nullable_booleans"
-;;                                                  :base-type {:native "Array(Nullable(Boolean))"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-booleans {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[true, false, null]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-nullable-booleans
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list true false nil))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_nullable_booleans"
+                                              ["test-data-array-of-booleans"
+                                               [{:field-name "my_array_of_nullable_booleans"
+                                                 :base-type {:native "Array(Nullable(Boolean))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-booleans {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[true, false, null]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-uint8
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list 42 100 2))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_uint8"
-;;                                               ["test-data-array-of-uint8"
-;;                                                [{:field-name "my_array_of_uint8"
-;;                                                  :base-type {:native "Array(UInt8)"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-uint8 {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[42, 100, 2]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-uint8
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list 42 100 2))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_uint8"
+                                              ["test-data-array-of-uint8"
+                                               [{:field-name "my_array_of_uint8"
+                                                 :base-type {:native "Array(UInt8)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-uint8 {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[42, 100, 2]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-floats
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list 1.2 3.4))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_floats"
-;;                                               ["test-data-array-of-floats"
-;;                                                [{:field-name "my_array_of_floats"
-;;                                                  :base-type {:native "Array(Float64)"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-floats {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-floats
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list 1.2 3.4))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_floats"
+                                              ["test-data-array-of-floats"
+                                               [{:field-name "my_array_of_floats"
+                                                 :base-type {:native "Array(Float64)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-floats {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-dates
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array
-;;                (list
-;;                 (local-date/parse "2022-12-06")
-;;                 (local-date/parse "2021-10-19")))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_dates"
-;;                                               ["test-data-array-of-dates"
-;;                                                [{:field-name "my_array_of_dates"
-;;                                                  :base-type {:native "Array(Date)"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-dates {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[2022-12-06, 2021-10-19]"], ["[]"]] result)))))
+;; NB: timezones in the formatted string are purely cosmetic; it will be fine on the UI
+(deftest ^:parallel clickhouse-array-of-dates
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date/parse "2022-12-06")
+                (local-date/parse "2021-10-19")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_dates"
+                                              ["test-data-array-of-dates"
+                                               [{:field-name "my_array_of_dates"
+                                                 :base-type {:native "Array(Date)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-dates {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[2022-12-06T00:00Z[UTC], 2021-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-date32
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array
-;;                (list
-;;                 (local-date/parse "2122-12-06")
-;;                 (local-date/parse "2099-10-19")))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_date32"
-;;                                               ["test-data-array-of-date32"
-;;                                                [{:field-name "my_array_of_date32"
-;;                                                  :base-type {:native "Array(Date32)"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-date32 {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[2122-12-06, 2099-10-19]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-date32
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date/parse "2122-12-06")
+                (local-date/parse "2099-10-19")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_date32"
+                                              ["test-data-array-of-date32"
+                                               [{:field-name "my_array_of_date32"
+                                                 :base-type {:native "Array(Date32)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-date32 {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[2122-12-06T00:00Z[UTC], 2099-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-datetime
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array
-;;                (list
-;;                 (offset-date-time/parse "2022-12-06T18:28:31Z")
-;;                 (offset-date-time/parse "2021-10-19T13:12:44Z")))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_datetime"
-;;                                               ["test-data-array-of-datetime"
-;;                                                [{:field-name "my_array_of_datetime"
-;;                                                  :base-type {:native "Array(DateTime)"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-datetime {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[2022-12-06T18:28:31, 2021-10-19T13:12:44]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-datetime
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date-time/parse "2022-12-06T18:28:31")
+                (local-date-time/parse "2021-10-19T13:12:44")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_datetime"
+                                              ["test-data-array-of-datetime"
+                                               [{:field-name "my_array_of_datetime"
+                                                 :base-type {:native "Array(DateTime)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-datetime {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[2022-12-06T18:28:31Z[UTC], 2021-10-19T13:12:44Z[UTC]]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-datetime64
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array
-;;                (list
-;;                 (offset-date-time/parse "2022-12-06T18:28:31.123Z")
-;;                 (offset-date-time/parse "2021-10-19T13:12:44.456Z")))
-;;          row2 (into-array nil)
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_datetime64"
-;;                                               ["test-data-array-of-datetime64"
-;;                                                [{:field-name "my_array_of_datetime64"
-;;                                                  :base-type {:native "Array(DateTime64(3))"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-datetime64 {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[2022-12-06T18:28:31.123, 2021-10-19T13:12:44.456]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-datetime64
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array
+               (list
+                (local-date-time/parse "2022-12-06T18:28:31.123")
+                (local-date-time/parse "2021-10-19T13:12:44.456")))
+         row2 (into-array nil)
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_datetime64"
+                                              ["test-data-array-of-datetime64"
+                                               [{:field-name "my_array_of_datetime64"
+                                                 :base-type {:native "Array(DateTime64(3))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-datetime64 {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[2022-12-06T18:28:31.123Z[UTC], 2021-10-19T13:12:44.456Z[UTC]]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-decimals
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list "12345123.123456789" "78.245"))
-;;          row2 nil
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_decimals"
-;;                                               ["test-data-array-of-decimals"
-;;                                                [{:field-name "my_array_of_decimals"
-;;                                                  :base-type {:native "Array(Decimal(18, 9))"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-decimals {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-decimals
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "12345123.123456789" "78.245"))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_decimals"
+                                              ["test-data-array-of-decimals"
+                                               [{:field-name "my_array_of_decimals"
+                                                 :base-type {:native "Array(Decimal(18, 9))"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-decimals {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
 
+;; FIXME: currently, there is no way to bind tuples to a prepared statement in v2
 ;; (deftest ^:parallel clickhouse-array-of-tuples
 ;;   (mt/test-driver
 ;;    :clickhouse
@@ -278,21 +280,21 @@
 ;;          result (ctd/rows-without-index query-result)]
 ;;      (is (= [["[[foobar, 1234], [qaz, 0]]"], ["[]"]] result)))))
 
-;; (deftest ^:parallel clickhouse-array-of-uuids
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
-;;                                 "2eac44f4-7596-11ed-a1eb-0242ac120002"))
-;;          row2 nil
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_uuids"
-;;                                               ["test-data-array-of-uuids"
-;;                                                [{:field-name "my_array_of_uuids"
-;;                                                  :base-type {:native "Array(UUID)"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-uuids {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-uuids
+  (mt/test-driver
+   :clickhouse
+   (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
+                                "2eac44f4-7596-11ed-a1eb-0242ac120002"))
+         row2 nil
+         query-result (data/dataset
+                       (tx/dataset-definition "metabase_tests_array_of_uuids"
+                                              ["test-data-array-of-uuids"
+                                               [{:field-name "my_array_of_uuids"
+                                                 :base-type {:native "Array(UUID)"}}]
+                                               [[row1] [row2]]])
+                       (data/run-mbql-query test-data-array-of-uuids {}))
+         result (ctd/rows-without-index query-result)]
+     (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
 
 (deftest ^:parallel clickhouse-array-inner-types
   (mt/test-driver
