@@ -55,6 +55,16 @@ VALUES ({'key1':1,'key2':10}),
        ({'key1':2,'key2':20}),
        ({'key1':3,'key2':30});
 
+
+CREATE TABLE `metabase_test`.`array_of_tuples_test`
+(
+    t Array(Tuple(String, UInt32))
+) Engine = Memory;
+
+INSERT INTO `metabase_test`.`array_of_tuples_test` (t)
+VALUES ([('foobar', 1234), ('qaz', 0)]),
+       ([]);
+
 -- Used for testing that AggregateFunction columns are excluded,
 -- while SimpleAggregateFunction columns are preserved
 CREATE TABLE `metabase_test`.`aggregate_functions_filter_test`

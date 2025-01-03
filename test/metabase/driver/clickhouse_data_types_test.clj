@@ -264,21 +264,20 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
 
-;; FIXME: currently, there is no way to bind tuples to a prepared statement in v2
-;; (deftest ^:parallel clickhouse-array-of-tuples
-;;   (mt/test-driver
-;;    :clickhouse
-;;    (let [row1 (into-array (list (list "foobar" 1234) (list "qaz" 0)))
-;;          row2 nil
-;;          query-result (data/dataset
-;;                        (tx/dataset-definition "metabase_tests_array_of_tuples"
-;;                                               ["test-data-array-of-tuples"
-;;                                                [{:field-name "my_array_of_tuples"
-;;                                                  :base-type {:native "Array(Tuple(String, UInt32))"}}]
-;;                                                [[row1] [row2]]])
-;;                        (data/run-mbql-query test-data-array-of-tuples {}))
-;;          result (ctd/rows-without-index query-result)]
-;;      (is (= [["[[foobar, 1234], [qaz, 0]]"], ["[]"]] result)))))
+(deftest ^:parallel clickhouse-array-of-tuples
+  (mt/test-driver
+   :clickhouse
+   (is (= [["[[foobar, 1234], [qaz, 0]]"]
+           ["[]"]]
+            (qp.test/formatted-rows
+             [str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   array_of_tuples_test
+                   {})))))))))
 
 (deftest ^:parallel clickhouse-array-of-uuids
   (mt/test-driver
