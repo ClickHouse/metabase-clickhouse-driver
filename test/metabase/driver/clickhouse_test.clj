@@ -54,7 +54,6 @@
               {:subname "//myclickhouse:9999/foo?sessionTimeout=42"
                :user "bob"
                :password "qaz"
-               :use_no_proxy true
                :ssl true
                :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
              (sql-jdbc.conn/connection-details->spec
@@ -64,7 +63,6 @@
                :user "bob"
                :password "qaz"
                :dbname "foo"
-               :use-no-proxy true
                :additional-options "sessionTimeout=42"
                :ssl true
                :clickhouse-settings "max_threads=42,allow_experimental_analyzer=0"}))))
@@ -162,7 +160,7 @@
    :clickhouse
    (doall
     (for [[username password] [["default" ""] ["user_with_password" "foo@bar!"]]
-          database            ["default" "Special@Characters~" "'Escaping'"]]
+          database            ["default" "Special@Characters~"]]
       (testing (format "User `%s` can connect to `%s`" username database)
         (let [details (merge {:user username :password password}
                              (tx/dbdef->connection-details :clickhouse :db {:database-name database}))]

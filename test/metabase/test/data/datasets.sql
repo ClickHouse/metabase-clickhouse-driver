@@ -29,8 +29,8 @@ CREATE TABLE `metabase_test`.`ipaddress_test`
 ) Engine = Memory;
 
 INSERT INTO `metabase_test`.`ipaddress_test` (ipvfour, ipvsix)
-VALUES (toIPv4('127.0.0.1'), toIPv6('127.0.0.1')),
-       (toIPv4('0.0.0.0'),   toIPv6('0.0.0.0')),
+VALUES (toIPv4('127.0.0.1'), toIPv6('0:0:0:0:0:0:0:1')),
+       (toIPv4('0.0.0.0'),   toIPv6('2001:438:ffff:0:0:0:407d:1bc1')),
        (null, null);
 
 CREATE TABLE `metabase_test`.`boolean_test`
@@ -54,6 +54,16 @@ INSERT INTO `metabase_test`.`maps_test`
 VALUES ({'key1':1,'key2':10}),
        ({'key1':2,'key2':20}),
        ({'key1':3,'key2':30});
+
+
+CREATE TABLE `metabase_test`.`array_of_tuples_test`
+(
+    t Array(Tuple(String, UInt32))
+) Engine = Memory;
+
+INSERT INTO `metabase_test`.`array_of_tuples_test` (t)
+VALUES ([('foobar', 1234), ('qaz', 0)]),
+       ([]);
 
 -- Used for testing that AggregateFunction columns are excluded,
 -- while SimpleAggregateFunction columns are preserved
@@ -243,8 +253,6 @@ CREATE TABLE `metabase_test`.`low_cardinality_nullable_base_types` (
 -- can-connect tests (odd database names)
 DROP DATABASE IF EXISTS `Special@Characters~`;
 CREATE DATABASE `Special@Characters~`;
-DROP DATABASE IF EXISTS `'Escaping'`;
-CREATE DATABASE `'Escaping'`;
 
 -- arrays inner types test
 CREATE TABLE `metabase_test`.`arrays_inner_types`

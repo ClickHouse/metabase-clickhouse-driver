@@ -41,6 +41,11 @@ driver:
       placeholder: "allow_experimental_analyzer=1,max_result_rows=100"
       visible-if:
         advanced-options: true
+    - name: max-open-connections
+      display-name: "Max open HTTP connections in the JDBC driver (default: 100)"
+      placeholder: 100
+      visible-if:
+        advanced-options: true
     - merge:
         - additional-options
         - placeholder: "connection_timeout=1000&socket_timeout=300000"

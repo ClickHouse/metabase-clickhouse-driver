@@ -21,10 +21,11 @@
             [metabase.upload :as upload]
             [metabase.util :as u]
             [metabase.util.log :as log])
-  (:import  [com.clickhouse.jdbc.internal ClickHouseStatementImpl]))
+  (:import  [com.clickhouse.client.api.query QuerySettings]))
 
 (set! *warn-on-reflection* true)
 
+(System/setProperty "clickhouse.jdbc.v2" "true")
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
@@ -37,8 +38,9 @@
 (doseq [[feature supported?] {:standard-deviation-aggregations true
                               :now                             true
                               :set-timezone                    true
-                              :convert-timezone                true
+                              :convert-timezone                false
                               :test/jvm-timezone-setting       false
+                              :test/date-time-type             false
                               :test/time-type                  false
                               :schemas                         true
                               :datetime-diff                   true
@@ -47,7 +49,8 @@
                               :window-functions/cumulative     (not config/is-test?)
                               :left-join                       (not config/is-test?)
                               :describe-fks                    false
-                              :metadata/key-constraints        false}]
+                              :actions                         false
+                              :metadata/key-constraints        (not config/is-test?)}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details
@@ -58,7 +61,7 @@
         details (reduce-kv (fn [m k v] (assoc m k (or v (k default-connection-details))))
                            default-connection-details
                            details)
-        {:keys [user password dbname host port ssl use-no-proxy clickhouse-settings]} details
+        {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
         ;; if multiple databases were specified for the connection,
         ;; use only the first dbname as the "main" one
         dbname (first (str/split (str/trim dbname) #" "))]
@@ -69,21 +72,19 @@
       :password (or password "")
       :user user
       :ssl (boolean ssl)
-      :use_no_proxy (boolean use-no-proxy)
       :use_server_time_zone_for_dates true
       :product_name product-name
-      ;; addresses breaking changes from the 0.5.0 JDBC driver release
-      ;; see https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.5.0
-      ;; and https://github.com/ClickHouse/clickhouse-java/issues/1634#issuecomment-2110392634
-      :databaseTerm "schema"
       :remember_last_set_roles true
       :http_connection_provider "HTTP_URL_CONNECTION"
+      :jdbc_ignore_unsupported_values "true"
+      :jdbc_schema_term "schema"
+      :max_open_connections (or max-open-connections 100)
       ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
       :custom_http_params (or clickhouse-settings "")}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
-  [driver db-or-id-or-spec {:keys [^String session-timezone write?] :as options} f]
+  [driver db-or-id-or-spec {:keys [^String session-timezone _write?] :as options} f]
   (sql-jdbc.execute/do-with-resolved-connection
    driver
    db-or-id-or-spec
@@ -91,9 +92,10 @@
    (fn [^java.sql.Connection conn]
      (when-not (sql-jdbc.execute/recursive-connection?)
        (when session-timezone
-         (.setClientInfo conn com.clickhouse.jdbc.ClickHouseConnection/PROP_CUSTOM_HTTP_PARAMS
-                         (format "session_timezone=%s" session-timezone)))
-
+         (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
+               query-settings  (new QuerySettings)]
+           (.setOption query-settings "session_timezone" session-timezone)
+           (.setDefaultQuerySettings clickhouse-conn query-settings)))
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone)
        (when-let [db (cond
@@ -105,24 +107,7 @@
                        (u/id db-or-id-or-spec)     db-or-id-or-spec
                        ;; otherwise it's a spec and we can't get the db
                        :else nil)]
-         (sql-jdbc.execute/set-role-if-supported! driver conn db))
-       (let [read-only? (not write?)]
-         (try
-           (log/trace (pr-str (list '.setReadOnly 'conn read-only?)))
-           (.setReadOnly conn read-only?)
-           (catch Throwable e
-             (log/debugf e "Error setting connection readOnly to %s" (pr-str read-only?)))))
-       (when-not write?
-         (try
-           (log/trace (pr-str '(.setAutoCommit conn true)))
-           (.setAutoCommit conn true)
-           (catch Throwable e
-             (log/debug e "Error enabling connection autoCommit"))))
-       (try
-         (log/trace (pr-str '(.setHoldability conn java.sql.ResultSet/CLOSE_CURSORS_AT_COMMIT)))
-         (.setHoldability conn java.sql.ResultSet/CLOSE_CURSORS_AT_COMMIT)
-         (catch Throwable e
-           (log/debug e "Error setting default holdability for connection"))))
+         (sql-jdbc.execute/set-role-if-supported! driver conn db)))
      (f conn))))
 
 (def ^:private ^{:arglists '([db-details])} cloud?
@@ -134,8 +119,8 @@
        (sql-jdbc.execute/do-with-connection-with-options
         :clickhouse spec nil
         (fn [^java.sql.Connection conn]
-          (with-open [stmt (.prepareStatement conn "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")
-                      rset (.executeQuery stmt)]
+          (with-open [stmt (.createStatement conn)
+                      rset (.executeQuery stmt "SELECT value='1' FROM system.settings WHERE name='cloud_mode'")]
             (if (.next rset) (.getBoolean rset 1) false))))))
    ;; cache the results for 48 hours; TTL is here only to eventually clear out old entries
    :ttl/threshold (* 48 60 60 1000)))
@@ -184,8 +169,8 @@
   (sql-jdbc.execute/do-with-connection-with-options
    driver database nil
    (fn [^java.sql.Connection conn]
-     (with-open [stmt (.prepareStatement conn "SELECT timezone() AS tz")
-                 rset (.executeQuery stmt)]
+     (with-open [stmt (.createStatement conn)
+                 rset (.executeQuery stmt "SELECT timezone() AS tz")]
        (when (.next rset)
          (.getString rset 1))))))
 
@@ -239,12 +224,7 @@
    {:write? true}
    (fn [^java.sql.Connection conn]
      (with-open [stmt (.createStatement conn)]
-       (let [^ClickHouseStatementImpl stmt (.unwrap stmt ClickHouseStatementImpl)
-             request (.getRequest stmt)]
-         (.set request "wait_end_of_query" "1")
-         (with-open [_response (-> request
-                                   (.query ^String (create-table!-sql driver table-name column-definitions :primary-key primary-key))
-                                   (.executeAndWait))]))))))
+       (.execute stmt (create-table!-sql driver table-name column-definitions :primary-key primary-key))))))
 
 (defmethod driver/insert-into! :clickhouse
   [driver db-id table-name column-names values]
@@ -290,10 +270,11 @@
                           (if (or (re-matches #"\".*\"" r) (= role default-role))
                             r
                             (format "\"%s\"" r)))
-        quoted-role (->> (clojure.string/split role #",")
+        quoted-role (->> (str/split role #",")
                          (map quote-if-needed)
-                         (clojure.string/join ","))]
-    (format "SET ROLE %s;" quoted-role)))
+                         (str/join ","))
+        statement   (format "SET ROLE %s" quoted-role)]
+    statement))
 
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]

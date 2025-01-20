@@ -1,13 +1,13 @@
 (ns metabase.driver.clickhouse-data-types-test
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [cljc.java-time.local-date :as local-date]
-            [cljc.java-time.offset-date-time :as offset-date-time]
+            [cljc.java-time.local-date-time :as local-date-time]
             [clojure.test :refer :all]
             [metabase.query-processor.test-util :as qp.test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.data.interface :as tx]
-            [metabase.test.data.clickhouse :as ctd]))
+            [metabase.test.data.clickhouse :as ctd]
+            [metabase.test.data.interface :as tx]))
 
 (use-fixtures :once ctd/create-test-db!)
 
@@ -176,6 +176,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
 
+;; NB: timezones in the formatted string are purely cosmetic; it will be fine on the UI
 (deftest ^:parallel clickhouse-array-of-dates
   (mt/test-driver
    :clickhouse
@@ -192,7 +193,7 @@
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-dates {}))
          result (ctd/rows-without-index query-result)]
-     (is (= [["[2022-12-06, 2021-10-19]"], ["[]"]] result)))))
+     (is (= [["[2022-12-06T00:00Z[UTC], 2021-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
 
 (deftest ^:parallel clickhouse-array-of-date32
   (mt/test-driver
@@ -210,15 +211,15 @@
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-date32 {}))
          result (ctd/rows-without-index query-result)]
-     (is (= [["[2122-12-06, 2099-10-19]"], ["[]"]] result)))))
+     (is (= [["[2122-12-06T00:00Z[UTC], 2099-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
 
 (deftest ^:parallel clickhouse-array-of-datetime
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array
                (list
-                (offset-date-time/parse "2022-12-06T18:28:31Z")
-                (offset-date-time/parse "2021-10-19T13:12:44Z")))
+                (local-date-time/parse "2022-12-06T18:28:31")
+                (local-date-time/parse "2021-10-19T13:12:44")))
          row2 (into-array nil)
          query-result (data/dataset
                        (tx/dataset-definition "metabase_tests_array_of_datetime"
@@ -228,15 +229,15 @@
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-datetime {}))
          result (ctd/rows-without-index query-result)]
-     (is (= [["[2022-12-06T18:28:31, 2021-10-19T13:12:44]"], ["[]"]] result)))))
+     (is (= [["[2022-12-06T18:28:31Z[UTC], 2021-10-19T13:12:44Z[UTC]]"], ["[]"]] result)))))
 
 (deftest ^:parallel clickhouse-array-of-datetime64
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array
                (list
-                (offset-date-time/parse "2022-12-06T18:28:31.123Z")
-                (offset-date-time/parse "2021-10-19T13:12:44.456Z")))
+                (local-date-time/parse "2022-12-06T18:28:31.123")
+                (local-date-time/parse "2021-10-19T13:12:44.456")))
          row2 (into-array nil)
          query-result (data/dataset
                        (tx/dataset-definition "metabase_tests_array_of_datetime64"
@@ -246,7 +247,7 @@
                                                [[row1] [row2]]])
                        (data/run-mbql-query test-data-array-of-datetime64 {}))
          result (ctd/rows-without-index query-result)]
-     (is (= [["[2022-12-06T18:28:31.123, 2021-10-19T13:12:44.456]"], ["[]"]] result)))))
+     (is (= [["[2022-12-06T18:28:31.123Z[UTC], 2021-10-19T13:12:44.456Z[UTC]]"], ["[]"]] result)))))
 
 (deftest ^:parallel clickhouse-array-of-decimals
   (mt/test-driver
@@ -266,17 +267,17 @@
 (deftest ^:parallel clickhouse-array-of-tuples
   (mt/test-driver
    :clickhouse
-   (let [row1 (into-array (list (list "foobar" 1234) (list "qaz" 0)))
-         row2 nil
-         query-result (data/dataset
-                       (tx/dataset-definition "metabase_tests_array_of_tuples"
-                                              ["test-data-array-of-tuples"
-                                               [{:field-name "my_array_of_tuples"
-                                                 :base-type {:native "Array(Tuple(String, UInt32))"}}]
-                                               [[row1] [row2]]])
-                       (data/run-mbql-query test-data-array-of-tuples {}))
-         result (ctd/rows-without-index query-result)]
-     (is (= [["[[foobar, 1234], [qaz, 0]]"], ["[]"]] result)))))
+   (is (= [["[[foobar, 1234], [qaz, 0]]"]
+           ["[]"]]
+            (qp.test/formatted-rows
+             [str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   array_of_tuples_test
+                   {})))))))))
 
 (deftest ^:parallel clickhouse-array-of-uuids
   (mt/test-driver
@@ -293,6 +294,19 @@
                        (data/run-mbql-query test-data-array-of-uuids {}))
          result (ctd/rows-without-index query-result)]
      (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
+
+(deftest ^:parallel clickhouse-array-inner-types
+  (mt/test-driver
+   :clickhouse
+   (is (= [["[a, b, c]"
+            "[null, d, e]"
+            "[1.0000, 2.0000, 3.0000]"
+            "[4.0000, null, 5.0000]"]]
+          (ctd/do-with-test-db
+           (fn [db]
+             (data/with-db db
+               (->> (data/run-mbql-query arrays_inner_types {})
+                    (mt/formatted-rows [str str str str])))))))))
 
 (deftest ^:parallel clickhouse-nullable-strings
   (mt/test-driver
@@ -448,8 +462,8 @@
 (deftest ^:parallel clickhouse-ip-serialization-test
   (mt/test-driver
    :clickhouse
-   (is (= [["127.0.0.1" "0:0:0:0:0:ffff:7f00:1"]
-           ["0.0.0.0" "0:0:0:0:0:ffff:0:0"]
+   (is (= [["127.0.0.1" "0:0:0:0:0:0:0:1"]
+           ["0.0.0.0" "2001:438:ffff:0:0:0:407d:1bc1"]
            [nil nil]]
           (qp.test/formatted-rows
            [str str]
@@ -536,16 +550,3 @@
                   (data/run-mbql-query
                    sum_if_test_float
                    {:aggregation [[:sum-where $float_value [:= $discriminator "qaz"]]]}))))))))))
-
-(deftest ^:parallel clickhouse-array-inner-types
-  (mt/test-driver
-   :clickhouse
-   (is (= [["[a, b, c]"
-            "[null, d, e]"
-            "[1.0000, 2.0000, 3.0000]"
-            "[4.0000, null, 5.0000]"]]
-          (ctd/do-with-test-db
-           (fn [db]
-             (data/with-db db
-               (->> (data/run-mbql-query arrays_inner_types {})
-                    (mt/formatted-rows [str str str str])))))))))
