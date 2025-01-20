@@ -24,13 +24,6 @@ jobs:
           repository: ${{ env.METABASE_REPOSITORY }}
           ref: ${{ env.METABASE_VERSION }}
 
-      - name: Remove incompatible tests
-        # metabase.events.view-log-test -> minor precision mismatch, still causes the assertion to fail
-        # hooks.clojure.test-test -> :clickhouse is not in the set of the bundled drivers
-        run: |
-          echo "(ns metabase.events.view-log-test)" > test/metabase/events/view_log_test.clj
-          echo "(ns hooks.clojure.test-test)" > .clj-kondo/test/hooks/clojure/test_test.clj
-
       - name: Checkout Driver Repo
         uses: actions/checkout@v4
         with:
