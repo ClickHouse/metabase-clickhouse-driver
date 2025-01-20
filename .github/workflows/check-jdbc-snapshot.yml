@@ -1,0 +1,84 @@
+# sed -i -E "s/(com.clickhouse\/clickhouse-jdbc \{:mvn\/version )\".+?\"\}/\1\"\"}/" deps.edn
+name: Check with the latest JDBC snapshot
+
+on:
+  workflow_dispatch:
+    inputs:
+      jdbc-version:
+        description: "JDBC version to use"
+        required: true
+
+env:
+  # Temporarily using a fork to disable a few failing tests
+  METABASE_REPOSITORY: slvrtrn/metabase
+  METABASE_VERSION: 0.52.x-ch
+
+jobs:
+  check-local-current-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Metabase Repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.METABASE_REPOSITORY }}
+          ref: ${{ env.METABASE_VERSION }}
+
+      - name: Checkout Driver Repo
+        uses: actions/checkout@v4
+        with:
+          path: modules/drivers/clickhouse
+
+      - name: Prepare JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Add ClickHouse TLS instance to /etc/hosts
+        run: |
+          sudo echo "127.0.0.1 server.clickhouseconnect.test" | sudo tee -a /etc/hosts
+
+      - name: Start ClickHouse in Docker
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: "modules/drivers/clickhouse/docker-compose.yml"
+          down-flags: "--volumes"
+          services: |
+            clickhouse
+            clickhouse_tls
+            clickhouse_older_version
+            clickhouse_cluster_node1
+            clickhouse_cluster_node2
+            nginx
+
+      - name: Install Clojure CLI
+        run: |
+          curl -O https://download.clojure.org/install/linux-install-1.11.1.1182.sh &&
+          sudo bash ./linux-install-1.11.1.1182.sh
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "yarn"
+
+      - name: Update the JDBC version in deps.edn
+        working-directory: modules/drivers/clickhouse
+        run: |
+          sed -i -E "s/(com.clickhouse\/clickhouse-jdbc \{:mvn\/version )\".+?\"\}/\1\"${{ github.event.inputs.jdbc-version }}\"}/" deps.edn
+          echo deps.edn
+
+      - name: Prepare stuff for pulses
+        run: yarn build-static-viz
+
+      # Use custom deps.edn containing "user/clickhouse" alias to include driver sources
+      - name: Prepare deps.edn
+        run: |
+          mkdir -p /home/runner/.config/clojure
+          cat modules/drivers/clickhouse/.github/deps.edn | sed -e "s|PWD|$PWD|g" > /home/runner/.config/clojure/deps.edn
+
+      - name: Run all tests with the latest ClickHouse version
+        env:
+          DRIVERS: clickhouse
+        run: |
+          clojure -X:ci:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse
