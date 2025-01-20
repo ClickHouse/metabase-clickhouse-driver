@@ -66,7 +66,7 @@ jobs:
         working-directory: modules/drivers/clickhouse
         run: |
           sed -i -E "s/(com.clickhouse\/clickhouse-jdbc \{:mvn\/version )\".+?\"\}/\1\"${{ github.event.inputs.jdbc-version }}\"}/" deps.edn
-          echo deps.edn
+          cat deps.edn
 
       - name: Prepare stuff for pulses
         run: yarn build-static-viz
