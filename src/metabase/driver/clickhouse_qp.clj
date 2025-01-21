@@ -4,7 +4,6 @@
   (:require [clojure.string :as str]
             [honey.sql :as sql]
             [java-time.api :as t]
-            [metabase.driver :as driver]
             [metabase.driver.clickhouse-nippy]
             [metabase.driver.clickhouse-version :as clickhouse-version]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -481,7 +480,7 @@
     (when-let [sql-date (.getDate rs i)]
       (.toLocalDate sql-date))))
 
-(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP_WITH_TIMEZONE]
+(defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TIMESTAMP]
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (fn []
     (when-let [zdt (.getObject rs i ZonedDateTime)]
