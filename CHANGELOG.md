@@ -3,7 +3,7 @@
 - Formal Metabase 0.52.x+ support
 - The driver now uses JDBC v2 ([0.8.0](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.8.0))
 - Various improvements to handling of datetimes with timezones
-- `:convert-timezone` feature is disabled for now. This feature looks like it is intended to be used with "wall clock" types, but we always have timezone information in ClickHouse by design; it's incredibly difficult to make the MB tests work in this case, and I am not sure that it is going to work properly with CH.
+- `:convert-timezone` feature is disabled for now.
 - Added `max-open-connections` setting under "advanced options"; default is 100.
 
 # 1.51.0
