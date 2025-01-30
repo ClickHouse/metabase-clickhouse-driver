@@ -10,7 +10,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.models.database :refer [Database]]
    [metabase.query-processor.test-util :as qp.test]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test.data.interface :as tx]
@@ -33,7 +32,7 @@
    :password ""
    :ssl false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.51.0"
+   :product_name "metabase/1.52.0"
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term "schema",
    :max_open_connections 100
@@ -214,7 +213,7 @@
   "Execute a test function using the test dataset"
   [f]
   (t2.with-temp/with-temp
-    [Database database
+    [:model/Database database
      {:engine :clickhouse
       :details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})}]
     (sync-metadata/sync-db-metadata! database)

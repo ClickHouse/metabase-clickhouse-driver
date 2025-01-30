@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.models.database :refer [Database]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.test-util :as qp.test]
    [metabase.test :as mt]
@@ -396,11 +395,11 @@
   (mt/test-driver
    :clickhouse
    (t2.with-temp/with-temp
-     [Database db {:engine :clickhouse
-                   :details (merge {:scan-all-databases nil}
-                                   (tx/dbdef->connection-details
-                                    :clickhouse :db
-                                    {:database-name "metabase_db_scan_test"}))}]
+     [:model/Database db {:engine :clickhouse
+                          :details (merge {:scan-all-databases nil}
+                                          (tx/dbdef->connection-details
+                                           :clickhouse :db
+                                           {:database-name "metabase_db_scan_test"}))}]
      (let [describe-result (driver/describe-database :clickhouse db)]
        (is (= {:tables test-tables} describe-result))))))
 
@@ -408,11 +407,11 @@
   (mt/test-driver
    :clickhouse
    (t2.with-temp/with-temp
-     [Database db {:engine :clickhouse
-                   :details (merge {:scan-all-databases true}
-                                   (tx/dbdef->connection-details
-                                    :clickhouse :db
-                                    {:database-name "default"}))}]
+     [:model/Database db {:engine :clickhouse
+                          :details (merge {:scan-all-databases true}
+                                          (tx/dbdef->connection-details
+                                           :clickhouse :db
+                                           {:database-name "default"}))}]
      (let [describe-result (driver/describe-database :clickhouse db)]
         ;; check the existence of at least some test tables here
        (doseq [table test-tables]
@@ -429,10 +428,10 @@
   (mt/test-driver
    :clickhouse
    (t2.with-temp/with-temp
-     [Database db {:engine :clickhouse
-                   :details (tx/dbdef->connection-details
-                             :clickhouse :db
-                             {:database-name "metabase_db_scan_test information_schema"})}]
+     [:model/Database db {:engine :clickhouse
+                          :details (tx/dbdef->connection-details
+                                    :clickhouse :db
+                                    {:database-name "metabase_db_scan_test information_schema"})}]
      (let [{:keys [tables] :as _describe-result}
            (driver/describe-database :clickhouse db)
            tables-table  {:name        "tables"

@@ -6,7 +6,6 @@
             [metabase.driver.clickhouse :as clickhouse]
             [metabase.driver.clickhouse-qp :as clickhouse-qp]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor.compile :as qp.compile]
             [metabase.test :as mt]
             [metabase.test.data :as data]
@@ -23,7 +22,7 @@
   (mt/test-driver
    :clickhouse
    (t2.with-temp/with-temp
-     [Database db
+     [:model/Database db
       {:engine  :clickhouse
        :details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
      (let [version (driver/dbms-version :clickhouse db)]
