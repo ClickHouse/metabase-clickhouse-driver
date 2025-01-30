@@ -7,7 +7,6 @@
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.models.database :refer [Database]]
             [metabase.query-processor.store :as qp.store]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -63,7 +62,7 @@
 (defn- do-with-new-metadata-provider
   [details thunk]
   (t2.with-temp/with-temp
-    [Database db {:engine :clickhouse :details details}]
+    [:model/Database db {:engine :clickhouse :details details}]
     (qp.store/with-metadata-provider (u/the-id db) (thunk db))))
 
 (deftest clickhouse-set-role
@@ -79,7 +78,7 @@
      (testing "single node"
        (testing "should support the impersonation feature"
          (t2.with-temp/with-temp
-           [Database db {:engine :clickhouse :details {:user "default" :port 8123}}]
+           [:model/Database db {:engine :clickhouse :details {:user "default" :port 8123}}]
            (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db`;"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` (i Int32) ENGINE = MergeTree ORDER BY (i);"
@@ -98,7 +97,7 @@
      (testing "on-premise cluster"
        (testing "should support the impersonation feature"
          (t2.with-temp/with-temp
-           [Database db {:engine :clickhouse :details {:user "default" :port 8127}}]
+           [:model/Database db {:engine :clickhouse :details {:user "default" :port 8127}}]
            (is (true? (driver/database-supports? :clickhouse :connection-impersonation db)))))
        (let [statements ["CREATE DATABASE IF NOT EXISTS `metabase_test_role_db` ON CLUSTER '{cluster}';"
                          "CREATE OR REPLACE TABLE `metabase_test_role_db`.`some_table` ON CLUSTER '{cluster}' (i Int32)
@@ -119,7 +118,7 @@
      (testing "older ClickHouse version" ;; 23.3
        (testing "should NOT support the impersonation feature"
          (t2.with-temp/with-temp
-           [Database db {:engine :clickhouse :details {:user "default" :port 8124}}]
+           [:model/Database db {:engine :clickhouse :details {:user "default" :port 8124}}]
            (is (false? (driver/database-supports? :clickhouse :connection-impersonation db)))))))))
 
 (deftest conn-impersonation-test-clickhouse
@@ -154,7 +153,7 @@
        (ctd/exec-statements insert-statements cluster-port {"wait_end_of_query" "1"
                                                             "insert_quorum" "2"})
        (ctd/exec-statements grant-statements  cluster-port {"wait_end_of_query" "1"})
-       (t2.with-temp/with-temp [Database db cluster-details]
+       (t2.with-temp/with-temp [:model/Database db cluster-details]
          (mt/with-db db (sync/sync-database! db)
 
            (defn- check-impersonation!
