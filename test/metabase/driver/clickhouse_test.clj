@@ -5,6 +5,7 @@
             [metabase.driver :as driver]
             [metabase.driver.clickhouse :as clickhouse]
             [metabase.driver.clickhouse-qp :as clickhouse-qp]
+            [metabase.driver.sql-jdbc :as sql-jdbc]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.query-processor.compile :as qp.compile]
             [metabase.test :as mt]
@@ -175,3 +176,17 @@
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime")))
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64")))
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64(3)")))))
+
+(deftest clickhouse-insert
+  (mt/test-driver
+   :clickhouse
+   (t2.with-temp/with-temp
+     [:model/Database db
+      {:engine  :clickhouse
+       :details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
+     (driver/drop-table!   :clickhouse (:id db) "insert_test")
+     (driver/create-table! :clickhouse (:id db) "insert_test" {:id "Int64", :name "String"})
+     (driver/insert-into!  :clickhouse (:id db) "insert_test" [:id :name] [[42 "Bob"] [43 "Alice"]])
+     (is (= #{{:id 42, :name "Bob"}
+              {:id 43, :name "Alice"}}
+            (set (sql-jdbc/query :clickhouse db {:select [:*] :from [:insert_test]})))))))
