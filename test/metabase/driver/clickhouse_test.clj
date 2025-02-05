@@ -177,7 +177,7 @@
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64")))
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64(3)")))))
 
-(deftest clickhouse-insert
+(deftest ^:synchronized clickhouse-insert
   (mt/test-driver
    :clickhouse
    (t2.with-temp/with-temp
