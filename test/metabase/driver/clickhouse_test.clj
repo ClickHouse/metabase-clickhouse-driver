@@ -19,6 +19,13 @@
 
 (use-fixtures :once ctd/create-test-db!)
 
+;; the mt/with-dynamic-redefs macro was renamed to mt/with-dynamic-fn-redefs for 0.53+
+;; as 0.52 is still tested by CI we will check which macro is defined and use that
+(defmacro with-dynamic-redefs [bindings & body]
+  (if (resolve `mt/with-dynamic-redefs)
+    `(mt/with-dynamic-redefs ~bindings ~@body)
+    `(mt/with-dynamic-fn-redefs ~bindings ~@body)))
+
 (deftest ^:parallel clickhouse-version
   (mt/test-driver
    :clickhouse
@@ -40,9 +47,9 @@
             (driver/db-default-timezone :clickhouse spec))))))
 
 (deftest ^:parallel clickhouse-connection-string
-  (mt/with-dynamic-redefs [;; This function's implementation requires the connection details to actually connect to the
-                           ;; database, which is orthogonal to the purpose of this test.
-                           clickhouse/cloud? (constantly false)]
+  (with-dynamic-redefs [;; This function's implementation requires the connection details to actually connect to the
+                        ;; database, which is orthogonal to the purpose of this test.
+                        clickhouse/cloud? (constantly false)]
     (testing "connection with no additional options"
       (is (= ctd/default-connection-params
              (sql-jdbc.conn/connection-details->spec
@@ -73,9 +80,9 @@
               {:dbname nil}))))))
 
 (deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
-  (mt/with-dynamic-redefs [;; This function's implementation requires the connection details to actually
-                           ;; connect to the database, which is orthogonal to the purpose of this test.
-                           clickhouse/cloud? (constantly true)]
+  (with-dynamic-redefs [;; This function's implementation requires the connection details to actually
+                        ;; connect to the database, which is orthogonal to the purpose of this test.
+                        clickhouse/cloud? (constantly true)]
     (testing "connection with no additional options"
       (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
              (sql-jdbc.conn/connection-details->spec
