@@ -1,6 +1,7 @@
 (ns metabase.test.data.clickhouse
   "Code for creating / destroying a ClickHouse database from a `DatabaseDefinition`."
   (:require
+   [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -11,7 +12,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.test-util :as qp.test]
-   [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.core :as sync]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -178,7 +179,8 @@
       ;; (println "### Executing create-test-db! with details:" details)
       (jdbc/with-db-connection
         [spec (sql-jdbc.conn/connection-details->spec :clickhouse (merge {:engine :clickhouse} details))]
-        (let [statements (as-> (slurp "modules/drivers/clickhouse/test/metabase/test/data/datasets.sql") s
+        (let [raw-statements (slurp (io/resource "metabase/test/data/clickhouse_datasets.sql"))
+              statements (as-> raw-statements s
                            (str/split s #";")
                            (map str/trim s)
                            (filter seq s))]
@@ -216,7 +218,7 @@
     [:model/Database database
      {:engine :clickhouse
       :details (tx/dbdef->connection-details :clickhouse :db {:database-name "metabase_test"})}]
-    (sync-metadata/sync-db-metadata! database)
+    (sync/sync-db-metadata! database)
     (f database)))
 
 (defmethod tx/dataset-already-loaded? :clickhouse
