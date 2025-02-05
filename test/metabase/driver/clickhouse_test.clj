@@ -184,9 +184,12 @@
      [:model/Database db
       {:engine  :clickhouse
        :details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
-     (driver/drop-table!   :clickhouse (:id db) "insert_test")
-     (driver/create-table! :clickhouse (:id db) "insert_test" {:id "Int64", :name "String"})
-     (driver/insert-into!  :clickhouse (:id db) "insert_test" [:id :name] [[42 "Bob"] [43 "Alice"]])
-     (is (= #{{:id 42, :name "Bob"}
-              {:id 43, :name "Alice"}}
-            (set (sql-jdbc/query :clickhouse db {:select [:*] :from [:insert_test]})))))))
+     (let [table (keyword (format "insert_table_%s" (System/currentTimeMillis)))]
+       (driver/create-table! :clickhouse (:id db) table {:id "Int64", :name "String"})
+       (try
+         (driver/insert-into! :clickhouse (:id db) table [:id :name] [[42 "Bob"] [43 "Alice"]])
+         (is (= #{{:id 42, :name "Bob"}
+                  {:id 43, :name "Alice"}}
+                (set (sql-jdbc/query :clickhouse db {:select [:*] :from [table]}))))
+         (finally
+           (driver/drop-table! :clickhouse (:id db) table)))))))
