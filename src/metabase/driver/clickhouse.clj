@@ -50,12 +50,7 @@
                               :left-join                       (not config/is-test?)
                               :describe-fks                    false
                               :actions                         false
-                              :metadata/key-constraints        (not config/is-test?)
-
-                              :metabase.driver.sql-jdbc.sync.describe-table-test/describe-view-fields
-                              true
-                              :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields
-                              false}]
+                              :metadata/key-constraints        (not config/is-test?)}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (def ^:private default-connection-details

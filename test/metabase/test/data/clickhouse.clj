@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.db.query :as mdb.query]
+   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -24,6 +25,11 @@
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (sql-jdbc.tx/add-test-extensions! :clickhouse)
+
+(defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-view-fields]
+  [_driver _feature _db] true)
+(defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
+  [_driver _feature _db] false)
 
 (def default-connection-params
   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
