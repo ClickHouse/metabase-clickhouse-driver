@@ -8,11 +8,17 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.query-processor.store :as qp.store]
-            [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.clickhouse :as ctd]
             [metabase.util :as u]
             [toucan2.tools.with-temp :as t2.with-temp]))
+
+;; 53+ metabase.sync has moved to metabase.sync.core
+(try
+  (require '[metabase.sync :as sync])
+  (catch java.io.FileNotFoundException e
+    (when (re-find #"metabase/sync\.clj" (.getMessage e))
+      (require '[metabase.sync.core :as sync]))))
 
 (set! *warn-on-reflection* true)
 
