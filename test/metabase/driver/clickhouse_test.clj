@@ -47,9 +47,9 @@
             (driver/db-default-timezone :clickhouse spec))))))
 
 (deftest ^:parallel clickhouse-connection-string
-  (with-dynamic-redefs [;; This function's implementation requires the connection details to actually connect to the
-                        ;; database, which is orthogonal to the purpose of this test.
-                        clickhouse/cloud? (constantly false)]
+  (mt/with-dynamic-fn-redefs [ ;; This function's implementation requires the connection details to actually connect to the
+                              ;; database, which is orthogonal to the purpose of this test.
+                              clickhouse/cloud? (constantly false)]
     (testing "connection with no additional options"
       (is (= ctd/default-connection-params
              (sql-jdbc.conn/connection-details->spec
@@ -80,9 +80,9 @@
               {:dbname nil}))))))
 
 (deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
-  (with-dynamic-redefs [;; This function's implementation requires the connection details to actually
-                        ;; connect to the database, which is orthogonal to the purpose of this test.
-                        clickhouse/cloud? (constantly true)]
+  (mt/with-dynamic-fn-redefs [ ;; This function's implementation requires the connection details to actually
+                              ;; connect to the database, which is orthogonal to the purpose of this test.
+                              clickhouse/cloud? (constantly true)]
     (testing "connection with no additional options"
       (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
              (sql-jdbc.conn/connection-details->spec
