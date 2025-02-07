@@ -8,7 +8,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.query-processor.store :as qp.store]
-            [metabase.sync :as sync]
+            [metabase.sync.core :as sync]
             [metabase.test :as mt]
             [metabase.test.data.clickhouse :as ctd]
             [metabase.util :as u]
@@ -156,26 +156,25 @@
        (t2.with-temp/with-temp [:model/Database db cluster-details]
          (mt/with-db db (sync/sync-database! db)
 
-           (defn- check-impersonation!
-             [roles expected]
-             (advanced-perms.api.tu/with-impersonations!
-               {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
-                :attributes     {"impersonation_attr" roles}}
-               (is (= expected
-                      (-> {:query select-query}
-                          mt/native-query
-                          mt/process-query
-                          mt/rows)))))
+           (letfn [(check-impersonation! [roles expected]
+                      (advanced-perms.api.tu/with-impersonations!
+                        {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                         :attributes     {"impersonation_attr" roles}}
+                        (is (= expected
+                               (-> {:query select-query}
+                                   mt/native-query
+                                   mt/process-query
+                                   mt/rows)))))]
 
-           (is (= [["a"] ["b"] ["c"]]
-                  (-> {:query select-query}
-                      mt/native-query
-                      mt/process-query
-                      mt/rows)))
+             (is (= [["a"] ["b"] ["c"]]
+                    (-> {:query select-query}
+                        mt/native-query
+                        mt/process-query
+                        mt/rows)))
 
-           (check-impersonation! "row_a" [["a"]])
-           (check-impersonation! "row_b" [["b"]])
-           (check-impersonation! "row_c" [["c"]])
-           (check-impersonation! "row_a,row_c" [["a"] ["c"]])
-           (check-impersonation! "row_b,row_c" [["b"] ["c"]])
-           (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]])))))))
+             (check-impersonation! "row_a" [["a"]])
+             (check-impersonation! "row_b" [["b"]])
+             (check-impersonation! "row_c" [["c"]])
+             (check-impersonation! "row_a,row_c" [["a"] ["c"]])
+             (check-impersonation! "row_b,row_c" [["b"] ["c"]])
+             (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]]))))))))
