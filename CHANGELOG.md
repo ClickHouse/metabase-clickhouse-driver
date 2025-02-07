@@ -1,3 +1,9 @@
+# 1.53.0
+
+### Bug fixes
+
+* Fixed OOB exception on CSV insert caused by an incompatibility with JDBC v2 ([#286](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/286), [wotbrew](https://github.com/wotbrew)).
+
 # 1.52.0
 
 - Formal Metabase 0.52.x+ support

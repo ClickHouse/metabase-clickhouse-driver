@@ -5,6 +5,7 @@
             [metabase.driver :as driver]
             [metabase.driver.clickhouse :as clickhouse]
             [metabase.driver.clickhouse-qp :as clickhouse-qp]
+            [metabase.driver.sql-jdbc :as sql-jdbc]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.query-processor.compile :as qp.compile]
             [metabase.test :as mt]
@@ -17,6 +18,13 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once ctd/create-test-db!)
+
+;; the mt/with-dynamic-redefs macro was renamed to mt/with-dynamic-fn-redefs for 0.53+
+;; as 0.52 is still tested by CI we will check which macro is defined and use that
+(defmacro with-dynamic-redefs [bindings & body]
+  (if (resolve `mt/with-dynamic-redefs)
+    `(mt/with-dynamic-redefs ~bindings ~@body)
+    `(mt/with-dynamic-fn-redefs ~bindings ~@body)))
 
 (deftest ^:parallel clickhouse-version
   (mt/test-driver
@@ -175,3 +183,20 @@
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime")))
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64")))
    (is (= nil (#'clickhouse-qp/extract-datetime-timezone "datetime64(3)")))))
+
+(deftest ^:synchronized clickhouse-insert
+  (mt/test-driver
+   :clickhouse
+   (t2.with-temp/with-temp
+     [:model/Database db
+      {:engine  :clickhouse
+       :details (tx/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
+     (let [table (keyword (format "insert_table_%s" (System/currentTimeMillis)))]
+       (driver/create-table! :clickhouse (:id db) table {:id "Int64", :name "String"})
+       (try
+         (driver/insert-into! :clickhouse (:id db) table [:id :name] [[42 "Bob"] [43 "Alice"]])
+         (is (= #{{:id 42, :name "Bob"}
+                  {:id 43, :name "Alice"}}
+                (set (sql-jdbc/query :clickhouse db {:select [:*] :from [table]}))))
+         (finally
+           (driver/drop-table! :clickhouse (:id db) table)))))))

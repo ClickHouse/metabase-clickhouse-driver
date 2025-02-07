@@ -234,7 +234,10 @@
      db-id
      {:write? true}
      (fn [^java.sql.Connection conn]
-       (let [sql (format "INSERT INTO %s (%s)" (quote-name table-name) (str/join ", " (map quote-name column-names)))]
+       (let [sql (format "INSERT INTO %s (%s) VALUES (%s)"
+                         (quote-name table-name)
+                         (str/join ", " (map quote-name column-names))
+                         (str/join ", " (repeat (count column-names) "?")))]
          (with-open [ps (.prepareStatement conn sql)]
            (doseq [row values]
              (when (seq row)
