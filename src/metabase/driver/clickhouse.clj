@@ -29,7 +29,7 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.52.0")
+(def ^:private product-name "metabase/1.53.0")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]

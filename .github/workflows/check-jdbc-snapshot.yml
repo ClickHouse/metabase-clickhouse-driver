@@ -11,7 +11,7 @@ on:
 env:
   # Temporarily using a fork to disable a few failing tests
   METABASE_REPOSITORY: slvrtrn/metabase
-  METABASE_VERSION: 0.52.x-ch
+  METABASE_VERSION: 0.53.x-ch
 
 jobs:
   check-local-current-version:

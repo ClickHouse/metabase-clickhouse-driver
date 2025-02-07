@@ -1,5 +1,9 @@
 # 1.53.0
 
+### Improvements
+
+* Adds Metabase 0.53.x support ([#287](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/287), [dpsutton](https://github.com/dpsutton)).
+
 ### Bug fixes
 
 * Fixed OOB exception on CSV insert caused by an incompatibility with JDBC v2 ([#286](https://github.com/ClickHouse/metabase-clickhouse-driver/pull/286), [wotbrew](https://github.com/wotbrew)).
