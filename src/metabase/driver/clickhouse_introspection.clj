@@ -50,8 +50,8 @@
     (normalize-db-type (subs db-type 9 (- (count db-type) 1)))
     ;; for test purposes only: GMT0 is a legacy timezone;
     ;; it maps to LocalDateTime instead of OffsetDateTime
-    (= db-type "datetime64(3, 'gmt0')")
-    :type/DateTime
+    ;; (= db-type "datetime64(3, 'gmt0')")
+    ;; :type/DateTime
     ;; DateTime64
     (str/starts-with? db-type "datetime64")
     :type/DateTimeWithLocalTZ

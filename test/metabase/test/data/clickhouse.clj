@@ -5,6 +5,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -12,6 +13,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
    [metabase.query-processor.test-util :as qp.test]
    [metabase.sync.core :as sync]
    [metabase.test.data.interface :as tx]
@@ -30,6 +32,15 @@
   [_driver _feature _db] true)
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
   [_driver _feature _db] false)
+
+(defmethod driver/database-supports? [:clickhouse :metabase.query-processor-test.parameters-test/get-parameter-count]
+  [_driver _feature _db] false)
+
+(defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
+  [_driver]
+  [[1 "foo" (t/offset-date-time "2004-10-19T10:23:54Z") #t "2004-10-19" (t/offset-date-time "1970-01-01T10:23:54Z")]
+   [2 "bar" (t/offset-date-time "2008-10-19T10:23:54Z") #t "2008-10-19" (t/offset-date-time "1970-01-01T10:23:54Z")]
+   [3 "baz" (t/offset-date-time "2012-10-19T10:23:54Z") #t "2012-10-19" (t/offset-date-time "1970-01-01T10:23:54Z")]])
 
 (def default-connection-params
   {:classname "com.clickhouse.jdbc.ClickHouseDriver"
