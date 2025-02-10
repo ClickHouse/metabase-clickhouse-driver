@@ -149,7 +149,7 @@
       ;; Default SELECT 1 is not enough for Metabase test suite,
       ;; as it works slightly differently than expected there
       (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-            db    (or (:dbname details) (:db details) "default")]
+            db    (ddl.i/format-name driver (or (:dbname details) (:db details) "default"))]
         (sql-jdbc.execute/do-with-connection-with-options
          driver spec nil
          (fn [^java.sql.Connection conn]
