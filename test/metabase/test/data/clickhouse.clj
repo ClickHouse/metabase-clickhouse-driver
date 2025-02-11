@@ -50,7 +50,7 @@
    :password ""
    :ssl false
    :use_server_time_zone_for_dates true
-   :product_name "metabase/1.53.0"
+   :product_name "metabase/1.53.1"
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term "schema",
    :max_open_connections 100
