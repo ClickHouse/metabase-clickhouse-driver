@@ -318,19 +318,19 @@
       [{:field-name "mystring" :base-type :type/Text}]
       [["foo"] ["bar"] ["   "] [""] [nil]]])
     (testing "null strings count"
-      (is (= 2
+      (is (= 2M ;; BigDecimal
              (-> (data/run-mbql-query test-data-nullable-strings
                                       {:filter [:is-null $mystring]
                                        :aggregation [:count]})
                  qp.test/first-row last))))
     (testing "nullable strings not null filter"
-      (is (= 3
+      (is (= 3M
              (-> (data/run-mbql-query test-data-nullable-strings
                                       {:filter [:not-null $mystring]
                                        :aggregation [:count]})
                  qp.test/first-row last))))
     (testing "filter nullable string by value"
-      (is (= 1
+      (is (= 1M
              (-> (data/run-mbql-query test-data-nullable-strings
                                       {:filter [:= $mystring "foo"]
                                        :aggregation [:count]})
