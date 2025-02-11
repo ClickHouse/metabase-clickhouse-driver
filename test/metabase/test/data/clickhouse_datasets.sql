@@ -269,3 +269,13 @@ INSERT INTO `metabase_test`.`arrays_inner_types` VALUES (
     [1, 2, 3],
     [4, NULL, 5]
 );
+
+CREATE TABLE `metabase_test`.`unsigned_int_types`
+(
+    `u8`  UInt8,
+    `u16` UInt16,
+    `u32` UInt32,
+    `u64` UInt64
+) ENGINE Memory;
+INSERT INTO `metabase_test`.`unsigned_int_types`
+VALUES (255, 65535, 4294967295, 18446744073709551615);

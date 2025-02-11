@@ -440,12 +440,12 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/TINYINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (.getByte rs i)))
+    (.getObject rs i)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/SMALLINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (.getShort rs i)))
+    (.getObject rs i)))
 
 ;; This is for tests only - some of them expect nil values
 ;; getInt/getLong return 0 in case of a NULL value in the result set
@@ -457,12 +457,12 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/BIGINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (with-null-check rs (.getLong rs i))))
+    (with-null-check rs (.getBigDecimal rs i))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/INTEGER]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (with-null-check rs (.getInt rs i))))
+    (with-null-check rs (.getLong rs i))))
 
 (def ^:private utc-zone-id (java.time.ZoneId/of "UTC"))
 (defn- zdt-in-report-timezone
