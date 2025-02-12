@@ -318,19 +318,19 @@
       [{:field-name "mystring" :base-type :type/Text}]
       [["foo"] ["bar"] ["   "] [""] [nil]]])
     (testing "null strings count"
-      (is (= 2
+      (is (= 2M ;; BigDecimal
              (-> (data/run-mbql-query test-data-nullable-strings
                                       {:filter [:is-null $mystring]
                                        :aggregation [:count]})
                  qp.test/first-row last))))
     (testing "nullable strings not null filter"
-      (is (= 3
+      (is (= 3M
              (-> (data/run-mbql-query test-data-nullable-strings
                                       {:filter [:not-null $mystring]
                                        :aggregation [:count]})
                  qp.test/first-row last))))
     (testing "filter nullable string by value"
-      (is (= 1
+      (is (= 1M
              (-> (data/run-mbql-query test-data-nullable-strings
                                       {:filter [:= $mystring "foo"]
                                        :aggregation [:count]})
@@ -550,3 +550,17 @@
                   (data/run-mbql-query
                    sum_if_test_float
                    {:aggregation [[:sum-where $float_value [:= $discriminator "qaz"]]]}))))))))))
+
+(deftest ^:parallel clickhouse-unsigned-integers
+  (mt/test-driver
+   :clickhouse
+     (is (= [["255" "65535" "4294967295" "18446744073709551615"]]
+            (qp.test/formatted-rows
+             [str str str str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   unsigned_int_types
+                   {})))))))))

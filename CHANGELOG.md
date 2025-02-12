@@ -1,3 +1,9 @@
+# 1.53.1
+
+### Bug fixes
+
+* Fix unsigned integers overflow ([[#293](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/293)])
+
 # 1.53.0
 
 ### Improvements
