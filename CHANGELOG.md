@@ -1,3 +1,9 @@
+# Unreleased
+
+### Bug fixes
+
+* Update clickhouse-client to 0.8.1 ([#297](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/297), [#288](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/288)) to fix errors in queries with CTEs.
+
 # 1.53.1
 
 ### Bug fixes
