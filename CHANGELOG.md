@@ -1,14 +1,14 @@
-# Unreleased
+# 1.53.2
 
 ### Bug fixes
 
-* Update clickhouse-client to 0.8.1 ([#297](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/297), [#288](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/288)) to fix errors in queries with CTEs.
+* Update clickhouse-client to 0.8.1 to fix errors in queries with CTEs ([#297](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/297), [#288](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/288), [tadeboro](https://github.com/tadeboro)).
 
 # 1.53.1
 
 ### Bug fixes
 
-* Fix unsigned integers overflow ([[#293](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/293)])
+* Fix unsigned integers overflow ([#293](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/293))
 
 # 1.53.0
 
