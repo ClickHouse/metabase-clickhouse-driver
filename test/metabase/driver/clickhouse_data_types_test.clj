@@ -564,3 +564,18 @@
                   (data/run-mbql-query
                    unsigned_int_types
                    {})))))))))
+
+;; FIXME: blocked by https://github.com/ClickHouse/clickhouse-java/issues/2218
+#_(deftest ^:parallel clickhouse-fixed-strings
+  (mt/test-driver
+   :clickhouse
+     (is (= [["val1" "val2" "val3" "val4"]]
+            (qp.test/formatted-rows
+             [str str str str]
+             :format-nil-values
+             (ctd/do-with-test-db
+              (fn [db]
+                (data/with-db db
+                  (data/run-mbql-query
+                   fixed_strings
+                   {})))))))))
