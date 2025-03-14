@@ -279,3 +279,13 @@ CREATE TABLE `metabase_test`.`unsigned_int_types`
 ) ENGINE Memory;
 INSERT INTO `metabase_test`.`unsigned_int_types`
 VALUES (255, 65535, 4294967295, 18446744073709551615);
+
+CREATE TABLE `metabase_test`.`fixed_strings`
+(
+    `f1` FixedString(4),
+    `f2` LowCardinality(FixedString(4)),
+    `f3` Nullable(FixedString(4)),
+    `f4` LowCardinality(Nullable(FixedString(4)))
+) ENGINE Memory;
+INSERT INTO `metabase_test`.`fixed_strings`
+VALUES ('val1', 'val2', 'val3', 'val4');

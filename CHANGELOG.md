@@ -2,7 +2,7 @@
 
 ### Bug fixes
 
-* Update clickhouse-client to 0.8.1 to fix errors in queries with CTEs ([#297](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/297), [#288](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/288), [tadeboro](https://github.com/tadeboro)).
+* The JDBC driver was updated to [0.8.1](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.8.1) to fix errors in queries with CTEs ([#297](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/297), [#288](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/288), [tadeboro](https://github.com/tadeboro)).
 
 # 1.53.1
 
