@@ -29,7 +29,7 @@
 (driver/register! :clickhouse :parent #{:sql-jdbc})
 
 (defmethod driver/display-name :clickhouse [_] "ClickHouse")
-(def ^:private product-name "metabase/1.53.2")
+(def ^:private product-name "metabase/1.53.3")
 
 (defmethod driver/prettify-native-form :clickhouse
   [_ native-form]
@@ -64,23 +64,27 @@
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
         ;; if multiple databases were specified for the connection,
         ;; use only the first dbname as the "main" one
-        dbname (first (str/split (str/trim dbname) #" "))]
+        dbname (first (str/split (str/trim dbname) #" "))
+        host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
+                 (str/starts-with? host "http://")  (subs host 7)
+                 (str/starts-with? host "https://") (subs host 8)
+                 :else host)]
     (->
-     {:classname "com.clickhouse.jdbc.ClickHouseDriver"
-      :subprotocol "clickhouse"
-      :subname (str "//" host ":" port "/" dbname)
-      :password (or password "")
-      :user user
-      :ssl (boolean ssl)
+     {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
+      :subprotocol                    "clickhouse"
+      :subname                        (str "//" host ":" port "/" dbname)
+      :password                       (or password "")
+      :user                           user
+      :ssl                            (boolean ssl)
       :use_server_time_zone_for_dates true
-      :product_name product-name
-      :remember_last_set_roles true
-      :http_connection_provider "HTTP_URL_CONNECTION"
+      :product_name                   product-name
+      :remember_last_set_roles        true
+      :http_connection_provider       "HTTP_URL_CONNECTION"
       :jdbc_ignore_unsupported_values "true"
-      :jdbc_schema_term "schema"
-      :max_open_connections (or max-open-connections 100)
+      :jdbc_schema_term               "schema"
+      :max_open_connections           (or max-open-connections 100)
       ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-      :custom_http_params (or clickhouse-settings "")}
+      :custom_http_params             (or clickhouse-settings "")}
      (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod sql-jdbc.execute/do-with-connection-with-options :clickhouse
