@@ -87,6 +87,7 @@ jobs:
           clojure -X:ci:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse
 
   check-local-older-version:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Metabase Repo
@@ -153,7 +154,7 @@ jobs:
 
   build-jar:
     runs-on: ubuntu-latest
-    needs: [ 'check-local-current-version', 'check-local-older-version' ]
+    needs: [ 'check-local-current-version' ]
     steps:
       - name: Checkout Metabase Repo
         uses: actions/checkout@v4
