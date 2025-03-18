@@ -3,6 +3,7 @@
 ### Improvements
 
 * If ClickHouse instance hostname was specified including `http://` or `https://` schema (e.g. `https://sub.example.com`), it will be automatically handled and removed by the driver, instead of failing with a connection error.
+* The JDBC driver was updated to [0.8.2](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.8.2)
 
 # 1.53.2
 
