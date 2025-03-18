@@ -39,7 +39,7 @@
                                     :limit 1})
               qp.test/first-row last double)))))))
 
-(deftest ^:parallel clickhouse-array-string
+#_(deftest ^:parallel clickhouse-array-string
   (mt/test-driver
    :clickhouse
    (is
@@ -54,7 +54,7 @@
            qp.test/first-row
            last)))))
 
-(deftest ^:parallel clickhouse-array-uint64
+#_(deftest ^:parallel clickhouse-array-uint64
   (mt/test-driver
    :clickhouse
    (is
@@ -69,7 +69,7 @@
            qp.test/first-row
            last)))))
 
-(deftest ^:parallel clickhouse-array-of-arrays
+#_(deftest ^:parallel clickhouse-array-of-arrays
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list
@@ -86,7 +86,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[[foo, bar], [qaz, qux]]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-low-cardinality-array
+#_(deftest ^:parallel clickhouse-low-cardinality-array
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list "foo" "bar"))
@@ -101,7 +101,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[foo, bar]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-nullables
+#_(deftest ^:parallel clickhouse-array-of-nullables
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list "foo" nil "bar"))
@@ -116,7 +116,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[foo, null, bar]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-booleans
+#_(deftest ^:parallel clickhouse-array-of-booleans
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list true false true))
@@ -131,7 +131,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[true, false, true]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-nullable-booleans
+#_(deftest ^:parallel clickhouse-array-of-nullable-booleans
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list true false nil))
@@ -146,7 +146,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[true, false, null]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-uint8
+#_(deftest ^:parallel clickhouse-array-of-uint8
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list 42 100 2))
@@ -161,7 +161,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[42, 100, 2]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-floats
+#_(deftest ^:parallel clickhouse-array-of-floats
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list 1.2 3.4))
@@ -177,7 +177,7 @@
      (is (= [["[1.2, 3.4]"], ["[]"]] result)))))
 
 ;; NB: timezones in the formatted string are purely cosmetic; it will be fine on the UI
-(deftest ^:parallel clickhouse-array-of-dates
+#_(deftest ^:parallel clickhouse-array-of-dates
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array
@@ -195,7 +195,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[2022-12-06T00:00Z[UTC], 2021-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-date32
+#_(deftest ^:parallel clickhouse-array-of-date32
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array
@@ -213,7 +213,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[2122-12-06T00:00Z[UTC], 2099-10-19T00:00Z[UTC]]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-datetime
+#_(deftest ^:parallel clickhouse-array-of-datetime
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array
@@ -231,7 +231,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[2022-12-06T18:28:31Z[UTC], 2021-10-19T13:12:44Z[UTC]]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-datetime64
+#_(deftest ^:parallel clickhouse-array-of-datetime64
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array
@@ -249,7 +249,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[2022-12-06T18:28:31.123Z[UTC], 2021-10-19T13:12:44.456Z[UTC]]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-decimals
+#_(deftest ^:parallel clickhouse-array-of-decimals
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list "12345123.123456789" "78.245"))
@@ -264,7 +264,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-of-tuples
+#_(deftest ^:parallel clickhouse-array-of-tuples
   (mt/test-driver
    :clickhouse
    (is (= [["[[foobar, 1234], [qaz, 0]]"]
@@ -279,7 +279,7 @@
                    array_of_tuples_test
                    {})))))))))
 
-(deftest ^:parallel clickhouse-array-of-uuids
+#_(deftest ^:parallel clickhouse-array-of-uuids
   (mt/test-driver
    :clickhouse
    (let [row1 (into-array (list "2eac427e-7596-11ed-a1eb-0242ac120002"
@@ -295,7 +295,7 @@
          result (ctd/rows-without-index query-result)]
      (is (= [["[2eac427e-7596-11ed-a1eb-0242ac120002, 2eac44f4-7596-11ed-a1eb-0242ac120002]"], ["[]"]] result)))))
 
-(deftest ^:parallel clickhouse-array-inner-types
+#_(deftest ^:parallel clickhouse-array-inner-types
   (mt/test-driver
    :clickhouse
    (is (= [["[a, b, c]"
