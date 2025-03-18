@@ -87,7 +87,6 @@ jobs:
           clojure -X:ci:dev:ee:ee-dev:drivers:drivers-dev:test:user/clickhouse
 
   check-local-older-version:
-    if: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Metabase Repo
