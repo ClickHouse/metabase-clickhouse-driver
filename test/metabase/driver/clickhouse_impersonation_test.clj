@@ -2,7 +2,7 @@
   "SET ROLE (connection impersonation feature) tests on with single node or on-premise cluster setups."
   #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.api.util-test :as advanced-perms.api.tu]
+            [metabase-enterprise.impersonation.util-test :as impersonation.tu]
             [metabase.driver :as driver]
             [metabase.driver.sql :as driver.sql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -163,7 +163,7 @@
          (mt/with-db db (sync/sync-database! db)
 
            (letfn [(check-impersonation! [roles expected]
-                      (advanced-perms.api.tu/with-impersonations!
+                      (impersonation.tu/with-impersonations!
                         {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                          :attributes     {"impersonation_attr" roles}}
                         (is (= expected
