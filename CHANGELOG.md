@@ -1,3 +1,9 @@
+# 1.53.4
+
+### Improvements
+
+* The JDBC driver was updated to [0.8.4](https://github.com/ClickHouse/clickhouse-java/releases/tag/v0.8.4). This fixes [#309](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/309), [#300](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/300), [#297](https://github.com/ClickHouse/metabase-clickhouse-driver/issues/297).
+
 # 1.53.3
 
 ### Improvements
