@@ -17,7 +17,7 @@ The Metabase team promoted the ClickHouse driver to the core level as of Metabas
 For the end user, this means the following:
 
 - Installing the driver manually is unnecessary, as it is now bundled with Metabase.
-- Starting from April 2025, the Metabase team will continue maintaining the driver. Please report new issues in the [main Metabase repository](https://github.com/metabase/metabase/issues).
+- Starting from April 2025, the Metabase team will continue maintaining the driver. Please report new issues in [the main Metabase repository](https://github.com/metabase/metabase/issues).
 
 The ClickHouse team recommends avoiding older Metabase versions (53.x and earlier) with manual driver installation; instead, please use the updated Metabase distribution with the driver built-in.
 
@@ -37,8 +37,12 @@ The source base in these PRs comprises major contributions from these authors:
 - Andrew Grigorev ([@ei-grad](https://github.com/ei-grad))
 - Bogdan Mukvich ([@Badya](https://github.com/Badya))
 - Felix Mueller ([@enqueue](https://github.com/enqueue))
-- Serge Klochkov([@slvrtrn](https://github.com/slvrtrn)) 
 
-## Special thanks
+> [!NOTE]
+> Special thanks to Felix Mueller ([@enqueue](https://github.com/enqueue)), who was the sole maintainer of the project from 2019 to 2022 before transferring it to ClickHouse.
 
-Felix Mueller ([@enqueue](https://github.com/enqueue)) was the sole maintainer of the project from 2019 to 2022 before transferring the ownership to ClickHouse.
+Starting from November 2022, Serge Klochkov ([@slvrtrn](https://github.com/slvrtrn)) joined as a maintainer.
+
+In early 2023, the repository was transferred to the ClickHouse organization, promoting it as an [official integration](https://clickhouse.com/blog/metabase-clickhouse-plugin-ga-release). Around that time, the driver also became available in [Metabase Cloud](https://www.metabase.com/cloud).
+
+In April 2025, the driver source code [was moved](https://github.com/metabase/metabase/pull/54740) to the main Metabase repository. Since [Metabase 54](https://github.com/metabase/metabase/releases/tag/v0.54.1), it is now available as a part of the official Metabase bundle.
