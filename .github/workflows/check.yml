@@ -6,11 +6,13 @@ on:
     branches:
       - master
     paths-ignore:
-      - "**.md"
+      - '**/*.md'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
 
 env:
-  # Temporarily using a fork to disable a few failing tests
+  # Using a fork to disable a few failing tests
   METABASE_REPOSITORY: slvrtrn/metabase
   METABASE_VERSION: 0.53.x-ch
 
@@ -115,8 +117,6 @@ jobs:
         with:
           compose-file: "modules/drivers/clickhouse/docker-compose.yml"
           down-flags: "--volumes"
-          # FIXME: We only need to run a few specific tests with `clickhouse_older_version`
-          #        Currently, we run all tests with it, which is unnecessary.
           services: |
             clickhouse
             clickhouse_tls
