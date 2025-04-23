@@ -17,7 +17,7 @@ The Metabase team promoted the ClickHouse driver to the core level as of Metabas
 For the end user, this means the following:
 
 - Installing the driver manually is unnecessary, as it is now bundled with Metabase.
-- The Metabase team will continue maintaining the driver; please report new issues in the [main Metabase repository](https://github.com/metabase/metabase/issues).
+- Starting from April 2025, the Metabase team will continue maintaining the driver. Please report new issues in the [main Metabase repository](https://github.com/metabase/metabase/issues).
 
 The ClickHouse team recommends avoiding older Metabase versions (53.x and earlier) with manual driver installation; instead, please use the updated Metabase distribution with the driver built-in.
 
