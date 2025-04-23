@@ -37,6 +37,7 @@ The source base in these PRs comprises major contributions from these authors:
 - Andrew Grigorev ([@ei-grad](https://github.com/ei-grad))
 - Bogdan Mukvich ([@Badya](https://github.com/Badya))
 - Felix Mueller ([@enqueue](https://github.com/enqueue))
+- Serge Klochkov([@slvrtrn](https://github.com/slvrtrn)) 
 
 ## Special thanks
 
